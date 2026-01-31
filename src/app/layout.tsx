@@ -1,21 +1,57 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import Image from "next/image";
 import "./globals.css";
+import Header from "@/components/layout/Header";
+import Footer from "@/components/layout/Footer";
 
 export const metadata: Metadata = {
-  title: "Arwin AI Solutions",
+  title: {
+    default: "Arwin AI Solutions - AI-Powered Digital Transformation",
+    template: "%s | Arwin AI Solutions"
+  },
   description:
-    "Arwin AI Solutions delivers AI-enabled products, domain services, and community programs across India and beyond.",
+    "Arwin AI Solutions delivers AI-enabled products, domain services, and community programs. Specializing in government, education, and enterprise digital transformation since 2011.",
+  keywords: ["AI Solutions", "Digital Transformation", "Government Technology", "Education Technology", "Design System", "JobReady.ai", "WTAI"],
+  authors: [{ name: "Arwin AI Solutions" }],
+  creator: "Arwin AI Solutions",
+  publisher: "Arwin AI Solutions",
+  icons: {
+    icon: "/icon.png",
+  },
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  openGraph: {
+    title: "Arwin AI Solutions - AI-Powered Digital Transformation",
+    description: "Transforming government, education, and enterprise with AI-powered solutions since 2011.",
+    url: "https://arwinaisolutions.com",
+    siteName: "Arwin AI Solutions",
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Arwin AI Solutions - AI-Powered Digital Transformation",
+    description: "Transforming government, education, and enterprise with AI-powered solutions since 2011.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  alternates: {
+    canonical: "https://arwinaisolutions.com",
+  },
 };
 
-const navItems = [
-  { label: "Overview", href: "/" },
-  { label: "Projects", href: "/projects/post" },
-  { label: "Legacy", href: "/projects/legacy" },
-  { label: "Domains", href: "/domains" },
-  { label: "JobReady.ai", href: "/jobready" },
-];
+// Navigation moved to Header component
 
 export default function RootLayout({
   children,
@@ -25,51 +61,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <div className="page-frame">
-          <header className="nav-bar">
-            <div className="page-shell nav-inner">
-              <Link href="/" className="flex items-center gap-3 text-sm font-semibold text-[var(--page-muted)]">
-                <Image
-                  src="/arwin_logo.jpeg"
-                  alt="Arwin AI Solutions logo"
-                  width={40}
-                  height={40}
-                  className="rounded-lg border border-[var(--page-border)] bg-white p-1"
-                />
-                <span>Arwin AI Solutions</span>
-              </Link>
-              <nav className="nav-links">
-                {navItems.map((item) => (
-                  <Link key={item.label} href={item.href}>
-                    {item.label}
-                  </Link>
-                ))}
-              </nav>
-              <a href="mailto:hello@arwinaisolutions.com" className="btn btn-outline text-sm">
-                Contact
-              </a>
-            </div>
-          </header>
-          <main className="flex-1">
-            <div className="page-shell stack-lg">{children}</div>
+        <div className="flex flex-col min-h-screen">
+          <Header />
+          <main className="flex-1 pt-16 md:pt-20">
+            {children}
           </main>
-          <footer className="footer">
-            <div className="page-shell flex flex-wrap items-center justify-between gap-4">
-              <p>© {new Date().getFullYear()} Arwin AI Solutions. Built with Maya Design System.</p>
-              <div className="flex gap-3">
-                <a href="https://wtai.in/" target="_blank" rel="noreferrer">
-                  WTAI
-                </a>
-                <a
-                  href="https://www.npmjs.com/package/@maya-design-system/design-system"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Maya Design System
-                </a>
-              </div>
-            </div>
-          </footer>
+          <Footer />
         </div>
       </body>
     </html>

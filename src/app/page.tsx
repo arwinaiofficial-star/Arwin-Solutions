@@ -1,136 +1,189 @@
 import Link from "next/link";
-import { heroStats, focusPillars, pillars, recentProjects } from "@/lib/content";
+import { recentProjects, pillars } from "@/lib/content";
 
 export default function Home() {
   return (
-    <>
-      <section className="card flex flex-col gap-8 lg:flex-row lg:items-center">
-        <div className="flex-1 space-y-4">
-          <p className="tag tag-accent">AI-first consulting studio</p>
-          <h1 className="text-4xl font-semibold text-[var(--page-foreground)] md:text-5xl">
-            Modern AI delivery for governments, education networks, and ambitious founders.
-          </h1>
-          <p className="lead">
-            Arwin AI Solutions unites strategy services, a proprietary Maya Design System, and product
-            accelerators like JobReady.ai. Founded in 2011, rebranded in 2025 to embed AI touchpoints in
-            every engagement.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/projects/post" className="btn btn-primary">
-              View latest delivery
-            </Link>
-            <Link href="/domains" className="btn btn-outline">
-              Explore domain areas
-            </Link>
+    <main>
+      {/* Hero - Minimal & Bold */}
+      <section style={{ minHeight: '90vh', display: 'flex', alignItems: 'center' }}>
+        <div className="container">
+          <div style={{ maxWidth: '800px' }}>
+            <p className="text-secondary mb-4" style={{ fontSize: '1rem', fontWeight: 500 }}>
+              Arwin AI Solutions
+            </p>
+            <h1 style={{ fontSize: 'clamp(2.5rem, 6vw, 4.5rem)', lineHeight: 1.1, marginBottom: '1.5rem', fontWeight: 700, letterSpacing: '-0.03em' }}>
+              We build digital
+              <br />
+              products that matter.
+            </h1>
+            <p style={{ fontSize: '1.25rem', color: 'var(--text-secondary)', maxWidth: '560px', lineHeight: 1.6, marginBottom: '2.5rem' }}>
+              14 years of transforming government, education, and enterprise 
+              across India. Now powered by AI.
+            </p>
+            <div className="flex gap-4">
+              <Link href="/work" className="btn btn-primary btn-lg">
+                See our work
+              </Link>
+              <a href="mailto:hello@arwinaisolutions.com" className="btn btn-secondary btn-lg">
+                Get in touch
+              </a>
+            </div>
           </div>
         </div>
-        <div className="flex-1 grid gap-4 sm:grid-cols-2">
-          {heroStats.map((stat) => (
-            <div key={stat.label} className="stat">
-              <p className="stat-label">{stat.label}</p>
-              <p className="stat-value">{stat.value}</p>
-              {stat.helper && <p className="lead">{stat.helper}</p>}
+      </section>
+
+      {/* Numbers - Simple Grid */}
+      <section style={{ borderTop: '1px solid var(--border-light)', borderBottom: '1px solid var(--border-light)' }}>
+        <div className="container">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', padding: '4rem 0' }}>
+            <div>
+              <div style={{ fontSize: '3rem', fontWeight: 700, lineHeight: 1, marginBottom: '0.5rem' }}>26+</div>
+              <div className="text-secondary" style={{ fontSize: '0.875rem' }}>Projects shipped</div>
             </div>
-          ))}
+            <div>
+              <div style={{ fontSize: '3rem', fontWeight: 700, lineHeight: 1, marginBottom: '0.5rem' }}>14</div>
+              <div className="text-secondary" style={{ fontSize: '0.875rem' }}>Years of delivery</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '3rem', fontWeight: 700, lineHeight: 1, marginBottom: '0.5rem' }}>3</div>
+              <div className="text-secondary" style={{ fontSize: '0.875rem' }}>AI-first products</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '3rem', fontWeight: 700, lineHeight: 1, marginBottom: '0.5rem' }}>100+</div>
+              <div className="text-secondary" style={{ fontSize: '0.875rem' }}>Clients served</div>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section className="space-y-6">
-        <div>
-          <p className="tag">Operating pillars</p>
-          <h2 className="text-3xl font-semibold text-[var(--page-foreground)]">
-            Three pillars, one delivery rhythm
-          </h2>
-          <p className="lead">
-            Services, Maya Design System, and JobReady.ai share playbooks, tokens, and governance so new
-            launches inherit consistent craft and data foundations.
-          </p>
-        </div>
-        <div className="grid gap-5 md:grid-cols-3">
-          {pillars.map((pillar) => (
-            <article key={pillar.name} className="card space-y-3">
-              <div className="flex items-center justify-between text-sm text-[var(--page-muted)]">
-                <span className="tag tag-accent">{pillar.phase}</span>
-                <span>{pillar.status}</span>
-              </div>
-              <h3 className="text-2xl font-semibold">{pillar.name}</h3>
-              <p className="text-sm text-[var(--page-muted)]">{pillar.accent}</p>
-              <p className="lead">{pillar.description}</p>
-              <Link href={pillar.url} className="btn btn-outline text-sm w-fit">
-                Learn more ↗
-              </Link>
-            </article>
-          ))}
-        </div>
-      </section>
+      {/* What We're Building */}
+      <section style={{ padding: '6rem 0' }}>
+        <div className="container">
+          <div style={{ marginBottom: '4rem' }}>
+            <p className="text-secondary" style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              What we're building
+            </p>
+            <h2 style={{ fontSize: '2.5rem', fontWeight: 700, maxWidth: '600px', lineHeight: 1.2 }}>
+              Three pillars powering the next generation of digital experiences.
+            </h2>
+          </div>
 
-      <section className="space-y-6">
-        <div>
-          <p className="tag">Ways we engage</p>
-          <h2 className="text-3xl font-semibold">Domain programs & services</h2>
-          <p className="lead">
-            Consistent consulting tracks so stakeholders know what to expect from workshops through
-            launch operations.
-          </p>
-        </div>
-        <div className="grid gap-5 md:grid-cols-3">
-          {focusPillars.map((pillar) => (
-            <article key={pillar.title} className="card-muted space-y-3">
-              <h3 className="text-xl font-semibold">{pillar.title}</h3>
-              <p className="lead">{pillar.content}</p>
-              <div className="flex flex-wrap gap-2">
-                {pillar.tags.map((tag) => (
-                  <span key={tag} className="tag">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="space-y-6">
-        <div>
-          <p className="tag">Recent delivery</p>
-          <h2 className="text-3xl font-semibold">Highlights after the 2025 rebrand</h2>
-        </div>
-        <div className="grid gap-5 md:grid-cols-2">
-          {recentProjects.map((project) => (
-            <article key={project.name} className="card space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.3em] text-[var(--page-muted)]">
-                    {project.tagline}
-                  </p>
-                  <h3 className="text-2xl font-semibold">{project.name}</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', background: 'var(--border-light)' }}>
+            {pillars.map((pillar, index) => (
+              <div key={pillar.name} style={{ background: 'white', padding: '2.5rem' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginBottom: '1.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  0{index + 1}
                 </div>
-                <Link href={project.url} className="tag tag-accent" target="_blank" rel="noreferrer">
-                  Visit ↗
-                </Link>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1rem' }}>
+                  {pillar.name}
+                </h3>
+                <p className="text-secondary" style={{ fontSize: '0.9375rem', lineHeight: 1.7, marginBottom: '1.5rem' }}>
+                  {pillar.description}
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem', background: 'var(--gray-100)', borderRadius: '9999px', color: 'var(--text-secondary)' }}>
+                    {pillar.status}
+                  </span>
+                  <Link href={pillar.url} style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>
+                    Learn more &rarr;
+                  </Link>
+                </div>
               </div>
-              <p className="lead">{project.description}</p>
-              <p className="text-sm text-[var(--page-muted)]">{project.outcome}</p>
-            </article>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 
-      <section className="card flex flex-col gap-4">
-        <h2 className="text-3xl font-semibold">Ready to explore JobReady.ai or bespoke AI services?</h2>
-        <p className="lead">
-          We help governments, academic institutions, and businesses instrument AI responsibly. Tell us
-          what you need or try the JobReady.ai workflow now.
-        </p>
-        <div className="flex flex-wrap gap-3">
-          <Link href="/jobready" className="btn btn-primary">
-            Open JobReady.ai
-          </Link>
-          <a href="mailto:hello@arwinaisolutions.com" className="btn btn-outline">
-            Email our team
-          </a>
+      {/* Recent Work */}
+      <section style={{ padding: '6rem 0', background: 'var(--gray-50)' }}>
+        <div className="container">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3rem' }}>
+            <div>
+              <p className="text-secondary" style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Recent work
+              </p>
+              <h2 style={{ fontSize: '2.5rem', fontWeight: 700, lineHeight: 1.2 }}>
+                Latest launches
+              </h2>
+            </div>
+            <Link href="/work" style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>
+              View all projects &rarr;
+            </Link>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '2rem' }}>
+            {recentProjects.map((project) => (
+              <a 
+                key={project.name} 
+                href={project.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ 
+                  display: 'block',
+                  background: 'white', 
+                  border: '1px solid var(--border-light)', 
+                  borderRadius: '12px',
+                  padding: '2rem',
+                  transition: 'all 0.2s ease'
+                }}
+                className="card-hover"
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    {project.tagline}
+                  </span>
+                  <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>&nearr;</span>
+                </div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem' }}>
+                  {project.name}
+                </h3>
+                <p className="text-secondary" style={{ fontSize: '0.9375rem', lineHeight: 1.6 }}>
+                  {project.description}
+                </p>
+              </a>
+            ))}
+          </div>
         </div>
       </section>
-    </>
+
+      {/* Clients */}
+      <section style={{ padding: '5rem 0', borderBottom: '1px solid var(--border-light)' }}>
+        <div className="container">
+          <p className="text-center" style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)', marginBottom: '2rem' }}>
+            Trusted by leading organizations across India
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '3rem', flexWrap: 'wrap' }}>
+            {['Govt. of Telangana', 'NTPC', 'Indian Railways', 'Kendriya Vidyalayas', 'TTD Board', 'NIC'].map((client) => (
+              <span key={client} style={{ fontSize: '0.9375rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                {client}
+              </span>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section style={{ padding: '8rem 0' }}>
+        <div className="container">
+          <div style={{ maxWidth: '700px', margin: '0 auto', textAlign: 'center' }}>
+            <h2 style={{ fontSize: '2.75rem', fontWeight: 700, marginBottom: '1.5rem', lineHeight: 1.2 }}>
+              Ready to build something meaningful?
+            </h2>
+            <p style={{ fontSize: '1.125rem', color: 'var(--text-secondary)', marginBottom: '2.5rem', lineHeight: 1.7 }}>
+              Let's talk about how we can help transform your organization 
+              with AI-powered digital solutions.
+            </p>
+            <div className="flex justify-center gap-4">
+              <a href="mailto:hello@arwinaisolutions.com" className="btn btn-primary btn-lg">
+                Start a conversation
+              </a>
+              <Link href="/about" className="btn btn-secondary btn-lg">
+                About us
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
   );
 }

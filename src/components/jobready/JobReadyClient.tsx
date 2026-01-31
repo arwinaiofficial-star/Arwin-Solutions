@@ -73,27 +73,7 @@ const platformBuilders = [
         (form.role || "AI Engineer").replace(/\s+/g, "-")
       )}-jobs-in-${encodeURIComponent(form.location || form.country || "India")}`,
   },
-  {
-    name: "Simplify",
-    build: (form: QuickQuery) =>
-      `https://simplify.jobs/search?q=${encodeURIComponent(form.role || "AI")}&l=${encodeURIComponent(
-        form.location || form.country || "Global"
-      )}`,
-  },
-  {
-    name: "JobRight",
-    build: (form: QuickQuery) =>
-      `https://www.jobright.ai/jobs?search=${encodeURIComponent(
-        form.role || "AI"
-      )}&location=${encodeURIComponent(form.location || form.country || "Global")}`,
-  },
 ];
-
-const labelClass =
-  "block text-xs font-semibold uppercase tracking-[0.3em] text-[var(--page-muted)]";
-
-const inputClass =
-  "maya-input maya-input--variant-default maya-input--size-md w-full border-slate-200 bg-white text-slate-900 placeholder:text-slate-400";
 
 export default function JobReadyClient() {
   const [form, setForm] = useState<JobFormState>(initialForm);
@@ -142,160 +122,161 @@ export default function JobReadyClient() {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="grid gap-8 lg:grid-cols-[1.2fr_1fr]">
-        <section className="card">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-            <div>
-              <p className="tag tag-accent">JobReady.ai</p>
-              <h1 className="text-3xl font-semibold text-[var(--page-foreground)]">
-                Phase 1 - guided intake -&gt; automated job discovery
-              </h1>
-              <p className="lead">
-                Fill out the essentials and Arwin&apos;s AI touch orchestrates a multi-platform search across
-                Remotive, Arbeitnow, and deep links to LinkedIn, Indeed, Naukri, Simplify, and JobRight.
-              </p>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className={labelClass}>
-                Full Name
-                <input
-                  required
-                  className={`${inputClass} mt-2`}
-                  value={form.fullName}
-                  onChange={handleChange("fullName")}
-                  placeholder="Aisha Dev"
-                />
-              </label>
-              <label className={labelClass}>
-                Email
-                <input
-                  required
-                  type="email"
-                  className={`${inputClass} mt-2`}
-                  value={form.email}
-                  onChange={handleChange("email")}
-                  placeholder="you@example.com"
-                />
-              </label>
-              <label className={labelClass}>
-                Phone
-                <input
-                  className={`${inputClass} mt-2`}
-                  value={form.phone}
-                  onChange={handleChange("phone")}
-                  placeholder="+1 555 010 0101"
-                />
-              </label>
-              <label className={labelClass}>
-                Desired Role
-                <input
-                  required
-                  className={`${inputClass} mt-2`}
-                  value={form.role}
-                  onChange={handleChange("role")}
-                  placeholder="AI Product Manager"
-                />
-              </label>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className={labelClass}>
-                Preferred Location
-                <input
-                  required
-                  className={`${inputClass} mt-2`}
-                  value={form.location}
-                  onChange={handleChange("location")}
-                  placeholder="Hyderabad"
-                />
-              </label>
-              <label className={labelClass}>
-                Country
-                <input
-                  className={`${inputClass} mt-2`}
-                  value={form.country}
-                  onChange={handleChange("country")}
-                  placeholder="India"
-                />
-              </label>
-              <label className={labelClass}>
-                Experience Level
-                <select
-                  className={`${inputClass} mt-2 bg-white`}
-                  value={form.experienceLevel}
-                  onChange={handleChange("experienceLevel")}
-                >
-                  <option value="">Select</option>
-                  {experienceOptions.map((option) => (
-                    <option className="bg-white text-slate-900" key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className={labelClass}>
-                Focus Keywords
-                <input
-                  className={`${inputClass} mt-2`}
-                  value={form.keywords}
-                  onChange={handleChange("keywords")}
-                  placeholder="GenAI copilots, bilingual, fintech"
-                />
-              </label>
-            </div>
-            <div>
-              <button type="submit" className="btn btn-primary w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Searching..." : "Search jobs now"}
-              </button>
-              {error && <p className="mt-3 text-sm text-rose-500">{error} - Try again shortly.</p>}
-            </div>
-            <div className="card-muted text-sm text-[var(--page-muted)]">
-              <p>
-                By continuing, you agree that we&apos;ll fetch public listings from Remotive.com and
-                Arbeitnow.com and direct you to the original platform for applications.
-              </p>
-            </div>
-          </form>
-        </section>
-        <section className="space-y-6">
-          <div className="card">
-            <div className="flex items-center justify-between">
+    <div className="section">
+      <div className="container">
+        <div className="grid gap-8" style={{ gridTemplateColumns: '1fr', maxWidth: '900px', margin: '0 auto' }}>
+          {/* Form Section */}
+          <section className="card">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--page-muted)]">
-                  Results
+                <span className="tag tag-primary mb-3">JobReady.ai</span>
+                <h1 className="mb-2">AI-Powered Job Discovery</h1>
+                <p className="text-secondary">
+                  Fill out your details and our AI orchestrates a multi-platform search across
+                  Remotive, Arbeitnow, LinkedIn, Indeed, and Naukri.
                 </p>
-                <h2 className="text-2xl font-semibold text-[var(--page-foreground)]">Live opportunities</h2>
+              </div>
+
+              <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Full Name *</label>
+                  <input
+                    required
+                    type="text"
+                    className="input"
+                    value={form.fullName}
+                    onChange={handleChange("fullName")}
+                    placeholder="Your name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Email *</label>
+                  <input
+                    required
+                    type="email"
+                    className="input"
+                    value={form.email}
+                    onChange={handleChange("email")}
+                    placeholder="you@example.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Phone</label>
+                  <input
+                    type="tel"
+                    className="input"
+                    value={form.phone}
+                    onChange={handleChange("phone")}
+                    placeholder="+1 555 010 0101"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Desired Role *</label>
+                  <input
+                    required
+                    type="text"
+                    className="input"
+                    value={form.role}
+                    onChange={handleChange("role")}
+                    placeholder="AI Product Manager"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Preferred Location *</label>
+                  <input
+                    required
+                    type="text"
+                    className="input"
+                    value={form.location}
+                    onChange={handleChange("location")}
+                    placeholder="City name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Country</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={form.country}
+                    onChange={handleChange("country")}
+                    placeholder="India"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Experience Level</label>
+                  <select
+                    className="input"
+                    value={form.experienceLevel}
+                    onChange={handleChange("experienceLevel")}
+                  >
+                    <option value="">Select</option>
+                    {experienceOptions.map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Focus Keywords</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={form.keywords}
+                    onChange={handleChange("keywords")}
+                    placeholder="GenAI, fintech, remote"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <button type="submit" className="btn btn-primary w-full" disabled={isSubmitting}>
+                  {isSubmitting ? "Searching..." : "Search Jobs"}
+                </button>
+                {error && <p className="mt-3 text-sm text-error">{error}</p>}
+              </div>
+
+              <p className="text-xs text-tertiary">
+                By continuing, you agree that we will fetch public listings from job platforms
+                and direct you to the original source for applications.
+              </p>
+            </form>
+          </section>
+
+          {/* Results Section */}
+          <section className="card">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-semibold">Results</h2>
+                <p className="text-sm text-secondary">Live opportunities</p>
               </div>
               {meta && (
-                <div className="text-right text-sm text-[var(--page-muted)]">
+                <div className="text-right text-sm text-secondary">
                   <p>{meta.total} matches</p>
-                  <p>Sources: {meta.fromNetwork.join(", ")}</p>
+                  <p>From: {meta.fromNetwork.join(", ")}</p>
                 </div>
               )}
             </div>
+
             {results.length === 0 ? (
-              <p className="mt-6 text-sm text-[var(--page-muted)]">
-                Submit the form to trigger a multi-platform search. We&apos;ll summarize each listing here.
+              <p className="text-secondary text-sm">
+                Submit the form to search across multiple job platforms.
               </p>
             ) : (
-              <ul className="mt-6 space-y-4">
+              <div className="space-y-4">
                 {results.map((job) => (
-                  <li key={job.id} className="card-muted">
-                    <div className="flex items-start justify-between gap-4">
+                  <div key={job.id} className="card-muted">
+                    <div className="flex items-start justify-between gap-4 mb-2">
                       <div>
-                        <p className="text-sm text-[var(--page-muted)]">{job.company}</p>
-                        <h3 className="text-lg font-semibold text-[var(--page-foreground)]">{job.title}</h3>
-                        <p className="text-sm text-[var(--page-muted)]">{job.location}</p>
+                        <p className="text-xs text-secondary">{job.company}</p>
+                        <h3 className="font-semibold">{job.title}</h3>
+                        <p className="text-sm text-secondary">{job.location}</p>
                       </div>
-                      <span className="tag tag-accent text-xs">{job.source}</span>
+                      <span className="tag tag-primary text-xs">{job.source}</span>
                     </div>
-                    <p className="mt-3 text-sm text-[var(--page-muted)]">{job.description}</p>
+                    <p className="text-sm text-secondary mb-3">{job.description}</p>
                     {job.tags && job.tags.length > 0 && (
-                      <div className="mt-3 flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2 mb-3">
                         {job.tags.map((tag) => (
-                          <span key={tag} className="tag text-xs">
-                            {tag}
-                          </span>
+                          <span key={tag} className="tag text-xs">{tag}</span>
                         ))}
                       </div>
                     )}
@@ -303,52 +284,45 @@ export default function JobReadyClient() {
                       href={job.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="btn btn-primary mt-4 inline-flex px-4 py-2 text-sm"
+                      className="btn btn-secondary btn-sm"
                     >
-                      View on {job.source} ↗
+                      View on {job.source}
                     </a>
-                  </li>
+                  </div>
                 ))}
-              </ul>
+              </div>
             )}
-          </div>
-          <div className="card">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--page-muted)]">
-              Fast switches
+          </section>
+
+          {/* Quick Links */}
+          <section className="card">
+            <h3 className="font-semibold mb-2">Quick Links to Job Platforms</h3>
+            <p className="text-sm text-secondary mb-4">
+              These links use your role and location to search other platforms.
             </p>
-            <h3 className="mt-2 text-xl font-semibold text-[var(--page-foreground)]">
-              Deep links to other platforms
-            </h3>
-            <p className="text-sm text-[var(--page-muted)]">
-              These links inherit your role & location so you can keep exploring LinkedIn, Indeed,
-              Naukri, Simplify, and JobRight instantly.
-            </p>
-            <ul className="mt-4 grid gap-3">
+            <div className="space-y-2">
               {quickPlatforms.map((platform) => (
-                <li key={platform.name}>
-                  <a
-                    href={platform.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:text-slate-900"
-                  >
-                    <span>{platform.name}</span>
-                    <span className="brand-link">↗</span>
-                  </a>
-                </li>
+                <a
+                  key={platform.name}
+                  href={platform.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition"
+                >
+                  <span className="font-medium">{platform.name}</span>
+                  <span className="text-secondary">→</span>
+                </a>
               ))}
-            </ul>
-          </div>
-          <div className="card text-sm text-[var(--page-muted)]">
-            <p>
-              Need adjustments or to send us new sources? Email jobready@arwinaisolutions.com and we&apos;ll
-              assess and plug the feed into the workflow.
-            </p>
-            <Link href="/" className="brand-link mt-3 inline-flex items-center font-semibold">
+            </div>
+          </section>
+
+          {/* Back Link */}
+          <div className="text-center">
+            <Link href="/" className="text-sm text-secondary hover:text-primary">
               ← Back to Arwin AI Solutions
             </Link>
           </div>
-        </section>
+        </div>
       </div>
     </div>
   );
