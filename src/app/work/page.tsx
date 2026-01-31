@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { recentProjects, legacyGroups, sectors, timeline } from "@/lib/content";
+import { recentProjects, legacyGroups, timeline } from "@/lib/content";
 
 export default function WorkPage() {
   return (
@@ -15,8 +15,8 @@ export default function WorkPage() {
             </h1>
             <p className="lead">
               From government portals serving millions to educational platforms 
-              transforming how students learn — we've delivered meaningful impact 
-              across India's most critical sectors.
+              transforming how students learn — we&rsquo;ve delivered meaningful impact 
+              across India&rsquo;s most critical sectors.
             </p>
           </div>
           
@@ -55,7 +55,7 @@ export default function WorkPage() {
           </div>
 
           <div className="grid gap-8" style={{ gridTemplateColumns: '1fr' }}>
-            {recentProjects.map((project, index) => (
+            {recentProjects.map((project) => (
               <div key={project.name} className="card" style={{ padding: '2rem' }}>
                 <div className="grid gap-8" style={{ gridTemplateColumns: '2fr 1fr' }}>
                   <div>
@@ -97,7 +97,7 @@ export default function WorkPage() {
             <h2 className="mb-4">14 Years of Digital Excellence</h2>
             <p className="lead max-w-2xl">
               The foundation projects that established Arwin Solutions as a trusted partner 
-              for India's government, education, and enterprise sectors.
+              for India&rsquo;s government, education, and enterprise sectors.
             </p>
           </div>
 
@@ -218,7 +218,7 @@ export default function WorkPage() {
           <div className="max-w-2xl mx-auto text-center">
             <h2 className="text-white mb-4">Ready to Join Our Success Stories?</h2>
             <p className="text-gray-400 mb-8">
-              Let's discuss how we can transform your organization with our proven 
+              Let&rsquo;s discuss how we can transform your organization with our proven 
               digital transformation expertise and AI-powered solutions.
             </p>
             <div className="flex flex-wrap justify-center gap-3">

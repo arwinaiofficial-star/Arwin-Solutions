@@ -12,7 +12,7 @@ export default function AboutPage() {
             <div>
               <span className="tag tag-primary mb-6">About Us</span>
               <h1 className="mb-6">
-                Transforming India's Digital Landscape<br />
+                Transforming India&rsquo;s Digital Landscape<br />
                 <span className="text-highlight">Since 2011</span>
               </h1>
               <p className="lead mb-8">
@@ -205,10 +205,10 @@ export default function AboutPage() {
       <section className="section bg-gray-900">
         <div className="container">
           <div className="max-w-2xl mx-auto text-center">
-            <h2 className="text-white mb-4">Let's Build Something Amazing Together</h2>
+            <h2 className="text-white mb-4">Let&rsquo;s Build Something Amazing Together</h2>
             <p className="text-gray-400 mb-8">
               Ready to transform your organization with AI-powered solutions? 
-              Let's discuss how we can help you achieve your digital transformation goals.
+              Let&rsquo;s discuss how we can help you achieve your digital transformation goals.
             </p>
             <div className="flex flex-wrap justify-center gap-3">
               <a href="mailto:hello@arwinaisolutions.com" className="btn btn-accent">
