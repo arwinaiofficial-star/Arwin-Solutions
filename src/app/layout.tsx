@@ -61,9 +61,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <div className="flex flex-col min-h-screen">
+        <div className="app-shell">
           <Header />
-          <main className="flex-1 pt-24 md:pt-36 lg:pt-40">
+          <main className="page-shell">
             {children}
           </main>
           <Footer />

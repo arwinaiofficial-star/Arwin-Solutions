@@ -48,26 +48,17 @@ export const heroStats: HeroStat[] = [
   {
     label: "Founded",
     value: "2011",
-    helper: "14+ years of delivery, now evolved as Arwin AI Solutions",
-    icon: "📅",
+    helper: "14 years of civic, education, and enterprise launches",
   },
   {
-    label: "AI Initiatives",
+    label: "AI stack",
     value: "3 pillars",
-    helper: "WTAI - Maya Design System - JobReady.ai",
-    icon: "🤖",
+    helper: "JobReady.ai · Maya DS · WTAI community",
   },
   {
-    label: "Launch Velocity",
+    label: "Launches",
     value: "26+",
-    helper: "Government, education & enterprise launches pre-rebrand",
-    icon: "🚀",
-  },
-  {
-    label: "Clients Served",
-    value: "100+",
-    helper: "Across government, education, and enterprise sectors",
-    icon: "👥",
+    helper: "Multi-sector rollouts since rebrand",
   },
 ];
 
@@ -125,22 +116,22 @@ export const focusPillars = [
 export const recentProjects: Project[] = [
   {
     name: "Bhatraju Lakshminaidu Kalyana Vedika",
-    tagline: "Community Matrimony - 2025",
+    tagline: "Community Matrimony · 2025",
     description:
-      "Modernized matchmaking for the Telangana Bhatraju community with AI-aided profiles, trust workflows, and vernacular UX.",
+      "Rebuilt the Telangana Bhatraju matchmaking platform with automated verification, vernacular UX, and organiser diagnostics.",
     focus: ["Community Platforms", "Responsible AI"],
     outcome:
-      "Phase 1 launched with verified onboarding, progressive profiling, and analytics dashboards for organizers.",
+      "Phase 1 live with verified onboarding, progressive profiling, and dashboards volunteers can act on weekly.",
     url: "https://bhatrajulakalyanavedika.com/",
   },
   {
     name: "Vidyabharati (SVP) Group",
-    tagline: "K-12 Digital Campus - 2025",
+    tagline: "K-12 Digital Campus · 2025",
     description:
-      "Built a future-ready school experience covering admissions, announcements, transport, and alumni engagement with Maya tokens for brand fidelity.",
+      "Unified admissions, transport, alumni, and comms inside a parent-first portal powered by Maya tokens.",
     focus: ["Education", "Design Systems"],
     outcome:
-      "Unified 7+ touchpoints into a single parent-first portal with 99.9% uptime on Vercel edge runtime.",
+      "7+ touchpoints now share one design language and run at 99.9% uptime on Vercel edge runtime.",
     url: "https://vidyabharatisvp.com/",
   },
 ];
@@ -226,19 +217,19 @@ export const teamMembers: TeamMember[] = [
 
 export const testimonials: Testimonial[] = [
   {
-    quote: "Arwin AI Solutions transformed our digital infrastructure with their Maya Design System. The consistency and scalability have been game-changing.",
+    quote: "Maya Design System gave us one visual language for 40+ campuses. Shipping is faster and audits stay calm.",
     author: "Director of IT",
     company: "Kendriya Vidyalaya",
     role: "Government Education",
   },
   {
-    quote: "The JobReady.ai prototype delivered exactly what we needed - intelligent job matching with seamless user experience.",
+    quote: "JobReady.ai prototypes showed how AI scoring and nudges can live naturally inside our hiring stack.",
     author: "HR Director",
     company: "Tech Startup",
     role: "Enterprise Client",
   },
   {
-    quote: "Working with Arwin AI on our community platform was exceptional. Their AI-first approach brought modern capabilities to our traditional organization.",
+    quote: "Their AI-first playbook modernized our community portal without losing the warmth of our offline programs.",
     author: "Community Leader",
     company: "Bhatraju Community",
     role: "Social Impact",
@@ -353,25 +344,25 @@ export const capabilityTracks = [
   {
     title: "Experience Strategy",
     bullets: [
-      "Executive workshops to define AI-assisted journeys",
-      "Service blueprints aligned to Maya tokens",
-      "Accessibility & multilingual guardrails baked-in",
+      "Executive clarity workshops that map KPIs to AI-ready journeys",
+      "Service blueprints built on Maya tokens so design + engineering stay synced",
+      "Accessibility, vernacular, and governance checkpoints before any build",
     ],
   },
   {
     title: "Applied AI Delivery",
     bullets: [
-      "Use-case mining sprints",
-      "Evaluation sandboxes for GenAI, ASR, and computer vision stacks",
-      "Responsible AI assessments & MLOps automation",
+      "Use-case mining sprints with shared success criteria",
+      "Hands-on sandboxes for GenAI, ASR, and CV stacks before procurement",
+      "Responsible AI and MLOps guardrails baked into every sprint",
     ],
   },
   {
     title: "Sustained Operations",
     bullets: [
-      "Playbooks for community & academy launches",
-      "Site reliability on Vercel edge runtime",
-      "Data observability & feedback loops for personalization",
+      "Community and academy launch kits for long-term adoption",
+      "Edge runtime reliability and telemetry out of the box",
+      "Feedback loops that keep personalization honest and measurable",
     ],
   },
 ];

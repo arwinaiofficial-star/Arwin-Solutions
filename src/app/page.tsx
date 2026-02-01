@@ -7,42 +7,39 @@ import {
   recentProjects,
   testimonials,
 } from "@/lib/content";
+import { SectionShell } from "@/components/ui/SectionShell";
+import { SectionHeading } from "@/components/ui/SectionHeading";
 
 const heroPlaybook = [
   {
     title: "Clarity sprints",
-    copy: "Stakeholder interviews and AI opportunity mapping anchored on executive KPIs.",
+    copy: "Stakeholder goals → AI use cases in under 10 days.",
   },
   {
-    title: "Design system guardrails",
-    copy: "Maya tokens and review rituals keep accessibility, speed, and honesty intact.",
+    title: "Design guardrails",
+    copy: "Maya tokens keep accessibility, speed, and truth in sync.",
   },
   {
-    title: "AI-in-production",
-    copy: "Applied AI pods embed copilots, observability, and adoption loops into every launch.",
+    title: "AI in production",
+    copy: "Pods own copilots, telemetry, and adoption rituals post launch.",
   },
 ];
 
 const impactSignals = [
   {
     stat: "26+",
-    label: "multi-sector launches",
-    detail: "Government, education, and enterprise products shipped since 2011.",
+    label: "Launches",
+    detail: "Gov, education, and enterprise stacks in-market.",
+  },
+  {
+    stat: "7",
+    label: "Touchpoints unified",
+    detail: "Channels now share one Maya design language.",
   },
   {
     stat: "99.9%",
-    label: "experience uptime",
-    detail: "Vidyabharati campus portal on Vercel edge runtime with Maya tokens.",
-  },
-  {
-    stat: "7+",
-    label: "touchpoints unified",
-    detail: "Parent, alumni, transport, and admissions flows orchestrated in one stack.",
-  },
-  {
-    stat: "3",
-    label: "AI-first products",
-    detail: "JobReady.ai, Maya Design System, and WTAI operating as one growth stack.",
+    label: "Uptime",
+    detail: "Edge runtime playbooks keep experiences resilient.",
   },
 ];
 
@@ -134,20 +131,20 @@ export default function Home() {
   const featuredTestimonials = testimonials.slice(0, 3);
 
   return (
-    <main>
-      <section className="hero-shell">
-        <div className="container hero-layout">
-          <div className="hero-copy">
-            <p className="brand-badge">Honest AI-native delivery</p>
-            <h1>
-              Digital solutions that make businesses feel honest, powerful, and unmistakably modern.
-            </h1>
-            <p className="hero-lead">
-              We pair AI advisory pods, Maya design governance, and resilient engineering so every new
-              touchpoint is measurable, multilingual, and ready for scale across government, education,
-              and enterprise missions.
-            </p>
-            <div className="hero-actions">
+    <>
+      <SectionShell tone="brand" bleed="wide" className="home-hero">
+        <div className="home-hero__grid">
+          <div className="home-hero__lead">
+            <div className="stack-sm">
+              <p className="brand-badge">Honest AI-native delivery</p>
+              <h1 className="hero-title">
+                AI-native products for civic, education, and enterprise teams.
+              </h1>
+              <p className="home-hero__lede">
+                Advisory pods, Maya design guardrails, and resilient engineering so every launch is measurable from day one.
+              </p>
+            </div>
+            <div className="home-hero__actions">
               <a href="mailto:hello@arwinaisolutions.com" className="btn btn-primary btn-lg">
                 Book a strategy call
               </a>
@@ -155,185 +152,158 @@ export default function Home() {
                 See transformations
               </Link>
             </div>
-            <div className="stat-grid">
+            <div className="stat-grid-modern" data-variant="inverted">
               {heroStats.map((stat) => (
-                <div key={stat.label} className="stat-card">
-                  <p className="stat-card-value">{stat.value}</p>
-                  <p className="stat-card-label">{stat.label}</p>
-                  {stat.helper && <p className="stat-card-helper">{stat.helper}</p>}
+                <div key={stat.label} className="stat-pill">
+                  <p className="stat-pill__value">{stat.value}</p>
+                  <p className="stat-pill__label">{stat.label}</p>
+                  {stat.helper && <p className="stat-pill__helper">{stat.helper}</p>}
                 </div>
               ))}
             </div>
           </div>
-          <div className="hero-panel">
-            <p className="hero-panel__title">Delivery playbook</p>
-            <ul className="hero-panel__list">
+          <div className="surface-card home-hero__panel" data-tone="brand">
+            <p className="eyebrow">Delivery playbook</p>
+            <ul className="playbook-list">
               {heroPlaybook.map((step) => (
-                <li key={step.title} className="hero-panel__item">
-                  <p className="hero-panel__item-title">{step.title}</p>
-                  <p className="hero-panel__item-copy">{step.copy}</p>
+                <li key={step.title} className="playbook-item">
+                  <p className="playbook-item__title">{step.title}</p>
+                  <p className="playbook-item__copy">{step.copy}</p>
                 </li>
               ))}
             </ul>
-            <p className="hero-panel__note">
+            <p className="playbook-note">
               Outcomes lock into shared scoreboards before we ship, so progress stays transparent.
             </p>
           </div>
         </div>
-      </section>
+      </SectionShell>
 
-      <section className="section" id="why">
-        <div className="container">
-          <div className="section-heading">
-            <div>
-              <p className="section-eyebrow">Why partners choose us</p>
-              <h2 className="section-title">
-                Strategy, Maya design craft, and AI deployment inside one accountable team.
-              </h2>
+      <SectionShell id="why">
+        <SectionHeading
+          eyebrow="Why partners choose us"
+          title="Strategy, Maya design craft, and AI deployment inside one accountable team."
+          description="We operate like a modern studio—research, design, engineering, and AI playbooks progressing together. You get honest communication, measurable KPIs, and the energy of a team that has been shipping for 14+ years."
+        />
+        <div className="signal-grid">
+          {impactSignals.map((signal) => (
+            <div key={signal.label} className="surface-card signal-card" data-state="interactive">
+              <p className="signal-card__stat">{signal.stat}</p>
+              <p className="signal-card__label">{signal.label}</p>
+              <p className="copy">{signal.detail}</p>
             </div>
-            <p className="section-subtitle">
-              We operate like a modern studio—research, design, engineering, and AI playbooks progressing
-              together. You get honest communication, measurable KPIs, and the energy of a team that has
-              been shipping for 14+ years.
-            </p>
-          </div>
-          <div className="impact-grid">
-            {impactSignals.map((signal) => (
-              <div key={signal.label} className="impact-card">
-                <p className="impact-card-stat">{signal.stat}</p>
-                <p className="impact-card-label">{signal.label}</p>
-                <p className="impact-card-detail">{signal.detail}</p>
-              </div>
-            ))}
-          </div>
+          ))}
         </div>
-      </section>
+      </SectionShell>
 
-      <section className="section section-alt" id="products">
-        <div className="container">
-          <div className="section-heading">
-            <div>
-              <p className="section-eyebrow">Product stack</p>
-              <h2 className="section-title">
-                JobReady.ai, Maya Design System, and WTAI make every launch AI-native.
-              </h2>
-            </div>
-            <p className="section-subtitle">
-              Services, product, and community feed each other—talent intelligence informs interfaces,
-              Maya keeps quality high, and WTAI trains the people who will operate it all.
-            </p>
-          </div>
-          <div className="pillars-grid">
-            {enrichedProducts.map((product) => (
-              <article key={product.name} className="product-card">
-                <div className="product-card__chips">
-                  <span className="chip chip--accent">{product.phase}</span>
-                  <span className="chip">{product.status}</span>
-                </div>
+      <SectionShell tone="muted" id="products">
+        <SectionHeading
+          eyebrow="Product stack"
+          title="JobReady.ai, Maya Design System, and WTAI make every launch AI-native."
+          description="Services, product, and community feed each other—talent intelligence informs interfaces, Maya keeps quality high, and WTAI trains the people who will operate it all."
+        />
+        <div className="product-grid">
+          {enrichedProducts.map((product) => (
+            <article key={product.name} className="surface-card product-card" data-state="interactive">
+              <div className="product-card__chips">
+                <span className="chip chip--accent">{product.phase}</span>
+                <span className="chip">{product.status}</span>
+              </div>
+              <div className="stack-sm">
                 <h3>{product.name}</h3>
                 <p className="product-card__tagline">{product.tagline}</p>
-                <p>{product.summary}</p>
-                <ul className="product-card__list">
-                  {product.highlights.map((highlight) => (
-                    <li key={highlight}>{highlight}</li>
-                  ))}
-                </ul>
-                <div className="product-card__metrics">
-                  {product.metrics.map((metric) => (
-                    <div key={metric.label} className="metric-pill">
-                      <span className="metric-pill__value">{metric.value}</span>
-                      <span className="metric-pill__label">{metric.label}</span>
-                    </div>
-                  ))}
-                </div>
-                {product.external ? (
-                  <a href={product.ctaHref} className="btn btn-secondary w-full" target="_blank" rel="noreferrer">
-                    {product.ctaLabel}
-                  </a>
-                ) : (
-                  <Link href={product.ctaHref} className="btn btn-secondary w-full">
-                    {product.ctaLabel}
-                  </Link>
-                )}
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="section" id="services">
-        <div className="container">
-          <div className="section-heading">
-            <div>
-              <p className="section-eyebrow">Service model</p>
-              <h2 className="section-title">Plan, build, and scale with one AI-enabled partner.</h2>
-            </div>
-            <p className="section-subtitle">
-              Teams plug into experience strategy, applied AI delivery, and sustained operations. Maya
-              tokens and JobReady data loops make sure improvements carry into every release.
-            </p>
-          </div>
-          <div className="service-grid">
-            {capabilityTracks.map((track) => (
-              <article key={track.title} className="service-card">
-                <h3>{track.title}</h3>
-                <ul>
-                  {track.bullets.map((bullet) => (
-                    <li key={bullet}>{bullet}</li>
-                  ))}
-                </ul>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="section section-alt" id="impact">
-        <div className="container">
-          <div className="section-heading">
-            <div>
-              <p className="section-eyebrow">Case studies</p>
-              <h2 className="section-title">We measure every launch so value is obvious.</h2>
-            </div>
-            <p className="section-subtitle">
-              From matchmaking communities to K-12 digital campuses, our work now bakes in AI copilots,
-              Maya tokens, and reliability playbooks by default.
-            </p>
-          </div>
-          <div className="case-grid">
-            {recentProjects.map((project) => (
-              <article key={project.name} className="case-card">
-                <div className="case-card__header">
-                  <p>{project.tagline}</p>
-                  <span>&nearr;</span>
-                </div>
-                <h3>{project.name}</h3>
-                <p>{project.description}</p>
-                <p className="case-card__outcome">{project.outcome}</p>
-                <div className="case-card__tags">
-                  {project.focus.map((focus) => (
-                    <span key={focus} className="chip">
-                      {focus}
-                    </span>
-                  ))}
-                </div>
-                <a href={project.url} className="brand-link" target="_blank" rel="noreferrer">
-                  View live ↗
+                <p className="copy">{product.summary}</p>
+              </div>
+              <ul className="product-card__list">
+                {product.highlights.map((highlight) => (
+                  <li key={highlight}>{highlight}</li>
+                ))}
+              </ul>
+              <div className="product-card__metrics">
+                {product.metrics.map((metric) => (
+                  <div key={metric.label} className="metric-pill">
+                    <span className="metric-pill__value">{metric.value}</span>
+                    <span className="metric-pill__label">{metric.label}</span>
+                  </div>
+                ))}
+              </div>
+              {product.external ? (
+                <a href={product.ctaHref} className="btn btn-secondary btn-full" target="_blank" rel="noreferrer">
+                  {product.ctaLabel}
                 </a>
-              </article>
-            ))}
-          </div>
+              ) : (
+                <Link href={product.ctaHref} className="btn btn-secondary btn-full">
+                  {product.ctaLabel}
+                </Link>
+              )}
+            </article>
+          ))}
         </div>
-      </section>
+      </SectionShell>
 
-      <section className="section" id="trust">
-        <div className="container trust-layout">
+      <SectionShell id="services" padding="wide">
+        <SectionHeading
+          eyebrow="Service model"
+          title="Strategy, build, and ops without hand-offs."
+          description="One pod moves from discovery into delivery and keeps telemetry tight after launch."
+        />
+        <div className="service-grid">
+          {capabilityTracks.map((track) => (
+            <article key={track.title} className="surface-card service-card">
+              <h3>{track.title}</h3>
+              <ul>
+                {track.bullets.map((bullet) => (
+                  <li key={bullet}>{bullet}</li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </div>
+      </SectionShell>
+
+      <SectionShell id="impact" tone="muted">
+        <SectionHeading
+          eyebrow="Case signals"
+          title="AI programs that already run in the wild."
+          description="Highlights from the last year across community, education, and enterprise."
+        />
+        <div className="case-grid">
+          {recentProjects.map((project) => (
+            <article key={project.name} className="surface-card case-card" data-state="interactive">
+              <div className="case-card__header">
+                <p>{project.tagline}</p>
+                <span>&nearr;</span>
+              </div>
+              <h3>{project.name}</h3>
+              <p>{project.description}</p>
+              <p className="case-card__outcome">{project.outcome}</p>
+              <div className="case-card__tags">
+                {project.focus.map((focus) => (
+                  <span key={focus} className="chip">
+                    {focus}
+                  </span>
+                ))}
+              </div>
+              <a href={project.url} className="brand-link" target="_blank" rel="noreferrer">
+                View live ↗
+              </a>
+            </article>
+          ))}
+        </div>
+      </SectionShell>
+
+      <SectionShell id="trust">
+        <div className="trust-layout">
           <div>
-            <p className="section-eyebrow">Proof of trust</p>
-            <h2 className="section-title">Leaders stay with us because we are transparent and fast.</h2>
+            <SectionHeading
+              eyebrow="Proof of trust"
+              title="Leaders stay because accountability does."
+              description="Pods stick around after launch, telemetry is transparent, and AI guardrails are practical."
+              align="start"
+            />
             <div className="testimonials-grid">
               {featuredTestimonials.map((testimonial) => (
-                <figure key={testimonial.quote} className="quote-card">
+                <figure key={testimonial.quote} className="surface-card quote-card">
                   <blockquote>“{testimonial.quote}”</blockquote>
                   <figcaption>
                     <strong>{testimonial.author}</strong>, {testimonial.role} – {testimonial.company}
@@ -342,7 +312,7 @@ export default function Home() {
               ))}
             </div>
           </div>
-          <div className="logo-card">
+          <div className="surface-card logo-card">
             <p className="section-eyebrow text-left">Trusted by</p>
             <div className="logo-grid">
               {marqueeClients.map((client) => (
@@ -351,30 +321,28 @@ export default function Home() {
             </div>
           </div>
         </div>
-      </section>
+      </SectionShell>
 
-      <section className="section cta-section" id="contact">
-        <div className="container">
-          <div className="cta-panel">
-            <div>
-              <p className="section-eyebrow text-white">Next step</p>
-              <h2>Ready to co-build the next AI-enabled experience?</h2>
-              <p>
-                Tell us the problem, the audience, and the stakes. We will align JobReady.ai pilots, Maya
-                governance, and WTAI programs so your business looks hardworking, genuine, and powerful.
-              </p>
-            </div>
-            <div className="cta-actions">
-              <a href="mailto:hello@arwinaisolutions.com" className="btn btn-primary btn-lg">
-                Start a strategy call
-              </a>
-              <Link href="/about" className="btn btn-secondary btn-lg">
-                Meet the team
-              </Link>
-            </div>
+      <SectionShell id="contact" tone="brand">
+        <div className="cta-panel surface-card" data-tone="brand">
+          <div>
+            <p className="section-eyebrow text-white">Next step</p>
+            <h2>Brief us once. We’ll choreograph the pod.</h2>
+            <p>
+              Share the audience, stakes, and timeline. We’ll align JobReady.ai pilots, Maya governance, and WTAI enablement
+              so the next launch stays focused and measurable.
+            </p>
+          </div>
+          <div className="cta-actions">
+            <a href="mailto:hello@arwinaisolutions.com" className="btn btn-primary btn-lg">
+              Start a strategy call
+            </a>
+            <Link href="/about" className="btn btn-secondary btn-lg">
+              Meet the team
+            </Link>
           </div>
         </div>
-      </section>
-    </main>
+      </SectionShell>
+    </>
   );
 }

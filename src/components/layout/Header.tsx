@@ -98,19 +98,6 @@ export default function Header() {
         </button>
       </div>
 
-      <div className="header-quicklinks">
-        <div className="container header-quicklinks__inner">
-          <span className="header-quicklinks__label">Key offerings</span>
-          <div className="header-quicklinks__links">
-            {quickLinks.map((link) => (
-              <Link key={link.name} href={link.href} className="header-link-pill">
-                {link.name}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {mobileMenuOpen && (
         <div className="header-mobile md:hidden">
           <div className="header-mobile__section">
