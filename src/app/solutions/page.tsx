@@ -12,8 +12,7 @@ export default function SolutionsPage() {
             <span className="text-highlight">AI-Powered</span> Digital Transformation
           </h1>
           <p className="lead max-w-3xl mx-auto">
-            Three synergistic pillars driving innovation: WTAI community platform, 
-            Maya Design System, and JobReady.ai career solutions.
+            Three synergistic pillars: WTAI community, Maya Design System, and JobReady.ai career solutions.
           </p>
         </div>
       </section>
@@ -27,7 +26,7 @@ export default function SolutionsPage() {
               Our <span className="text-highlight">Three Pillars</span>
             </h2>
             <p className="lead max-w-2xl mx-auto">
-              Integrated solutions that share playbooks, tokens, and governance for consistent delivery
+              Integrated solutions sharing playbooks, tokens, and governance for consistent delivery.
             </p>
           </div>
           
@@ -58,7 +57,7 @@ export default function SolutionsPage() {
               How We <span className="text-highlight">Deliver</span>
             </h2>
             <p className="lead max-w-2xl mx-auto">
-              Consistent consulting tracks from strategy to implementation
+              Consistent consulting tracks from strategy to implementation.
             </p>
           </div>
           
@@ -93,7 +92,7 @@ export default function SolutionsPage() {
               Capability <span className="text-highlight">Tracks</span>
             </h2>
             <p className="lead max-w-2xl mx-auto">
-              Structured methodologies for successful digital transformation
+              Structured methodologies for digital transformation.
             </p>
           </div>
           
@@ -166,7 +165,7 @@ export default function SolutionsPage() {
               Ready to Transform with AI Solutions?
             </h2>
             <p className="text-gray-400 mb-8">
-              Let&apos;s discuss how our integrated approach can accelerate your digital transformation journey.
+              Let&apos;s discuss how our integrated approach can accelerate your digital transformation.
             </p>
             <div className="flex flex-wrap justify-center gap-3">
               <a 

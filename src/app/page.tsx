@@ -13,15 +13,15 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 const heroPlaybook = [
   {
     title: "Clarity sprints",
-    copy: "Stakeholder goals → AI use cases in under 10 days.",
+    copy: "Stakeholder goals → AI use cases in 10 days.",
   },
   {
     title: "Design guardrails",
-    copy: "Maya tokens keep accessibility, speed, and truth in sync.",
+    copy: "Maya tokens ensure accessibility, speed, and consistency.",
   },
   {
     title: "AI in production",
-    copy: "Pods own copilots, telemetry, and adoption rituals post launch.",
+    copy: "Teams own copilots, telemetry, and adoption post-launch.",
   },
 ];
 
@@ -29,17 +29,17 @@ const impactSignals = [
   {
     stat: "26+",
     label: "Launches",
-    detail: "Gov, education, and enterprise stacks in-market.",
+    detail: "Government, education, and enterprise transformations.",
   },
   {
     stat: "7",
     label: "Touchpoints unified",
-    detail: "Channels now share one Maya design language.",
+    detail: "Single Maya design language across channels.",
   },
   {
     stat: "99.9%",
     label: "Uptime",
-    detail: "Edge runtime playbooks keep experiences resilient.",
+    detail: "Edge runtime reliability across all platforms.",
   },
 ];
 
@@ -57,11 +57,11 @@ const productDetailMap: Record<string, ProductDetail> = {
   "JobReady.ai": {
     tagline: "AI career acceleration workspace",
     summary:
-      "End-to-end co-pilot guiding resumes, personal branding, interview coaching, and live job search automation for institutes and individuals.",
+      "End-to-end co-pilot for resume optimization, personal branding, interview coaching, and automated job search.",
     highlights: [
-      "Resume intelligence scores every skill signal and fills the gaps instantly.",
-      "Personal branding studio generates portfolios, mailers, and credibility loops.",
-      "Interview rehearsal and job-tracking automation sit in the same dashboard.",
+      "Resume intelligence scores skills and identifies gaps instantly.",
+      "Personal branding studio generates portfolios, mailers, and credibility assets.",
+      "Interview prep and job tracking in one unified dashboard.",
     ],
     metrics: [
       { value: "4", label: "AI copilots at launch" },
@@ -71,13 +71,13 @@ const productDetailMap: Record<string, ProductDetail> = {
     ctaHref: "/jobready",
   },
   "Maya Design System": {
-    tagline: "Design governance for honest, fast delivery",
+    tagline: "Design governance for fast, consistent delivery",
     summary:
-      "Token-driven, CSS-first system that keeps regulated clients visually consistent while shipping on modern stacks.",
+      "Token-driven, CSS-first system ensuring visual consistency for regulated clients on modern stacks.",
     highlights: [
-      "Semantic tokens + white-label theming for every client touchpoint.",
-      "Component library and accessibility guardrails ready for engineering teams.",
-      "Maya Ops rituals keep audits, review cycles, and brand fidelity tight.",
+      "Semantic tokens and white-label theming for all touchpoints.",
+      "Component library with built-in accessibility guardrails.",
+      "Maya Ops keeps audits, reviews, and brand fidelity tight.",
     ],
     metrics: [
       { value: "v2.0.0", label: "current npm release" },
@@ -90,11 +90,11 @@ const productDetailMap: Record<string, ProductDetail> = {
   WTAI: {
     tagline: "Community and cohorts for applied AI",
     summary:
-      "WhatTheAI is the open learning and resource platform democratizing AI playbooks, labs, and peer coaching for India-first teams.",
+      "Open learning platform democratizing AI playbooks, labs, and peer coaching for India-first teams.",
     highlights: [
-      "Structured cohorts blend foundational training with live practitioner AMAs.",
-      "Labs and toolkits make GenAI, ASR, and CV stacks hands-on for teams.",
-      "Peer accountability keeps adoption honest and measurable.",
+      "Structured cohorts combining foundational training with practitioner sessions.",
+      "Hands-on labs for GenAI, ASR, and computer vision stacks.",
+      "Peer accountability ensuring measurable adoption.",
     ],
     metrics: [
       { value: "Phase 1", label: "community live with resource hub" },
@@ -138,10 +138,10 @@ export default function Home() {
             <div className="stack-sm">
               <p className="brand-badge">Honest AI-native delivery</p>
               <h1 className="hero-title">
-                AI-native products for civic, education, and enterprise teams.
+                AI-native products for civic, education, and enterprise.
               </h1>
               <p className="home-hero__lede">
-                Advisory pods, Maya design guardrails, and resilient engineering so every launch is measurable from day one.
+                Advisory teams, Maya design systems, and resilient engineering delivering measurable outcomes from day one.
               </p>
             </div>
             <div className="home-hero__actions">
@@ -173,7 +173,7 @@ export default function Home() {
               ))}
             </ul>
             <p className="playbook-note">
-              Outcomes lock into shared scoreboards before we ship, so progress stays transparent.
+              Outcomes tracked on shared scoreboards before launch, keeping progress transparent.
             </p>
           </div>
         </div>
@@ -182,8 +182,8 @@ export default function Home() {
       <SectionShell id="why">
         <SectionHeading
           eyebrow="Why partners choose us"
-          title="Strategy, Maya design craft, and AI deployment inside one accountable team."
-          description="We operate like a modern studio—research, design, engineering, and AI playbooks progressing together. You get honest communication, measurable KPIs, and the energy of a team that has been shipping for 14+ years."
+          title="Strategy, design systems, and AI deployment in one accountable team."
+          description="Modern studio approach: research, design, engineering, and AI working together. Honest communication, measurable KPIs, and 14+ years of proven delivery."
         />
         <div className="signal-grid">
           {impactSignals.map((signal) => (
@@ -199,8 +199,8 @@ export default function Home() {
       <SectionShell tone="muted" id="products">
         <SectionHeading
           eyebrow="Product stack"
-          title="JobReady.ai, Maya Design System, and WTAI make every launch AI-native."
-          description="Services, product, and community feed each other—talent intelligence informs interfaces, Maya keeps quality high, and WTAI trains the people who will operate it all."
+          title="JobReady.ai, Maya Design System, and WTAI power AI-native launches."
+          description="Services, product, and community work together: talent intelligence shapes interfaces, Maya ensures quality, WTAI enables the teams."
         />
         <div className="product-grid">
           {enrichedProducts.map((product) => (
@@ -244,8 +244,8 @@ export default function Home() {
       <SectionShell id="services" padding="wide">
         <SectionHeading
           eyebrow="Service model"
-          title="Strategy, build, and ops without hand-offs."
-          description="One pod moves from discovery into delivery and keeps telemetry tight after launch."
+          title="Strategy, build, and operations without hand-offs."
+          description="One team moves from discovery to delivery, maintaining telemetry and support post-launch."
         />
         <div className="service-grid">
           {capabilityTracks.map((track) => (
@@ -263,9 +263,9 @@ export default function Home() {
 
       <SectionShell id="impact" tone="muted">
         <SectionHeading
-          eyebrow="Case signals"
-          title="AI programs that already run in the wild."
-          description="Highlights from the last year across community, education, and enterprise."
+          eyebrow="Case studies"
+          title="AI programs running in production."
+          description="Recent launches across community, education, and enterprise sectors."
         />
         <div className="case-grid">
           {recentProjects.map((project) => (
@@ -298,7 +298,7 @@ export default function Home() {
             <SectionHeading
               eyebrow="Proof of trust"
               title="Leaders stay because accountability does."
-              description="Pods stick around after launch, telemetry is transparent, and AI guardrails are practical."
+              description="Teams remain post-launch, telemetry is transparent, and AI guardrails are practical."
               align="start"
             />
             <div className="testimonials-grid">
@@ -327,10 +327,10 @@ export default function Home() {
         <div className="cta-panel surface-card" data-tone="brand">
           <div>
             <p className="section-eyebrow text-white">Next step</p>
-            <h2>Brief us once. We’ll choreograph the pod.</h2>
+            <h2>Brief us once. We'll orchestrate the team.</h2>
             <p>
-              Share the audience, stakes, and timeline. We’ll align JobReady.ai pilots, Maya governance, and WTAI enablement
-              so the next launch stays focused and measurable.
+              Share your audience, goals, and timeline. We'll align JobReady.ai pilots, Maya governance, and WTAI enablement
+              for a focused, measurable launch.
             </p>
           </div>
           <div className="cta-actions">

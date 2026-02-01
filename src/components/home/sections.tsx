@@ -59,12 +59,10 @@ export function HeroSection() {
           <div className="flex-1 space-y-6">
             <p className="section-kicker">AI-first digital partner</p>
             <h1 className="text-4xl font-semibold text-slate-900 md:text-5xl">
-              Practical AI, solid engineering, and Maya Design System craft for every launch
+              Practical AI, solid engineering, and Maya Design System for every launch
             </h1>
             <p className="text-lg text-slate-600">
-              We operate like a modern corporate studio: clear governance, reusable systems, and
-              measurable impact across services, product, and community. Arwin Solutions rebranded as
-              Arwin AI Solutions to embed an AI touch in every engagement.
+              Modern studio approach: clear governance, reusable systems, and measurable impact across services, product, and community.
             </p>
             <div className="flex flex-wrap gap-4">
               <Link className={primaryButtonClass} href="/jobready">
@@ -97,8 +95,7 @@ export function PillarsSection() {
         <p className="section-kicker">Solutions & platforms</p>
         <h2 className="section-title">Three pillars, one operating system</h2>
         <p className="section-subtitle">
-          Services, in-house design language, and a SaaS product line up behind a shared delivery
-          framework so that research, design, and engineering move in unison.
+          Services, design system, and SaaS product aligned through a shared delivery framework.
         </p>
       </div>
       <div className="grid gap-6 md:grid-cols-3">
@@ -130,10 +127,9 @@ export function FocusTracksSection() {
     <section id="expertise" className="section-shell mt-24 space-y-10">
       <div>
         <p className="section-kicker">Operating model</p>
-        <h2 className="section-title">How we deliver with an AI touch</h2>
+        <h2 className="section-title">How we deliver with AI</h2>
         <p className="section-subtitle">
-          Every brief starts with business clarity, Maya Design System alignment, and a responsible AI
-          review. That structure gives us the room to innovate while keeping enterprise-grade rigour.
+          Every engagement starts with business clarity, Maya Design System alignment, and responsible AI review—enabling innovation with enterprise rigor.
         </p>
       </div>
       <div className="grid gap-6 md:grid-cols-3">
@@ -178,10 +174,9 @@ export function RecentDeliverySection() {
     <section id="delivery" className="section-shell mt-24 space-y-8">
       <div>
         <p className="section-kicker">Recent delivery</p>
-        <h2 className="section-title">Post-rebrand projects already in market</h2>
+        <h2 className="section-title">Post-rebrand projects in production</h2>
         <p className="section-subtitle">
-          We continue to launch civic, education, and community experiences with the updated Maya
-          Design System and AI copilots layered where they create measurable value.
+          Recent launches across civic, education, and community sectors using Maya Design System and AI copilots.
         </p>
       </div>
       <div className="grid gap-6 md:grid-cols-2">
@@ -302,12 +297,10 @@ export function JobReadyPreviewSection() {
         <div className="flex-1 space-y-4">
           <p className="section-kicker">JobReady.ai preview</p>
           <h2 className="text-3xl font-semibold text-slate-900">
-            Guided intake + automated search across LinkedIn-style networks
+            Guided intake + automated search across job platforms
           </h2>
           <p className="text-slate-700">
-            When prospects click JobReady.ai we capture context, automate searches across Remotive,
-            Arbeitnow, LinkedIn, Indeed, Naukri, Simplify, and JobRight, then hand them rich metadata
-            to continue applications on native platforms.
+            JobReady.ai captures context, automates searches across Remotive, Arbeitnow, LinkedIn, Indeed, Naukri, Simplify, and JobRight, then provides rich metadata for native platform applications.
           </p>
           <ul className="space-y-3 text-slate-700">
             <li>

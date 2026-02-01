@@ -16,9 +16,7 @@ export default function AboutPage() {
                 <span className="text-highlight">Since 2011</span>
               </h1>
               <p className="lead mb-8">
-                What started as a custom software studio delivering portals for schools 
-                and civic institutions has evolved into an AI-powered solutions provider 
-                serving government, education, and enterprise sectors across India.
+                From custom software studio to AI-powered solutions provider, serving government, education, and enterprise sectors across India.
               </p>
               <div className="flex gap-3">
                 <Link href="/work" className="btn btn-primary">
@@ -71,7 +69,7 @@ export default function AboutPage() {
             <span className="tag tag-primary mb-4">What Drives Us</span>
             <h2 className="mb-4">Our Core Values</h2>
             <p className="lead max-w-2xl mx-auto">
-              The principles that guide every engagement and decision we make.
+              Principles guiding every engagement and decision.
             </p>
           </div>
 
@@ -137,7 +135,7 @@ export default function AboutPage() {
             <span className="tag tag-primary mb-4">How We Work</span>
             <h2 className="mb-4">Our Capability Tracks</h2>
             <p className="lead max-w-2xl mx-auto">
-              Structured methodologies for successful digital transformation.
+              Structured methodologies for digital transformation.
             </p>
           </div>
 
@@ -172,7 +170,7 @@ export default function AboutPage() {
             <span className="tag tag-primary mb-4">Leadership</span>
             <h2 className="mb-4">The Team Behind Arwin AI</h2>
             <p className="lead max-w-2xl mx-auto">
-              Experienced professionals driving digital transformation across India.
+              Experienced professionals driving digital transformation.
             </p>
           </div>
 
@@ -207,8 +205,7 @@ export default function AboutPage() {
           <div className="max-w-2xl mx-auto text-center">
             <h2 className="text-white mb-4">Let&rsquo;s Build Something Amazing Together</h2>
             <p className="text-gray-400 mb-8">
-              Ready to transform your organization with AI-powered solutions? 
-              Let&rsquo;s discuss how we can help you achieve your digital transformation goals.
+              Ready to transform your organization with AI-powered solutions? Let&rsquo;s discuss your digital transformation goals.
             </p>
             <div className="flex flex-wrap justify-center gap-3">
               <a href="mailto:hello@arwinaisolutions.com" className="btn btn-accent">

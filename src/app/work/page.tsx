@@ -14,9 +14,7 @@ export default function WorkPage() {
               Across India Since 2011
             </h1>
             <p className="lead">
-              From government portals serving millions to educational platforms 
-              transforming how students learn — we&rsquo;ve delivered meaningful impact 
-              across India&rsquo;s most critical sectors.
+              From government portals serving millions to educational platforms transforming learning—delivering impact across India&rsquo;s critical sectors.
             </p>
           </div>
           
@@ -49,8 +47,7 @@ export default function WorkPage() {
             <span className="tag tag-success mb-4">2025 — Post-Rebrand</span>
             <h2 className="mb-4">Latest Success Stories</h2>
             <p className="lead max-w-2xl">
-              Our newest launches showcasing AI-powered capabilities, Maya Design System tokens, 
-              and modern architecture.
+              Recent launches showcasing AI-powered capabilities, Maya Design System, and modern architecture.
             </p>
           </div>
 
@@ -96,8 +93,7 @@ export default function WorkPage() {
             <span className="tag tag-primary mb-4">2011–2024 — Legacy Portfolio</span>
             <h2 className="mb-4">14 Years of Digital Excellence</h2>
             <p className="lead max-w-2xl">
-              The foundation projects that established Arwin Solutions as a trusted partner 
-              for India&rsquo;s government, education, and enterprise sectors.
+              Foundation projects establishing Arwin Solutions as a trusted partner for India&rsquo;s government, education, and enterprise sectors.
             </p>
           </div>
 
@@ -218,8 +214,7 @@ export default function WorkPage() {
           <div className="max-w-2xl mx-auto text-center">
             <h2 className="text-white mb-4">Ready to Join Our Success Stories?</h2>
             <p className="text-gray-400 mb-8">
-              Let&rsquo;s discuss how we can transform your organization with our proven 
-              digital transformation expertise and AI-powered solutions.
+              Let&rsquo;s discuss transforming your organization with proven digital transformation expertise and AI-powered solutions.
             </p>
             <div className="flex flex-wrap justify-center gap-3">
               <a href="mailto:hello@arwinaisolutions.com" className="btn btn-accent">
