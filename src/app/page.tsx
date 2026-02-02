@@ -1,177 +1,167 @@
 import Link from "next/link";
-import {
-  heroStats,
-  heroPlaybook,
-  pillars,
-  recentProjects,
-  testimonials,
-  marqueeClients,
-  ctaContent,
-} from "@/lib/content";
-import { SectionShell } from "@/components/ui/SectionShell";
-import { SectionHeading } from "@/components/ui/SectionHeading";
+import { homeContent, stats } from "@/lib/content";
 
-const proofProjects = recentProjects.slice(0, 2);
-const proofTestimonials = testimonials.slice(0, 2);
-const clientLogos = marqueeClients.slice(0, 6);
-
-export default function Home() {
-
+export default function HomePage() {
   return (
     <>
-      <SectionShell tone="brand" bleed="wide" className="home-hero">
-        <div className="home-hero__grid">
-          <div className="home-hero__lead">
-            <div className="stack-sm">
-              <p className="brand-badge">Honest AI-native delivery</p>
-              <h1 className="hero-title">AI-native products for civic, education, and enterprise teams.</h1>
-              <p className="home-hero__lede">
-                Advisory pods, Maya design guardrails, and resilient engineering so every launch is measurable from day one.
-              </p>
-            </div>
-            <div className="home-hero__actions">
-              <a href="mailto:hello@arwinaisolutions.com" className="btn btn-primary btn-lg">
-                Book a strategy call
-              </a>
-              <Link href="/work" className="btn btn-secondary btn-lg">
-                See transformations
+      {/* Hero Section */}
+      <section className="hero">
+        <div className="container">
+          <div className="text-center">
+            <div className="badge mb-md">{homeContent.hero.badge}</div>
+            <h1 className="hero-title">{homeContent.hero.title}</h1>
+            <p className="hero-subtitle mx-auto mb-xl">
+              {homeContent.hero.subtitle}
+            </p>
+            <div className="flex gap-md justify-center mb-xl">
+              <Link href="/work" className="btn btn-primary btn-lg">
+                View Our Work
+              </Link>
+              <Link href="/enquiry" className="btn btn-outline btn-lg">
+                Start a Project
               </Link>
             </div>
-            <div className="stat-grid-modern" data-variant="inverted">
-              {heroStats.map((stat) => (
-                <div key={stat.label} className="stat-pill">
-                  <p className="stat-pill__value">{stat.value}</p>
-                  <p className="stat-pill__label">{stat.label}</p>
-                  {stat.helper && <p className="stat-pill__helper">{stat.helper}</p>}
-                </div>
-              ))}
-            </div>
           </div>
-          <div className="surface-card home-hero__panel" data-tone="brand">
-            <p className="eyebrow">Delivery playbook</p>
-            <ul className="playbook-list">
-              {heroPlaybook.map((step) => (
-                <li key={step.title} className="playbook-item">
-                  <p className="playbook-item__title">{step.title}</p>
-                  <p className="playbook-item__copy">{step.copy}</p>
-                </li>
-              ))}
-            </ul>
-            <p className="playbook-note">
-              Outcomes tracked on shared scoreboards before launch, keeping progress transparent.
+
+          {/* Stats */}
+          <div className="stats-grid">
+            {homeContent.hero.stats.map((stat, index) => (
+              <div key={index} className="stat-card">
+                <div className="stat-value">{stat.value}</div>
+                <div className="stat-label">{stat.label}</div>
+                <div className="stat-detail">{stat.detail}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Philosophy Section */}
+      <section className="section">
+        <div className="container">
+          <div className="max-w-screen-md mx-auto text-center">
+            <h2 className="mb-md">{homeContent.philosophy.title}</h2>
+            <p className="text-muted" style={{ fontSize: "1.125rem", lineHeight: 1.8 }}>
+              {homeContent.philosophy.description}
             </p>
           </div>
         </div>
-      </SectionShell>
+      </section>
 
-      <SectionShell id="system">
-        <SectionHeading
-          eyebrow="Operating system"
-          title="Three pillars, one accountable stack."
-          description="Service pods, Maya design governance, and WTAI enablement stay synced so delivery never fractures."
-        />
-        <div className="product-grid">
-          {pillars.map((product) => (
-            <article key={product.name} className="surface-card product-card" data-state="interactive">
-              <div className="product-card__chips">
-                <span className="chip chip--accent">{product.phase}</span>
-                <span className="chip">{product.status}</span>
-              </div>
-              <div className="stack-sm">
-                <h3>{product.name}</h3>
-                {product.tagline && <p className="product-card__tagline">{product.tagline}</p>}
-                <p className="copy">{product.summary ?? product.description}</p>
-              </div>
-              {product.highlights && (
-                <ul className="product-card__list">
-                  {product.highlights.map((highlight) => (
-                    <li key={highlight}>{highlight}</li>
+      {/* Three Pillars Section */}
+      <section className="section" style={{ background: "var(--color-background-alt)" }}>
+        <div className="container">
+          <div className="text-center mb-xl">
+            <div className="badge badge-accent mb-md">Our AI Pillars</div>
+            <h2 className="mb-md">Three Pillars Powering Our AI Transformation</h2>
+            <p className="text-muted max-w-screen-md mx-auto" style={{ fontSize: "1.125rem" }}>
+              Discover our ecosystem of AI-enabled products and platforms designed to solve real-world challenges.
+            </p>
+          </div>
+
+          <div className="grid grid-3">
+            {homeContent.pillars.map((pillar, index) => (
+              <div key={index} className="card">
+                <div className="mb-md">
+                  <span className="badge badge-success mb-sm">{pillar.phase}</span>
+                  <h3 className="card-title">{pillar.name}</h3>
+                  <p style={{ color: "var(--color-accent)", fontWeight: 600, marginBottom: "var(--space-sm)" }}>
+                    {pillar.tagline}
+                  </p>
+                </div>
+                <p className="card-description mb-md">{pillar.description}</p>
+                
+                <ul style={{ listStyle: "none", padding: 0, marginBottom: "var(--space-lg)" }}>
+                  {pillar.features.map((feature, idx) => (
+                    <li
+                      key={idx}
+                      style={{
+                        padding: "var(--space-xs) 0",
+                        color: "var(--color-text-muted)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "var(--space-xs)",
+                      }}
+                    >
+                      <span style={{ color: "var(--color-primary)" }}>✓</span>
+                      {feature}
+                    </li>
                   ))}
                 </ul>
-              )}
-              {product.metrics && (
-                <div className="product-card__metrics">
-                  {product.metrics.map((metric) => (
-                    <div key={metric.label} className="metric-pill">
-                      <span className="metric-pill__value">{metric.value}</span>
-                      <span className="metric-pill__label">{metric.label}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {product.ctaLabel && (
-                product.external ? (
-                  <a href={product.url} className="btn btn-secondary btn-full" target="_blank" rel="noreferrer">
-                    {product.ctaLabel}
+
+                {pillar.external ? (
+                  <a
+                    href={pillar.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-primary"
+                    style={{ width: "100%" }}
+                  >
+                    Visit {pillar.name} ↗
                   </a>
                 ) : (
-                  <Link href={product.url} className="btn btn-secondary btn-full">
-                    {product.ctaLabel}
+                  <Link href={pillar.url} className="btn btn-primary" style={{ width: "100%" }}>
+                    Explore {pillar.name}
                   </Link>
-                )
-              )}
-            </article>
-          ))}
-        </div>
-      </SectionShell>
-
-      <SectionShell id="proof" tone="muted">
-        <SectionHeading
-          eyebrow="Proof"
-          title="Recent launches and why leaders stay."
-          description="A snapshot of shipped programs plus the voices behind them."
-        />
-        <div className="proof-grid">
-          <div className="proof-projects">
-            {proofProjects.map((project) => (
-              <article key={project.name} className="surface-card proof-project">
-                <div className="proof-project__eyebrow">{project.tagline}</div>
-                <h3>{project.name}</h3>
-                <p className="copy">{project.description}</p>
-                <p className="proof-project__outcome">{project.outcome}</p>
-                <a href={project.url} className="brand-link" target="_blank" rel="noreferrer">
-                  View live ↗
-                </a>
-              </article>
+                )}
+              </div>
             ))}
           </div>
-          <div className="proof-side">
-            <div className="stack-md">
-              {proofTestimonials.map((testimonial) => (
-                <figure key={testimonial.quote} className="surface-card proof-testimonial">
-                  <blockquote>“{testimonial.quote}”</blockquote>
-                  <figcaption>
-                    {testimonial.author}, {testimonial.company}
-                  </figcaption>
-                </figure>
-              ))}
-            </div>
-            <div className="logo-cloud">
-              {clientLogos.map((client) => (
-                <span key={client}>{client}</span>
-              ))}
-            </div>
-          </div>
         </div>
-      </SectionShell>
+      </section>
 
-      <SectionShell id="contact" tone="brand">
-        <div className="cta-panel surface-card" data-tone="brand">
-          <div>
-            <p className="section-eyebrow text-white">{ctaContent.eyebrow}</p>
-            <h2>{ctaContent.title}</h2>
-            <p>{ctaContent.copy}</p>
-          </div>
-          <div className="cta-actions">
-            <a href={ctaContent.primaryHref} className="btn btn-primary btn-lg">
-              {ctaContent.primaryLabel}
-            </a>
-            <Link href={ctaContent.secondaryHref} className="btn btn-secondary btn-lg">
-              {ctaContent.secondaryLabel}
-            </Link>
+      {/* CTA Section */}
+      <section className="section">
+        <div className="container">
+          <div
+            className="card text-center"
+            style={{
+              background: "linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%)",
+              border: "none",
+              padding: "var(--space-2xl)",
+            }}
+          >
+            <h2 style={{ color: "white", marginBottom: "var(--space-md)" }}>
+              Ready to Transform Your Business?
+            </h2>
+            <p
+              style={{
+                color: "rgba(255, 255, 255, 0.9)",
+                fontSize: "1.125rem",
+                maxWidth: "700px",
+                margin: "0 auto var(--space-xl)",
+              }}
+            >
+              Let's discuss how our AI-enabled solutions can help solve your real-life challenges.
+              From government portals to educational platforms and enterprise solutions, we've
+              delivered excellence for 14+ years.
+            </p>
+            <div className="flex gap-md justify-center">
+              <Link
+                href="/contact"
+                className="btn btn-lg"
+                style={{
+                  background: "white",
+                  color: "var(--color-primary)",
+                }}
+              >
+                Contact Us
+              </Link>
+              <Link
+                href="/work"
+                className="btn btn-lg"
+                style={{
+                  background: "rgba(255, 255, 255, 0.2)",
+                  color: "white",
+                  border: "2px solid white",
+                }}
+              >
+                View Portfolio
+              </Link>
+            </div>
           </div>
         </div>
-      </SectionShell>
+      </section>
     </>
   );
 }

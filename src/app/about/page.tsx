@@ -1,83 +1,125 @@
 import Link from "next/link";
-import Image from "next/image";
-import { timeline, executiveSummary, teamMembers, capabilityTracks } from "@/lib/content";
+import { aboutContent, timeline, stats } from "@/lib/content";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "About Us",
+  description:
+    "Learn about Arwin AI Solutions - our journey from 2011 to becoming an AI-powered digital transformation leader. Meet our team and discover our philosophy.",
+};
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen bg-white">
+    <>
       {/* Hero Section */}
-      <section className="section-lg section-alt">
+      <section className="hero">
         <div className="container">
-          <div className="grid gap-12" style={{ gridTemplateColumns: '1.2fr 1fr', alignItems: 'center' }}>
-            <div>
-              <span className="tag tag-primary mb-6">About Us</span>
-              <h1 className="mb-6">
-                Transforming India&rsquo;s Digital Landscape<br />
-                <span className="text-highlight">Since 2011</span>
-              </h1>
-              <p className="lead mb-8">
-                From custom software studio to AI-powered solutions provider, serving government, education, and enterprise sectors across India.
-              </p>
-              <div className="flex gap-3">
-                <Link href="/work" className="btn btn-primary">
-                  See Our Work
-                </Link>
-                <a href="mailto:hello@arwinaisolutions.com" className="btn btn-secondary">
-                  Get in Touch
-                </a>
-              </div>
-            </div>
-            <div className="card" style={{ padding: '2rem' }}>
-              <Image 
-                src="/arwin_logo.jpeg" 
-                alt="Arwin AI Solutions" 
-                width={400} 
-                height={400}
-                className="rounded-lg w-full"
-              />
+          <div className="text-center max-w-screen-lg mx-auto">
+            <div className="badge mb-md">About Arwin AI Solutions</div>
+            <h1 className="hero-title">
+              Transforming India's Digital Landscape Since 2011
+            </h1>
+            <p className="hero-subtitle mx-auto">
+              From a custom software studio to an AI-powered solutions provider, serving
+              government, education, and enterprise sectors with excellence and integrity.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Story Section */}
+      <section className="section">
+        <div className="container">
+          <div className="max-w-screen-lg mx-auto">
+            <h2 className="mb-lg">{aboutContent.story.title}</h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-md)" }}>
+              {aboutContent.story.content.map((paragraph, index) => (
+                <p
+                  key={index}
+                  style={{
+                    fontSize: "1.125rem",
+                    lineHeight: 1.8,
+                    color: "var(--color-text-muted)",
+                  }}
+                >
+                  {paragraph}
+                </p>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
       {/* Mission & Vision */}
-      <section className="section">
+      <section className="section" style={{ background: "var(--color-background-alt)" }}>
         <div className="container">
-          <div className="grid grid-2 gap-8">
-            <div className="card" style={{ padding: '2rem' }}>
-              <div className="icon-box icon-box-blue mb-4">V</div>
-              <h3 className="text-xl font-semibold mb-4">Our Vision</h3>
-              <p className="text-secondary leading-relaxed">
-                {executiveSummary.vision}
+          <div className="grid grid-2" style={{ gap: "var(--space-xl)" }}>
+            <div className="card" style={{ borderLeft: "4px solid var(--color-primary)" }}>
+              <div
+                style={{
+                  fontSize: "2.5rem",
+                  fontWeight: 800,
+                  color: "var(--color-primary)",
+                  marginBottom: "var(--space-md)",
+                }}
+              >
+                Mission
+              </div>
+              <p style={{ fontSize: "1.125rem", lineHeight: 1.8, color: "var(--color-text-muted)" }}>
+                {aboutContent.mission}
               </p>
             </div>
-            <div className="card" style={{ padding: '2rem' }}>
-              <div className="icon-box icon-box-teal mb-4">M</div>
-              <h3 className="text-xl font-semibold mb-4">Our Mission</h3>
-              <p className="text-secondary leading-relaxed">
-                {executiveSummary.mission}
+            <div className="card" style={{ borderLeft: "4px solid var(--color-accent)" }}>
+              <div
+                style={{
+                  fontSize: "2.5rem",
+                  fontWeight: 800,
+                  color: "var(--color-accent)",
+                  marginBottom: "var(--space-md)",
+                }}
+              >
+                Vision
+              </div>
+              <p style={{ fontSize: "1.125rem", lineHeight: 1.8, color: "var(--color-text-muted)" }}>
+                {aboutContent.vision}
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Values */}
-      <section className="section section-alt">
+      {/* Core Values */}
+      <section className="section">
         <div className="container">
-          <div className="text-center mb-12">
-            <span className="tag tag-primary mb-4">What Drives Us</span>
-            <h2 className="mb-4">Our Core Values</h2>
-            <p className="lead max-w-2xl mx-auto">
-              Principles guiding every engagement and decision.
+          <div className="text-center mb-xl">
+            <h2 className="mb-md">Our Core Values</h2>
+            <p className="text-muted max-w-screen-md mx-auto" style={{ fontSize: "1.125rem" }}>
+              Principles that guide every decision and every project we undertake.
             </p>
           </div>
 
-          <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
-            {executiveSummary.values.map((value, index) => (
-              <div key={index} className="card text-center" style={{ padding: '1.5rem' }}>
-                <div className="text-2xl font-bold text-primary-600 mb-2">{index + 1}</div>
-                <p className="text-sm font-medium">{value}</p>
+          <div className="grid grid-3">
+            {aboutContent.values.map((value, index) => (
+              <div
+                key={index}
+                className="card"
+                style={{
+                  textAlign: "center",
+                  background: "var(--color-background-alt)",
+                  border: "none",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "2rem",
+                    fontWeight: 800,
+                    color: "var(--color-primary)",
+                    marginBottom: "var(--space-md)",
+                  }}
+                >
+                  {index + 1}
+                </div>
+                <p style={{ fontWeight: 600, fontSize: "1.125rem" }}>{value}</p>
               </div>
             ))}
           </div>
@@ -85,114 +127,74 @@ export default function AboutPage() {
       </section>
 
       {/* Timeline */}
-      <section className="section">
+      <section className="section" style={{ background: "var(--color-background-alt)" }}>
         <div className="container">
-          <div className="text-center mb-12">
-            <span className="tag tag-primary mb-4">Our Journey</span>
-            <h2 className="mb-4">14+ Years of Evolution</h2>
-            <p className="lead max-w-2xl mx-auto">
-              From custom software studio to AI-powered solutions provider.
+          <div className="text-center mb-xl">
+            <div className="badge badge-accent mb-md">Our Journey</div>
+            <h2 className="mb-md">{stats.yearsInBusiness}+ Years of Excellence</h2>
+            <p className="text-muted max-w-screen-md mx-auto" style={{ fontSize: "1.125rem" }}>
+              From our founding in 2011 to becoming an AI-powered solutions leader in 2024.
             </p>
           </div>
 
-          <div className="max-w-3xl mx-auto">
-            {timeline.map((item, index) => (
-              <div 
-                key={index} 
-                className="relative pl-8 pb-8"
-                style={{ 
-                  borderLeft: item.milestone ? '2px solid var(--primary-500)' : '1px solid var(--border-light)' 
-                }}
-              >
-                <div 
-                  className="absolute -left-1.5 top-0 w-3 h-3 rounded-full"
-                  style={{ backgroundColor: item.milestone ? 'var(--primary-500)' : 'var(--gray-300)' }}
-                />
-                <div className="mb-1">
-                  <span 
-                    className="text-sm font-semibold"
-                    style={{ color: item.milestone ? 'var(--primary-600)' : 'var(--text-tertiary)' }}
-                  >
-                    {item.year}
-                  </span>
+          <div className="max-w-screen-md mx-auto">
+            <div className="timeline">
+              {timeline.map((item, index) => (
+                <div key={index} className={`timeline-item ${item.milestone ? "milestone" : ""}`}>
+                  <div className="timeline-year">{item.year}</div>
+                  <div className="timeline-title">{item.title}</div>
+                  <div className="timeline-description">{item.description}</div>
                 </div>
-                <h4 className={`font-semibold mb-2 ${item.milestone ? '' : 'text-secondary'}`}>
-                  {item.label}
-                </h4>
-                <p className="text-secondary text-sm leading-relaxed">
-                  {item.detail}
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Team Section */}
+      <section className="section">
+        <div className="container">
+          <div className="text-center mb-xl">
+            <h2 className="mb-md">Leadership Team</h2>
+            <p className="text-muted max-w-screen-md mx-auto" style={{ fontSize: "1.125rem" }}>
+              Meet the visionaries driving Arwin AI Solutions forward.
+            </p>
+          </div>
+
+          <div className="grid grid-3">
+            {aboutContent.team.map((member, index) => (
+              <div key={index} className="card text-center">
+                <div
+                  style={{
+                    width: "100px",
+                    height: "100px",
+                    borderRadius: "50%",
+                    background: "linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "2rem",
+                    fontWeight: 800,
+                    color: "white",
+                    margin: "0 auto var(--space-md)",
+                  }}
+                >
+                  {member.name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")}
+                </div>
+                <h3 style={{ marginBottom: "var(--space-xs)" }}>{member.name}</h3>
+                <p
+                  style={{
+                    color: "var(--color-accent)",
+                    fontWeight: 600,
+                    marginBottom: "var(--space-md)",
+                  }}
+                >
+                  {member.role}
                 </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Capability Tracks */}
-      <section className="section section-alt">
-        <div className="container">
-          <div className="text-center mb-12">
-            <span className="tag tag-primary mb-4">How We Work</span>
-            <h2 className="mb-4">Our Capability Tracks</h2>
-            <p className="lead max-w-2xl mx-auto">
-              Structured methodologies for digital transformation.
-            </p>
-          </div>
-
-          <div className="grid grid-3 gap-6">
-            {capabilityTracks.map((track, index) => (
-              <div key={index} className="card" style={{ padding: '1.5rem' }}>
-                <div className={`icon-box mb-4 ${getTrackColor(index)}`}>
-                  {track.title[0]}
-                </div>
-                <h3 className="text-lg font-semibold mb-4">{track.title}</h3>
-                <ul className="space-y-3">
-                  {track.bullets.map((bullet, i) => (
-                    <li key={i} className="flex items-start text-sm">
-                      <span 
-                        className="list-dot flex-shrink-0 mt-1.5 mr-2"
-                        style={{ backgroundColor: getTrackDotColor(index) }}
-                      ></span>
-                      <span className="text-secondary">{bullet}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Team */}
-      <section className="section">
-        <div className="container">
-          <div className="text-center mb-12">
-            <span className="tag tag-primary mb-4">Leadership</span>
-            <h2 className="mb-4">The Team Behind Arwin AI</h2>
-            <p className="lead max-w-2xl mx-auto">
-              Experienced professionals driving digital transformation.
-            </p>
-          </div>
-
-          <div className="grid grid-3 gap-6">
-            {teamMembers.map((member, index) => (
-              <div key={index} className="card text-center" style={{ padding: '2rem' }}>
-                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center text-2xl font-semibold text-gray-600">
-                  {getInitials(member.name)}
-                </div>
-                <h3 className="text-lg font-semibold mb-1">{member.name}</h3>
-                <p className="text-sm text-accent font-medium mb-4">{member.role}</p>
-                <p className="text-secondary text-sm leading-relaxed">{member.bio}</p>
-                {member.linkedin && (
-                  <a 
-                    href={member.linkedin} 
-                    target="_blank" 
-                    rel="noreferrer"
-                    className="mt-4 inline-flex items-center text-sm text-accent hover:underline"
-                  >
-                    LinkedIn ↗
-                  </a>
-                )}
+                <p className="text-muted">{member.bio}</p>
               </div>
             ))}
           </div>
@@ -200,42 +202,55 @@ export default function AboutPage() {
       </section>
 
       {/* CTA */}
-      <section className="section bg-gray-900">
+      <section className="section">
         <div className="container">
-          <div className="max-w-2xl mx-auto text-center">
-            <h2 className="text-white mb-4">Let&rsquo;s Build Something Amazing Together</h2>
-            <p className="text-gray-400 mb-8">
-              Ready to transform your organization with AI-powered solutions? Let&rsquo;s discuss your digital transformation goals.
+          <div
+            className="card text-center"
+            style={{
+              background: "linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%)",
+              border: "none",
+              padding: "var(--space-2xl)",
+            }}
+          >
+            <h2 style={{ color: "white", marginBottom: "var(--space-md)" }}>
+              Let's Build Something Amazing Together
+            </h2>
+            <p
+              style={{
+                color: "rgba(255, 255, 255, 0.9)",
+                fontSize: "1.125rem",
+                maxWidth: "700px",
+                margin: "0 auto var(--space-xl)",
+              }}
+            >
+              Ready to transform your organization with our proven expertise and AI-powered solutions?
             </p>
-            <div className="flex flex-wrap justify-center gap-3">
-              <a href="mailto:hello@arwinaisolutions.com" className="btn btn-accent">
-                Start a Conversation
-              </a>
-              <Link href="/work" className="btn btn-outline-light">
+            <div className="flex gap-md justify-center">
+              <Link
+                href="/enquiry"
+                className="btn btn-lg"
+                style={{
+                  background: "white",
+                  color: "var(--color-primary)",
+                }}
+              >
+                Start a Project
+              </Link>
+              <Link
+                href="/work"
+                className="btn btn-lg"
+                style={{
+                  background: "rgba(255, 255, 255, 0.2)",
+                  color: "white",
+                  border: "2px solid white",
+                }}
+              >
                 View Our Work
               </Link>
             </div>
           </div>
         </div>
       </section>
-    </div>
+    </>
   );
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map(part => part[0])
-    .join('')
-    .toUpperCase();
-}
-
-function getTrackColor(index: number): string {
-  const colors = ['icon-box-blue', 'icon-box-teal', 'icon-box-gray'];
-  return colors[index] || 'icon-box-blue';
-}
-
-function getTrackDotColor(index: number): string {
-  const colors = ['var(--primary-500)', 'var(--accent-500)', 'var(--gray-500)'];
-  return colors[index] || 'var(--primary-500)';
 }

@@ -1,39 +1,43 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Header from "@/components/layout/Header";
-import Footer from "@/components/layout/Footer";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: {
-    default: "Arwin AI Solutions - AI-Powered Digital Transformation",
-    template: "%s | Arwin AI Solutions"
+    default: "Arwin AI Solutions - Solving Real-Life Problems with AI",
+    template: "%s | Arwin AI Solutions",
   },
   description:
-    "Arwin AI Solutions delivers AI-enabled products, domain services, and community programs. Specializing in government, education, and enterprise digital transformation since 2011.",
-  keywords: ["AI Solutions", "Digital Transformation", "Government Technology", "Education Technology", "Design System", "JobReady.ai", "WTAI"],
+    "Arwin AI Solutions: 14+ years of digital transformation. Specializing in government, education, and enterprise solutions. Now equipped with AI capabilities through WTAI, Maya Design System, and JobReady.ai.",
+  keywords: [
+    "Arwin AI Solutions",
+    "Digital Transformation",
+    "AI Solutions",
+    "Government Technology",
+    "Education Technology",
+    "Maya Design System",
+    "WTAI",
+    "JobReady.ai",
+    "Hyderabad",
+    "India",
+  ],
   authors: [{ name: "Arwin AI Solutions" }],
   creator: "Arwin AI Solutions",
   publisher: "Arwin AI Solutions",
-  icons: {
-    icon: "/icon.png",
-  },
   formatDetection: {
     email: false,
     address: false,
     telephone: false,
   },
   openGraph: {
-    title: "Arwin AI Solutions - AI-Powered Digital Transformation",
-    description: "Transforming government, education, and enterprise with AI-powered solutions since 2011.",
+    title: "Arwin AI Solutions - Solving Real-Life Problems with AI",
+    description:
+      "14+ years of digital transformation across government, education, and enterprise sectors. Now equipped with AI capabilities.",
     url: "https://arwinaisolutions.com",
     siteName: "Arwin AI Solutions",
     locale: "en_US",
     type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Arwin AI Solutions - AI-Powered Digital Transformation",
-    description: "Transforming government, education, and enterprise with AI-powered solutions since 2011.",
   },
   robots: {
     index: true,
@@ -46,28 +50,19 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
-  alternates: {
-    canonical: "https://arwinaisolutions.com",
-  },
 };
-
-// Navigation moved to Header component
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
     <html lang="en">
       <body>
-        <div className="app-shell">
-          <Header />
-          <main className="page-shell">
-            {children}
-          </main>
-          <Footer />
-        </div>
+        <Header />
+        <main>{children}</main>
+        <Footer />
       </body>
     </html>
   );
