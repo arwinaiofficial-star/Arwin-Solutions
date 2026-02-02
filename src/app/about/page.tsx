@@ -15,7 +15,7 @@ export default function AboutPage() {
       <section className="hero">
         <div className="container">
           <div className="text-center max-w-screen-lg mx-auto">
-            <div className="badge mb-md">About Arwin AI Solutions</div>
+            {/* <div className="badge mb-md">About Arwin AI Solutions</div> */}
             <h1 className="hero-title">
               Transforming India's Digital Landscape Since 2011
             </h1>
@@ -130,7 +130,7 @@ export default function AboutPage() {
       <section className="section" style={{ background: "var(--color-background-alt)" }}>
         <div className="container">
           <div className="text-center mb-xl">
-            <div className="badge badge-accent mb-md">Our Journey</div>
+            {/* <div className="badge badge-accent mb-md">Our Journey</div> */}
             <h2 className="mb-md">{stats.yearsInBusiness}+ Years of Excellence</h2>
             <p className="text-muted max-w-screen-md mx-auto" style={{ fontSize: "1.125rem" }}>
               From our founding in 2011 to becoming an AI-powered solutions leader in 2024.

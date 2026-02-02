@@ -14,7 +14,7 @@ export default function EnquiryPage() {
       <section className="hero">
         <div className="container">
           <div className="text-center max-w-screen-lg mx-auto">
-            <div className="badge mb-md">Project Enquiry</div>
+            {/* <div className="badge mb-md">Project Enquiry</div> */}
             <h1 className="hero-title">Start Your Digital Transformation</h1>
             <p className="hero-subtitle mx-auto">
               Tell us about your project and let's discuss how our AI-powered solutions can help you

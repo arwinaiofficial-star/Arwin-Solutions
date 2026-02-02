@@ -30,6 +30,14 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
+  icons: {
+    icon: [
+      { url: "/icon.png", type: "image/png", sizes: "256x256" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+    apple: "/icon.png",
+    shortcut: "/favicon.svg",
+  },
   openGraph: {
     title: "Arwin AI Solutions - Solving Real-Life Problems with AI",
     description:

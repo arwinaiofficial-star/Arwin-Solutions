@@ -8,7 +8,7 @@ export default function HomePage() {
       <section className="hero">
         <div className="container">
           <div className="text-center">
-            <div className="badge mb-md">{homeContent.hero.badge}</div>
+            {/* <div className="badge mb-md">{homeContent.hero.badge}</div> */}
             <h1 className="hero-title">{homeContent.hero.title}</h1>
             <p className="hero-subtitle mx-auto mb-xl">
               {homeContent.hero.subtitle}
@@ -52,7 +52,7 @@ export default function HomePage() {
       <section className="section" style={{ background: "var(--color-background-alt)" }}>
         <div className="container">
           <div className="text-center mb-xl">
-            <div className="badge badge-accent mb-md">Our AI Pillars</div>
+            {/* <div className="badge badge-accent mb-md">Our AI Pillars</div> */}
             <h2 className="mb-md">Three Pillars Powering Our AI Transformation</h2>
             <p className="text-muted max-w-screen-md mx-auto" style={{ fontSize: "1.125rem" }}>
               Discover our ecosystem of AI-enabled products and platforms designed to solve real-world challenges.
@@ -63,7 +63,7 @@ export default function HomePage() {
             {homeContent.pillars.map((pillar, index) => (
               <div key={index} className="card">
                 <div className="mb-md">
-                  <span className="badge badge-success mb-sm">{pillar.phase}</span>
+                  {/* <span className="badge badge-success mb-sm">{pillar.phase}</span> */}
                   <h3 className="card-title">{pillar.name}</h3>
                   <p style={{ color: "var(--color-accent)", fontWeight: 600, marginBottom: "var(--space-sm)" }}>
                     {pillar.tagline}

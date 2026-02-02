@@ -15,7 +15,7 @@ export default function WorkPage() {
       <section className="hero">
         <div className="container">
           <div className="text-center max-w-screen-lg mx-auto">
-            <div className="badge mb-md">Portfolio</div>
+            {/* <div className="badge mb-md">Portfolio</div> */}
             <h1 className="hero-title">
               {stats.projectsCompleted}+ Digital Transformations
             </h1>

@@ -1,8 +1,10 @@
+import Image from "next/image";
 import Link from "next/link";
 import { companyInfo } from "@/lib/content";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const sanitizedPhone = companyInfo.phone.replace(/\s+/g, "");
 
   return (
     <footer className="footer">
@@ -10,18 +12,30 @@ export default function Footer() {
         <div className="footer-grid">
           {/* Company Info */}
           <div className="footer-section">
-            <h3>Arwin AI Solutions</h3>
-            <p style={{ color: "var(--color-gray-400)", lineHeight: 1.6 }}>
+            <Link href="/" className="footer-logo" aria-label="Arwin AI Solutions home">
+              <Image
+                src="/arwin_logo.jpeg"
+                alt="ArwinAI logo"
+                width={56}
+                height={56}
+                className="footer-logo-mark"
+              />
+              <div className="footer-logo-copy">
+                <span className="footer-logo-title">Arwin AI Solutions</span>
+                <span className="footer-logo-tagline">AI-powered digital transformation</span>
+              </div>
+            </Link>
+            <p className="footer-highlight">
               Solving real-life problems with AI-enabled solutions since 2011.
             </p>
-            <p style={{ color: "var(--color-gray-400)", marginTop: "var(--space-md)" }}>
-              <strong>Phone:</strong> {companyInfo.phone}
-              <br />
-              <strong>Email:</strong>{" "}
-              <a href={`mailto:${companyInfo.email.official}`}>
-                {companyInfo.email.official}
+            <div className="footer-contact">
+              <a href={`tel:${sanitizedPhone}`} className="footer-contact-item">
+                <strong>Phone:</strong> {companyInfo.phone}
               </a>
-            </p>
+              <a href={`mailto:${companyInfo.email.official}`} className="footer-contact-item">
+                <strong>Email:</strong> {companyInfo.email.official}
+              </a>
+            </div>
           </div>
 
           {/* Quick Links */}
@@ -72,7 +86,7 @@ export default function Footer() {
           {/* Address */}
           <div className="footer-section">
             <h3>Location</h3>
-            <address style={{ color: "var(--color-gray-400)", fontStyle: "normal", lineHeight: 1.6 }}>
+            <address className="footer-address">
               {companyInfo.address}
               <br />
               <br />

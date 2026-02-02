@@ -14,7 +14,7 @@ export default function ContactPage() {
       <section className="hero">
         <div className="container">
           <div className="text-center max-w-screen-lg mx-auto">
-            <div className="badge mb-md">Contact Us</div>
+            {/* <div className="badge mb-md">Contact Us</div> */}
             <h1 className="hero-title">Let's Start a Conversation</h1>
             <p className="hero-subtitle mx-auto">
               Have a project in mind? Want to learn more about our AI-powered solutions? We're here

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -10,8 +11,16 @@ export default function Header() {
     <header className="header">
       <div className="container">
         <div className="header-container">
-          <Link href="/" className="logo">
-            Arwin AI Solutions
+          <Link href="/" className="logo" aria-label="Arwin AI Solutions home">
+            <Image
+              src="/arwin_logo.jpeg"
+              alt="ArwinAI logo"
+              width={40}
+              height={40}
+              priority
+              className="logo-mark"
+            />
+            <span className="logo-text">Arwin AI Solutions</span>
           </Link>
 
           <button

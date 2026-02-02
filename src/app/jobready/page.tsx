@@ -15,7 +15,7 @@ export default function JobReadyPage() {
       <section className="hero">
         <div className="container">
           <div className="text-center max-w-screen-lg mx-auto">
-            <div className="badge badge-accent mb-md">{jobreadyContent.currentPhase.phase} {jobreadyContent.currentPhase.status}</div>
+            {/* <div className="badge badge-accent mb-md">{jobreadyContent.currentPhase.phase} {jobreadyContent.currentPhase.status}</div> */}
             <h1 className="hero-title">{jobreadyContent.hero.title}</h1>
             <p className="hero-subtitle mx-auto mb-xl">
               {jobreadyContent.hero.description}

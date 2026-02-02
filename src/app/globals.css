@@ -34,12 +34,16 @@
   --color-gray-900: #111827;
   
   /* Semantic Colors */
-  --color-text: var(--color-gray-900);
-  --color-text-muted: var(--color-gray-600);
-  --color-text-light: var(--color-gray-500);
-  --color-background: #ffffff;
-  --color-background-alt: var(--color-gray-50);
-  --color-border: var(--color-gray-200);
+  --color-text: #f8fafc;
+  --color-text-muted: #c7d2fe;
+  --color-text-light: #94a3b8;
+  --color-background: #020617;
+  --color-background-alt: #0b1529;
+  --color-surface: #0f1a2f;
+  --color-surface-elevated: #16223d;
+  --color-surface-highlight: #1f2e4e;
+  --color-border: rgba(148, 163, 184, 0.25);
+  --glow-primary: 0 25px 60px rgba(79, 70, 229, 0.25);
   
   /* Spacing */
   --space-xs: 0.5rem;
@@ -168,10 +172,11 @@ a:hover {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
+  background: rgba(2, 6, 23, 0.9);
+  backdrop-filter: blur(18px);
   border-bottom: 1px solid var(--color-border);
   padding: var(--space-sm) 0;
+  box-shadow: 0 15px 40px rgba(2, 6, 23, 0.6);
 }
 
 .header-container {
@@ -181,10 +186,31 @@ a:hover {
 }
 
 .logo {
-  font-size: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: 1.35rem;
   font-weight: 700;
-  color: var(--color-primary);
+  color: var(--color-text);
   text-decoration: none;
+}
+
+.logo:hover {
+  color: var(--color-primary-light);
+}
+
+.logo-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 40px rgba(37, 99, 235, 0.35);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  object-fit: cover;
+}
+
+.logo-text {
+  letter-spacing: -0.02em;
+  color: inherit;
 }
 
 .nav {
@@ -233,10 +259,11 @@ a:hover {
     top: 100%;
     left: 0;
     right: 0;
-    background: white;
+    background: var(--color-background-alt);
     border-bottom: 1px solid var(--color-border);
     padding: var(--space-md);
     gap: var(--space-md);
+    box-shadow: 0 20px 40px rgba(2, 6, 23, 0.8);
   }
 }
 
@@ -270,14 +297,15 @@ a:hover {
 }
 
 .btn-secondary {
-  background: var(--color-gray-100);
+  background: var(--color-background-alt);
   color: var(--color-text);
   border: 1px solid var(--color-border);
 }
 
 .btn-secondary:hover {
-  background: var(--color-gray-200);
+  background: var(--color-surface-highlight);
   color: var(--color-text);
+  box-shadow: var(--glow-primary);
 }
 
 .btn-outline {
@@ -298,15 +326,16 @@ a:hover {
 
 /* Cards */
 .card {
-  background: white;
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-lg);
   transition: all var(--transition-base);
+  box-shadow: 0 20px 45px rgba(2, 6, 23, 0.7);
 }
 
 .card:hover {
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--glow-primary);
   transform: translateY(-2px);
 }
 
@@ -375,7 +404,10 @@ a:hover {
 /* Hero Section */
 .hero {
   padding: var(--space-3xl) 0;
-  background: linear-gradient(135deg, var(--color-gray-50) 0%, white 100%);
+  background:
+    radial-gradient(circle at 20% -10%, rgba(79, 70, 229, 0.15), transparent 55%),
+    radial-gradient(circle at 80% 0%, rgba(37, 99, 235, 0.15), transparent 45%),
+    linear-gradient(135deg, #020617 0%, #0f172a 100%);
 }
 
 .hero-title {
@@ -408,6 +440,10 @@ a:hover {
 .stat-card {
   text-align: center;
   padding: var(--space-lg);
+  background: var(--color-background-alt);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 10px 35px rgba(2, 6, 23, 0.65);
 }
 
 .stat-value {
@@ -430,19 +466,95 @@ a:hover {
 
 /* Footer */
 .footer {
-  background: var(--color-gray-900);
-  color: white;
+  background: linear-gradient(180deg, #050c1d 0%, #020617 100%);
+  color: var(--color-text);
   padding: var(--space-2xl) 0 var(--space-lg);
   margin-top: var(--space-3xl);
+  border-top: 1px solid var(--color-border);
+}
+
+.footer-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  text-decoration: none;
+  margin-bottom: var(--space-md);
+  color: var(--color-text);
+}
+
+.footer-logo:hover .footer-logo-title {
+  color: var(--color-primary-light);
+}
+
+.footer-logo-mark {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  box-shadow: 0 18px 35px rgba(15, 23, 42, 0.75);
+  object-fit: cover;
+}
+
+.footer-logo-copy {
+  display: flex;
+  flex-direction: column;
+}
+
+.footer-logo-title {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.footer-logo-tagline {
+  font-size: 0.9rem;
+  color: var(--color-text-light);
+}
+
+.footer-highlight {
+  color: var(--color-text);
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.footer-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: var(--space-sm);
+}
+
+.footer-contact-item {
+  color: var(--color-text-light);
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+
+.footer-contact-item strong {
+  color: var(--color-text);
+  margin-right: 0.25rem;
+}
+
+.footer-contact-item:hover {
+  color: var(--color-primary-light);
+}
+
+.footer-address {
+  color: var(--color-text-light);
+  font-style: normal;
+  line-height: 1.6;
+}
+
+.footer-address strong {
+  color: var(--color-text);
 }
 
 .footer a {
-  color: var(--color-gray-400);
+  color: var(--color-text-light);
   transition: color var(--transition-fast);
 }
 
 .footer a:hover {
-  color: white;
+  color: var(--color-primary-light);
 }
 
 .footer-grid {
@@ -453,7 +565,7 @@ a:hover {
 }
 
 .footer-section h3 {
-  color: white;
+  color: var(--color-text);
   margin-bottom: var(--space-md);
 }
 
@@ -468,9 +580,9 @@ a:hover {
 
 .footer-bottom {
   padding-top: var(--space-lg);
-  border-top: 1px solid var(--color-gray-700);
+  border-top: 1px solid var(--color-border);
   text-align: center;
-  color: var(--color-gray-400);
+  color: var(--color-text-light);
   font-size: 0.875rem;
 }
 
@@ -504,7 +616,7 @@ a:hover {
   height: 12px;
   border-radius: 50%;
   background: var(--color-primary);
-  border: 2px solid white;
+  border: 2px solid var(--color-background);
 }
 
 .timeline-item.milestone::before {
@@ -512,6 +624,7 @@ a:hover {
   height: 16px;
   left: calc(-1 * var(--space-xl) - 7px);
   background: var(--color-accent);
+  border: 2px solid var(--color-background);
 }
 
 .timeline-year {
@@ -630,6 +743,13 @@ a:hover {
   font-family: var(--font-sans);
   font-size: 1rem;
   transition: all var(--transition-fast);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder {
+  color: var(--color-text-light);
 }
 
 .form-input:focus,
