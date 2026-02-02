@@ -10,7 +10,7 @@ const navigation = [
   { name: 'Solutions', href: '/solutions' },
   { name: 'Work', href: '/work' },
   { name: 'Insights', href: '/insights' },
-  { name: 'Projects', href: '/projects' },
+  { name: 'Contact', href: '/contact' },
 ];
 
 const quickLinks = [
@@ -78,9 +78,9 @@ export default function Header() {
           <Link href="/work" className="btn btn-secondary btn-sm">
             Our impact
           </Link>
-          <a href="mailto:hello@arwinaisolutions.com" className="btn btn-primary btn-sm">
-            Talk to us
-          </a>
+          <Link href="/enquiry" className="btn btn-primary btn-sm">
+            Get Started
+          </Link>
         </div>
 
         <button
@@ -133,11 +133,11 @@ export default function Header() {
           <div className="header-mobile__section">
             <p className="header-mobile__label">Connect</p>
             <div className="flex flex-col gap-3">
-              <a href="mailto:hello@arwinaisolutions.com" className="btn btn-primary w-full" onClick={closeMobileMenu}>
-                Talk to us
-              </a>
-              <Link href="/work" className="btn btn-secondary w-full" onClick={closeMobileMenu}>
-                See our work
+              <Link href="/enquiry" className="btn btn-primary w-full" onClick={closeMobileMenu}>
+                Get Started
+              </Link>
+              <Link href="/contact" className="btn btn-secondary w-full" onClick={closeMobileMenu}>
+                Contact Us
               </Link>
             </div>
           </div>

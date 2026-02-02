@@ -262,34 +262,33 @@ export const legacyGroups: LegacyGroup[] = [
 
 export const executiveSummary = {
   vision:
-    "Bridge career success, lifelong learning, and community innovation through AI.",
+    "To solve real-life problems and challenges through AI-enabled digital solutions, continuing our 14-year legacy of transforming organizations across India.",
   mission:
-    "Democratize AI tools and talent intelligence to unlock potential for individuals and organizations.",
+    "Democratize AI tools and deliver digital transformation that helps organizations—from small-scale to large-scale—establish their digital footprint and reach more people. Working primarily on goodwill, where impact comes first and revenue is a byproduct.",
   values: [
-    "AI-native delivery",
-    "Design-first systems",
-    "Outcome-driven partnerships",
-    "Responsible AI",
-    "Continuous innovation",
+    "Goodwill First",
+    "AI-native Delivery",
+    "Design Excellence",
+    "Client Success",
+    "Continuous Innovation",
   ],
 };
 
 export const teamMembers: TeamMember[] = [
   {
-    name: "Arwin Bonthala",
-    role: "Founder & CEO",
-    bio: "14+ years leading digital transformation across government, education, and enterprise sectors.",
-    linkedin: "https://linkedin.com/in/arwinbonthala",
+    name: "Narender Raju Chakrahari",
+    role: "Founder",
+    bio: "Visionary founder who established Arwin Solutions in 2011 with a mission to solve real-life problems through digital solutions.",
   },
   {
-    name: "Maya Design Team",
-    role: "Design System Engineers",
-    bio: "Building token-driven design systems that power consistent, accessible experiences.",
+    name: "Aravind Chakrahari",
+    role: "Chief Executive Officer",
+    bio: "Leading Arwin AI Solutions' transformation with AI-native capabilities, driving innovation across government, education, and enterprise sectors.",
   },
   {
-    name: "AI Solutions Team",
-    role: "Product & Strategy",
-    bio: "Delivering AI-powered career solutions and community platforms.",
+    name: "Chaithanya Bonthala",
+    role: "Chief Operating Officer",
+    bio: "Overseeing operations and delivery excellence, ensuring client success and sustainable growth across all projects.",
   },
 ];
 
@@ -417,6 +416,15 @@ export const timeline = [
     milestone: true,
   },
 ];
+
+export const contactInfo = {
+  address: "258D, Prajay Sai Gardens Rd, Kundanpally, Cheeryal, Hyderabad, Telangana 501301",
+  city: "Hyderabad",
+  phone: "+91 94909 37683",
+  officialEmail: "arwinai.official@gmail.com",
+  hrEmail: "hr@arwinai.com",
+  generalEmail: "hello@arwinaisolutions.com",
+};
 
 export const capabilityTracks = [
   {
