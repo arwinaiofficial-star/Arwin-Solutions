@@ -418,7 +418,7 @@ export const timeline = [
 ];
 
 export const contactInfo = {
-  address: "258D, Prajay Sai Gardens Rd, Kundanpally, Cheeriyal, Hyderabad, Telangana 501301",
+  address: "258D, Prajay Sai Gardens Rd, Kundanpally, Cheeryal, Hyderabad, Telangana 501301",
   city: "Hyderabad",
   phone: "+91 94909 37683",
   officialEmail: "arwinai.official@gmail.com",

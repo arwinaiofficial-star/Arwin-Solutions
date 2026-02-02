@@ -279,7 +279,10 @@ export default function EnquiryPage() {
                       <p className="text-error text-xs mt-1">{errors.message}</p>
                     )}
                     <p className="text-tertiary text-xs mt-1">
-                      Minimum 20 characters ({formData.message.length}/20)
+                      {formData.message.length < 20 
+                        ? `${formData.message.length}/20 characters (minimum 20)`
+                        : `${formData.message.length} characters`
+                      }
                     </p>
                   </div>
 
