@@ -1,20 +1,24 @@
-import Link from "next/link";
-import { contactInfo, teamMembers } from "@/lib/content";
+import { companyInfo } from "@/lib/content";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Contact Us",
+  description:
+    "Get in touch with Arwin AI Solutions. We're here to help transform your business with AI-powered digital solutions.",
+};
 
 export default function ContactPage() {
   return (
-    <div className="min-h-screen bg-white">
+    <>
       {/* Hero Section */}
-      <section className="section-lg section-alt">
+      <section className="hero">
         <div className="container">
-          <div className="max-w-3xl mx-auto text-center">
-            <span className="tag tag-primary mb-6">Get in Touch</span>
-            <h1 className="mb-6">
-              Let&rsquo;s Build Something<br />
-              <span className="text-highlight">Amazing Together</span>
-            </h1>
-            <p className="lead mb-8">
-              Whether you&rsquo;re looking to transform your organization with AI, discuss a new project, or explore partnership opportunities, we&rsquo;re here to help.
+          <div className="text-center max-w-screen-lg mx-auto">
+            <div className="badge mb-md">Contact Us</div>
+            <h1 className="hero-title">Let's Start a Conversation</h1>
+            <p className="hero-subtitle mx-auto">
+              Have a project in mind? Want to learn more about our AI-powered solutions? We're here
+              to help transform your business.
             </p>
           </div>
         </div>
@@ -23,144 +27,266 @@ export default function ContactPage() {
       {/* Contact Information */}
       <section className="section">
         <div className="container">
-          <div className="grid grid-3 gap-6">
-            {/* Address */}
-            <div className="card" style={{ padding: '2rem' }}>
-              <div className="icon-box icon-box-blue mb-4">📍</div>
-              <h3 className="text-lg font-semibold mb-3">Our Office</h3>
-              <p className="text-secondary text-sm leading-relaxed mb-3">
-                {contactInfo.address}
-              </p>
-              <p className="text-sm font-medium text-accent">{contactInfo.city}</p>
-            </div>
-
+          <div className="grid grid-3 mb-xl">
             {/* Phone */}
-            <div className="card" style={{ padding: '2rem' }}>
-              <div className="icon-box icon-box-teal mb-4">📞</div>
-              <h3 className="text-lg font-semibold mb-3">Call Us</h3>
-              <a 
-                href={`tel:${contactInfo.phone}`}
-                className="text-secondary hover:text-accent text-sm leading-relaxed block mb-3"
+            <div className="card text-center">
+              <div
+                style={{
+                  width: "60px",
+                  height: "60px",
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto var(--space-md)",
+                }}
               >
-                {contactInfo.phone}
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                </svg>
+              </div>
+              <h3 style={{ marginBottom: "var(--space-xs)" }}>Phone</h3>
+              <a
+                href={`tel:${companyInfo.phone.replace(/\s/g, "")}`}
+                style={{ color: "var(--color-text-muted)", fontSize: "1.125rem" }}
+              >
+                {companyInfo.phone}
               </a>
-              <p className="text-xs text-tertiary">Mon - Fri: 9:00 AM - 6:00 PM IST</p>
             </div>
 
             {/* Email */}
-            <div className="card" style={{ padding: '2rem' }}>
-              <div className="icon-box icon-box-gray mb-4">✉️</div>
-              <h3 className="text-lg font-semibold mb-3">Email Us</h3>
-              <div className="space-y-2">
-                <a 
-                  href={`mailto:${contactInfo.generalEmail}`}
-                  className="text-secondary hover:text-accent text-sm block"
+            <div className="card text-center">
+              <div
+                style={{
+                  width: "60px",
+                  height: "60px",
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto var(--space-md)",
+                }}
+              >
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 >
-                  {contactInfo.generalEmail}
-                </a>
-                <a 
-                  href={`mailto:${contactInfo.hrEmail}`}
-                  className="text-secondary hover:text-accent text-sm block"
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                  <polyline points="22,6 12,13 2,6" />
+                </svg>
+              </div>
+              <h3 style={{ marginBottom: "var(--space-xs)" }}>Email</h3>
+              <a
+                href={`mailto:${companyInfo.email.official}`}
+                style={{ color: "var(--color-text-muted)", fontSize: "1.125rem", wordBreak: "break-word" }}
+              >
+                {companyInfo.email.official}
+              </a>
+            </div>
+
+            {/* Location */}
+            <div className="card text-center">
+              <div
+                style={{
+                  width: "60px",
+                  height: "60px",
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto var(--space-md)",
+                }}
+              >
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 >
-                  {contactInfo.hrEmail}
-                </a>
-                <a 
-                  href={`mailto:${contactInfo.officialEmail}`}
-                  className="text-secondary hover:text-accent text-sm block"
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+              </div>
+              <h3 style={{ marginBottom: "var(--space-xs)" }}>Location</h3>
+              <p style={{ color: "var(--color-text-muted)", fontSize: "1.125rem", marginBottom: 0 }}>
+                {companyInfo.city}
+              </p>
+            </div>
+          </div>
+
+          {/* Full Address */}
+          <div className="max-w-screen-md mx-auto">
+            <div
+              className="card text-center"
+              style={{
+                background: "var(--color-background-alt)",
+                border: "none",
+              }}
+            >
+              <h3 style={{ marginBottom: "var(--space-md)" }}>Office Address</h3>
+              <address
+                style={{
+                  fontStyle: "normal",
+                  color: "var(--color-text-muted)",
+                  fontSize: "1.125rem",
+                  lineHeight: 1.8,
+                  marginBottom: 0,
+                }}
+              >
+                {companyInfo.address}
+              </address>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Additional Contacts */}
+      <section className="section" style={{ background: "var(--color-background-alt)" }}>
+        <div className="container">
+          <div className="max-w-screen-md mx-auto">
+            <div className="text-center mb-xl">
+              <h2 className="mb-md">Additional Contacts</h2>
+              <p className="text-muted" style={{ fontSize: "1.125rem" }}>
+                Reach the right team for your specific needs.
+              </p>
+            </div>
+
+            <div className="grid grid-2">
+              <div className="card">
+                <h3 style={{ marginBottom: "var(--space-md)" }}>HR Department</h3>
+                <p style={{ color: "var(--color-text-muted)", marginBottom: "var(--space-sm)" }}>
+                  For career opportunities and recruitment inquiries.
+                </p>
+                <a
+                  href={`mailto:${companyInfo.email.hr}`}
+                  style={{
+                    color: "var(--color-primary)",
+                    fontWeight: 600,
+                    fontSize: "1.125rem",
+                    wordBreak: "break-word",
+                  }}
                 >
-                  {contactInfo.officialEmail}
+                  {companyInfo.email.hr}
                 </a>
+              </div>
+
+              <div className="card">
+                <h3 style={{ marginBottom: "var(--space-md)" }}>Leadership</h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
+                  <p style={{ color: "var(--color-text-muted)", marginBottom: 0 }}>
+                    <strong>Founder:</strong> {companyInfo.founders.founder}
+                  </p>
+                  <p style={{ color: "var(--color-text-muted)", marginBottom: 0 }}>
+                    <strong>CEO:</strong> {companyInfo.founders.ceo}
+                  </p>
+                  <p style={{ color: "var(--color-text-muted)", marginBottom: 0 }}>
+                    <strong>COO:</strong> {companyInfo.founders.coo}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Map Section */}
-      <section className="section section-alt">
-        <div className="container">
-          <div className="text-center mb-8">
-            <span className="tag tag-primary mb-4">Location</span>
-            <h2 className="mb-4">Visit Our Office</h2>
-            <p className="lead max-w-2xl mx-auto">
-              Located in the heart of Hyderabad&rsquo;s technology corridor.
-            </p>
-          </div>
-
-          <div className="card overflow-hidden" style={{ padding: 0, height: '450px' }}>
-            <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3803.8!2d78.564!3d17.579!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMTfCsDM0JzQ0LjAiTiA3OMKwMzMnNTIuMCJF!5e0!3m2!1sen!2sin!4v1738497000000"
-              width="100%"
-              height="100%"
-              style={{ border: 0 }}
-              allowFullScreen
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-            ></iframe>
-          </div>
-        </div>
-      </section>
-
-      {/* Team Contacts */}
+      {/* Quick Contact Form */}
       <section className="section">
         <div className="container">
-          <div className="text-center mb-12">
-            <span className="tag tag-primary mb-4">Leadership</span>
-            <h2 className="mb-4">Connect With Our Team</h2>
-            <p className="lead max-w-2xl mx-auto">
-              Our leadership team is always available to discuss your needs.
-            </p>
-          </div>
+          <div className="max-w-screen-md mx-auto">
+            <div className="text-center mb-xl">
+              <h2 className="mb-md">Send Us a Message</h2>
+              <p className="text-muted" style={{ fontSize: "1.125rem" }}>
+                Fill out the form below and we'll get back to you as soon as possible.
+              </p>
+            </div>
 
-          <div className="grid grid-3 gap-6">
-            {teamMembers.map((member, index) => (
-              <div key={index} className="card text-center" style={{ padding: '2rem' }}>
-                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center text-2xl font-semibold text-gray-600" aria-label={member.name}>
-                  {getInitials(member.name)}
+            <div className="card">
+              <form style={{ display: "flex", flexDirection: "column", gap: "var(--space-md)" }}>
+                <div className="form-group">
+                  <label htmlFor="contact-name" className="form-label">
+                    Name
+                  </label>
+                  <input
+                    type="text"
+                    id="contact-name"
+                    name="name"
+                    className="form-input"
+                    placeholder="Your name"
+                    required
+                  />
                 </div>
-                <h3 className="text-lg font-semibold mb-1">{member.name}</h3>
-                <p className="text-sm text-accent font-medium mb-3">{member.role}</p>
-                <p className="text-secondary text-sm leading-relaxed mb-4">{member.bio}</p>
-                <a 
-                  href={`mailto:${contactInfo.generalEmail}?subject=Inquiry for ${member.name}`}
-                  className="btn btn-sm btn-secondary"
-                >
-                  Contact {member.name.split(' ')[0]}
-                </a>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      {/* CTA */}
-      <section className="section bg-gray-900">
-        <div className="container">
-          <div className="max-w-2xl mx-auto text-center">
-            <h2 className="text-white mb-4">Ready to Start Your Project?</h2>
-            <p className="text-gray-400 mb-8">
-              Fill out our enquiry form and let&rsquo;s discuss how we can help transform your organization with AI-powered solutions.
-            </p>
-            <div className="flex flex-wrap justify-center gap-3">
-              <Link href="/enquiry" className="btn btn-accent">
-                Submit Enquiry
-              </Link>
-              <Link href="/about" className="btn btn-outline-light">
-                Learn More About Us
-              </Link>
+                <div className="form-group">
+                  <label htmlFor="contact-email" className="form-label">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    id="contact-email"
+                    name="email"
+                    className="form-input"
+                    placeholder="your.email@example.com"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="contact-subject" className="form-label">
+                    Subject
+                  </label>
+                  <input
+                    type="text"
+                    id="contact-subject"
+                    name="subject"
+                    className="form-input"
+                    placeholder="What's this about?"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="contact-message" className="form-label">
+                    Message
+                  </label>
+                  <textarea
+                    id="contact-message"
+                    name="message"
+                    className="form-textarea"
+                    placeholder="Tell us more about your project or inquiry..."
+                    required
+                  ></textarea>
+                </div>
+
+                <button type="submit" className="btn btn-primary btn-lg" style={{ width: "100%" }}>
+                  Send Message
+                </button>
+              </form>
             </div>
           </div>
         </div>
       </section>
-    </div>
+    </>
   );
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map(part => part[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 3);
 }

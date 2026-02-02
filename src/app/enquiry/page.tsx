@@ -1,352 +1,353 @@
-"use client";
-
-import { useState } from "react";
 import Link from "next/link";
-import { contactInfo } from "@/lib/content";
+import type { Metadata } from "next";
 
-type FormData = {
-  name: string;
-  email: string;
-  phone: string;
-  organization: string;
-  projectType: string;
-  message: string;
-};
-
-type FormErrors = {
-  [key in keyof FormData]?: string;
+export const metadata: Metadata = {
+  title: "Enquiry",
+  description:
+    "Start your digital transformation journey with Arwin AI Solutions. Fill out our enquiry form to discuss your project.",
 };
 
 export default function EnquiryPage() {
-  const [formData, setFormData] = useState<FormData>({
-    name: "",
-    email: "",
-    phone: "",
-    organization: "",
-    projectType: "",
-    message: "",
-  });
-
-  const [errors, setErrors] = useState<FormErrors>({});
-  const [isSubmitted, setIsSubmitted] = useState(false);
-
-  const validateForm = (): boolean => {
-    const newErrors: FormErrors = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = "Name is required";
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
-    }
-
-    if (!formData.phone.trim()) {
-      newErrors.phone = "Phone number is required";
-    } else if (formData.phone.replace(/\D/g, '').length < 10) {
-      newErrors.phone = "Please enter a valid phone number (at least 10 digits)";
-    }
-
-    if (!formData.organization.trim()) {
-      newErrors.organization = "Organization name is required";
-    }
-
-    if (!formData.projectType) {
-      newErrors.projectType = "Please select a project type";
-    }
-
-    if (!formData.message.trim()) {
-      newErrors.message = "Please describe your requirements";
-    } else if (formData.message.trim().length < 20) {
-      newErrors.message = "Please provide at least 20 characters";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (validateForm()) {
-      // Create mailto link with form data
-      const subject = encodeURIComponent(
-        `Enquiry from ${formData.name} - ${formData.projectType}`
-      );
-      const body = encodeURIComponent(
-        `Name: ${formData.name}\nEmail: ${formData.email}\nPhone: ${formData.phone}\nOrganization: ${formData.organization}\nProject Type: ${formData.projectType}\n\nMessage:\n${formData.message}`
-      );
-
-      // Open mailto link
-      window.location.href = `mailto:${contactInfo.generalEmail}?subject=${subject}&body=${body}`;
-
-      // Show success message
-      setIsSubmitted(true);
-
-      // Reset form after a delay
-      setTimeout(() => {
-        setFormData({
-          name: "",
-          email: "",
-          phone: "",
-          organization: "",
-          projectType: "",
-          message: "",
-        });
-        setIsSubmitted(false);
-      }, 3000);
-    }
-  };
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    // Clear error when user starts typing
-    if (errors[name as keyof FormData]) {
-      setErrors((prev) => ({ ...prev, [name]: undefined }));
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-white">
+    <>
       {/* Hero Section */}
-      <section className="section-lg section-alt">
+      <section className="hero">
         <div className="container">
-          <div className="max-w-3xl mx-auto text-center">
-            <span className="tag tag-primary mb-6">Project Enquiry</span>
-            <h1 className="mb-6">
-              Tell Us About<br />
-              <span className="text-highlight">Your Project</span>
-            </h1>
-            <p className="lead mb-8">
-              Share your vision with us, and we&rsquo;ll help bring it to life with AI-powered solutions tailored to your needs.
+          <div className="text-center max-w-screen-lg mx-auto">
+            <div className="badge mb-md">Project Enquiry</div>
+            <h1 className="hero-title">Start Your Digital Transformation</h1>
+            <p className="hero-subtitle mx-auto">
+              Tell us about your project and let's discuss how our AI-powered solutions can help you
+              achieve your goals. We typically respond within 24 hours.
             </p>
           </div>
         </div>
       </section>
 
-      {/* Form Section */}
+      {/* Enquiry Form */}
       <section className="section">
         <div className="container">
-          <div className="max-w-3xl mx-auto">
-            {isSubmitted ? (
-              <div className="card text-center" style={{ padding: '3rem' }}>
-                <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-green-100 flex items-center justify-center text-4xl" aria-hidden="true">
-                  ✓
-                </div>
-                <h2 className="mb-4 text-success" role="status" aria-live="polite">Thank You!</h2>
-                <p className="lead mb-6">
-                  Your enquiry has been submitted successfully. We&rsquo;ll get back to you within 24-48 hours.
-                </p>
-                <div className="flex flex-wrap justify-center gap-3">
-                  <Link href="/" className="btn btn-primary">
-                    Back to Home
-                  </Link>
-                  <Link href="/work" className="btn btn-secondary">
-                    View Our Work
-                  </Link>
-                </div>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="card" style={{ padding: '2.5rem' }}>
-                <div className="mb-8">
-                  <h2 className="mb-2">Project Details</h2>
-                  <p className="text-secondary text-sm">
-                    Fill out the form below and our team will reach out to you shortly.
-                  </p>
-                </div>
+          <div className="max-w-screen-md mx-auto">
+            <div className="card">
+              <form style={{ display: "flex", flexDirection: "column", gap: "var(--space-lg)" }}>
+                {/* Basic Information */}
+                <div>
+                  <h3 style={{ marginBottom: "var(--space-md)" }}>Basic Information</h3>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-md)" }}>
+                    <div className="form-group">
+                      <label htmlFor="full-name" className="form-label">
+                        Full Name *
+                      </label>
+                      <input
+                        type="text"
+                        id="full-name"
+                        name="fullName"
+                        className="form-input"
+                        placeholder="Your full name"
+                        required
+                      />
+                    </div>
 
-                <div className="space-y-6">
-                  {/* Name */}
-                  <div>
-                    <label htmlFor="name" className="block text-sm font-semibold mb-2">
-                      Full Name <span className="text-error">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      id="name"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleChange}
-                      className={`input ${errors.name ? 'border-error' : ''}`}
-                      placeholder="John Doe"
-                    />
-                    {errors.name && (
-                      <p className="text-error text-xs mt-1">{errors.name}</p>
-                    )}
-                  </div>
-
-                  {/* Email & Phone */}
-                  <div className="grid grid-2 gap-4">
-                    <div>
-                      <label htmlFor="email" className="block text-sm font-semibold mb-2">
-                        Email Address <span className="text-error">*</span>
+                    <div className="form-group">
+                      <label htmlFor="email" className="form-label">
+                        Email Address *
                       </label>
                       <input
                         type="email"
                         id="email"
                         name="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                        className={`input ${errors.email ? 'border-error' : ''}`}
-                        placeholder="john@example.com"
+                        className="form-input"
+                        placeholder="your.email@example.com"
+                        required
                       />
-                      {errors.email && (
-                        <p className="text-error text-xs mt-1">{errors.email}</p>
-                      )}
                     </div>
 
-                    <div>
-                      <label htmlFor="phone" className="block text-sm font-semibold mb-2">
-                        Phone Number <span className="text-error">*</span>
+                    <div className="form-group">
+                      <label htmlFor="phone" className="form-label">
+                        Phone Number
                       </label>
                       <input
                         type="tel"
                         id="phone"
                         name="phone"
-                        value={formData.phone}
-                        onChange={handleChange}
-                        className={`input ${errors.phone ? 'border-error' : ''}`}
-                        placeholder="+91 98765 43210"
+                        className="form-input"
+                        placeholder="+91 XXXXX XXXXX"
                       />
-                      {errors.phone && (
-                        <p className="text-error text-xs mt-1">{errors.phone}</p>
-                      )}
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="organization" className="form-label">
+                        Organization Name *
+                      </label>
+                      <input
+                        type="text"
+                        id="organization"
+                        name="organization"
+                        className="form-input"
+                        placeholder="Your company or institution name"
+                        required
+                      />
                     </div>
                   </div>
+                </div>
 
-                  {/* Organization */}
-                  <div>
-                    <label htmlFor="organization" className="block text-sm font-semibold mb-2">
-                      Organization Name <span className="text-error">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      id="organization"
-                      name="organization"
-                      value={formData.organization}
-                      onChange={handleChange}
-                      className={`input ${errors.organization ? 'border-error' : ''}`}
-                      placeholder="Your Company or Institution"
-                    />
-                    {errors.organization && (
-                      <p className="text-error text-xs mt-1">{errors.organization}</p>
-                    )}
-                  </div>
+                <hr style={{ border: "none", borderTop: "1px solid var(--color-border)" }} />
 
-                  {/* Project Type */}
-                  <div>
-                    <label htmlFor="projectType" className="block text-sm font-semibold mb-2">
-                      Project Type <span className="text-error">*</span>
-                    </label>
-                    <select
-                      id="projectType"
-                      name="projectType"
-                      value={formData.projectType}
-                      onChange={handleChange}
-                      className={`input ${errors.projectType ? 'border-error' : ''}`}
-                    >
-                      <option value="">Select a project type</option>
-                      <option value="Government">Government</option>
-                      <option value="Education">Education</option>
-                      <option value="Enterprise">Enterprise</option>
-                      <option value="Other">Other</option>
-                    </select>
-                    {errors.projectType && (
-                      <p className="text-error text-xs mt-1">{errors.projectType}</p>
-                    )}
-                  </div>
+                {/* Project Details */}
+                <div>
+                  <h3 style={{ marginBottom: "var(--space-md)" }}>Project Details</h3>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-md)" }}>
+                    <div className="form-group">
+                      <label htmlFor="project-type" className="form-label">
+                        Project Type *
+                      </label>
+                      <select
+                        id="project-type"
+                        name="projectType"
+                        className="form-input"
+                        required
+                        style={{ cursor: "pointer" }}
+                      >
+                        <option value="">Select a project type</option>
+                        <option value="government">Government Portal/Platform</option>
+                        <option value="education">Education Website/Portal</option>
+                        <option value="enterprise">Enterprise Solution</option>
+                        <option value="ecommerce">E-commerce Platform</option>
+                        <option value="healthcare">Healthcare Solution</option>
+                        <option value="community">Community Platform</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
 
-                  {/* Message */}
-                  <div>
-                    <label htmlFor="message" className="block text-sm font-semibold mb-2">
-                      Project Requirements <span className="text-error">*</span>
-                    </label>
-                    <textarea
-                      id="message"
-                      name="message"
-                      value={formData.message}
-                      onChange={handleChange}
-                      className={`input ${errors.message ? 'border-error' : ''}`}
-                      placeholder="Tell us about your project goals, timeline, and any specific requirements..."
-                      rows={6}
-                    />
-                    {errors.message && (
-                      <p className="text-error text-xs mt-1">{errors.message}</p>
-                    )}
-                    <p className="text-tertiary text-xs mt-1" aria-live="polite">
-                      {formData.message.length < 20 
-                        ? `${formData.message.length}/20 characters (minimum 20)`
-                        : `${formData.message.length} characters`
-                      }
-                    </p>
-                  </div>
+                    <div className="form-group">
+                      <label htmlFor="budget" className="form-label">
+                        Estimated Budget
+                      </label>
+                      <select
+                        id="budget"
+                        name="budget"
+                        className="form-input"
+                        style={{ cursor: "pointer" }}
+                      >
+                        <option value="">Select budget range</option>
+                        <option value="under-5">Under ₹5 Lakhs</option>
+                        <option value="5-10">₹5-10 Lakhs</option>
+                        <option value="10-25">₹10-25 Lakhs</option>
+                        <option value="25-50">₹25-50 Lakhs</option>
+                        <option value="above-50">Above ₹50 Lakhs</option>
+                        <option value="not-sure">Not Sure Yet</option>
+                      </select>
+                    </div>
 
-                  {/* Submit Button */}
-                  <div className="pt-4">
-                    <button type="submit" className="btn btn-primary btn-lg btn-full">
-                      Submit Enquiry
-                    </button>
-                    <p className="text-center text-tertiary text-xs mt-3">
-                      We typically respond within 24-48 hours
-                    </p>
+                    <div className="form-group">
+                      <label htmlFor="timeline" className="form-label">
+                        Expected Timeline
+                      </label>
+                      <select
+                        id="timeline"
+                        name="timeline"
+                        className="form-input"
+                        style={{ cursor: "pointer" }}
+                      >
+                        <option value="">Select timeline</option>
+                        <option value="urgent">Urgent (1-2 months)</option>
+                        <option value="standard">Standard (3-6 months)</option>
+                        <option value="flexible">Flexible (6+ months)</option>
+                        <option value="not-decided">Not Decided Yet</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="project-description" className="form-label">
+                        Project Description *
+                      </label>
+                      <textarea
+                        id="project-description"
+                        name="projectDescription"
+                        className="form-textarea"
+                        placeholder="Tell us about your project, goals, and challenges you're trying to solve..."
+                        required
+                        style={{ minHeight: "150px" }}
+                      ></textarea>
+                    </div>
                   </div>
                 </div>
+
+                <hr style={{ border: "none", borderTop: "1px solid var(--color-border)" }} />
+
+                {/* Services Interested In */}
+                <div>
+                  <h3 style={{ marginBottom: "var(--space-md)" }}>Services Interested In</h3>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
+                    {[
+                      "Web Application Development",
+                      "Mobile App Development",
+                      "AI Integration & Solutions",
+                      "Maya Design System Implementation",
+                      "Custom CMS Development",
+                      "E-commerce Solutions",
+                      "Portal Development",
+                      "Legacy System Modernization",
+                      "Consulting & Strategy",
+                    ].map((service, index) => (
+                      <label
+                        key={index}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "var(--space-sm)",
+                          padding: "var(--space-xs)",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          name="services"
+                          value={service}
+                          style={{ cursor: "pointer" }}
+                        />
+                        <span>{service}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <hr style={{ border: "none", borderTop: "1px solid var(--color-border)" }} />
+
+                {/* Additional Information */}
+                <div className="form-group">
+                  <label htmlFor="how-found" className="form-label">
+                    How did you hear about us?
+                  </label>
+                  <input
+                    type="text"
+                    id="how-found"
+                    name="howFound"
+                    className="form-input"
+                    placeholder="e.g., Search Engine, Referral, Social Media"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="additional-notes" className="form-label">
+                    Additional Notes
+                  </label>
+                  <textarea
+                    id="additional-notes"
+                    name="additionalNotes"
+                    className="form-textarea"
+                    placeholder="Any additional information or specific requirements..."
+                  ></textarea>
+                </div>
+
+                <button type="submit" className="btn btn-primary btn-lg" style={{ width: "100%" }}>
+                  Submit Enquiry
+                </button>
+
+                <p style={{ textAlign: "center", color: "var(--color-text-light)", fontSize: "0.875rem" }}>
+                  * Required fields. We typically respond within 24 hours.
+                </p>
               </form>
-            )}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Contact Info */}
-      <section className="section section-alt">
+      {/* Why Choose Us */}
+      <section className="section" style={{ background: "var(--color-background-alt)" }}>
         <div className="container">
-          <div className="max-w-3xl mx-auto">
-            <div className="text-center mb-8">
-              <h2 className="mb-4">Prefer to Reach Out Directly?</h2>
-              <p className="lead">
-                You can also contact us via email or phone.
-              </p>
+          <div className="max-w-screen-md mx-auto">
+            <div className="text-center mb-xl">
+              <h2 className="mb-md">Why Choose Arwin AI Solutions?</h2>
             </div>
 
-            <div className="grid grid-3 gap-4">
-              <a
-                href={`mailto:${contactInfo.generalEmail}`}
-                className="card text-center hover:shadow-md transition-shadow"
-                style={{ padding: '1.5rem' }}
-              >
-                <div className="text-2xl mb-2">✉️</div>
-                <p className="text-sm font-semibold mb-1">Email</p>
-                <p className="text-xs text-secondary">{contactInfo.generalEmail}</p>
-              </a>
+            <div className="grid grid-2">
+              <div className="card">
+                <h4 style={{ marginBottom: "var(--space-sm)" }}>14+ Years of Experience</h4>
+                <p style={{ color: "var(--color-text-muted)", marginBottom: 0 }}>
+                  Proven track record delivering 26+ projects across government, education, and
+                  enterprise sectors.
+                </p>
+              </div>
 
-              <a
-                href={`tel:${contactInfo.phone}`}
-                className="card text-center hover:shadow-md transition-shadow"
-                style={{ padding: '1.5rem' }}
-              >
-                <div className="text-2xl mb-2">📞</div>
-                <p className="text-sm font-semibold mb-1">Call</p>
-                <p className="text-xs text-secondary">{contactInfo.phone}</p>
-              </a>
+              <div className="card">
+                <h4 style={{ marginBottom: "var(--space-sm)" }}>AI-Powered Solutions</h4>
+                <p style={{ color: "var(--color-text-muted)", marginBottom: 0 }}>
+                  Cutting-edge AI capabilities integrated into every solution for smarter, more
+                  competitive results.
+                </p>
+              </div>
 
+              <div className="card">
+                <h4 style={{ marginBottom: "var(--space-sm)" }}>Maya Design System</h4>
+                <p style={{ color: "var(--color-text-muted)", marginBottom: 0 }}>
+                  Built with our robust, modular design system ensuring consistency and quality across
+                  all projects.
+                </p>
+              </div>
+
+              <div className="card">
+                <h4 style={{ marginBottom: "var(--space-sm)" }}>Goodwill-First Approach</h4>
+                <p style={{ color: "var(--color-text-muted)", marginBottom: 0 }}>
+                  We focus on solving real problems and creating genuine value, not just maximizing
+                  profit.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Alternative Contact */}
+      <section className="section">
+        <div className="container">
+          <div
+            className="card text-center"
+            style={{
+              background: "linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%)",
+              border: "none",
+              padding: "var(--space-2xl)",
+            }}
+          >
+            <h2 style={{ color: "white", marginBottom: "var(--space-md)" }}>
+              Prefer to Talk Directly?
+            </h2>
+            <p
+              style={{
+                color: "rgba(255, 255, 255, 0.9)",
+                fontSize: "1.125rem",
+                maxWidth: "700px",
+                margin: "0 auto var(--space-xl)",
+              }}
+            >
+              Feel free to reach out directly via phone or email. We're here to help!
+            </p>
+            <div className="flex gap-md justify-center">
               <Link
                 href="/contact"
-                className="card text-center hover:shadow-md transition-shadow"
-                style={{ padding: '1.5rem' }}
+                className="btn btn-lg"
+                style={{
+                  background: "white",
+                  color: "var(--color-primary)",
+                }}
               >
-                <div className="text-2xl mb-2">📍</div>
-                <p className="text-sm font-semibold mb-1">Visit</p>
-                <p className="text-xs text-secondary">View Location</p>
+                View Contact Details
               </Link>
+              <a
+                href="mailto:arwinai.official@gmail.com"
+                className="btn btn-lg"
+                style={{
+                  background: "rgba(255, 255, 255, 0.2)",
+                  color: "white",
+                  border: "2px solid white",
+                }}
+              >
+                Email Us Directly
+              </a>
             </div>
           </div>
         </div>
       </section>
-    </div>
+    </>
   );
 }
