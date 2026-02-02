@@ -28,6 +28,12 @@ export type Pillar = {
   phase: string;
   url: string;
   accent: string;
+  tagline?: string;
+  summary?: string;
+  highlights?: string[];
+  metrics?: { value: string; label: string }[];
+  ctaLabel?: string;
+  external?: boolean;
 };
 
 export type Project = {
@@ -48,7 +54,7 @@ export const heroStats: HeroStat[] = [
   {
     label: "Founded",
     value: "2011",
-    helper: "14 years delivering civic, education, and enterprise solutions",
+    helper: "14 years of civic, education, and enterprise launches",
   },
   {
     label: "AI stack",
@@ -62,6 +68,43 @@ export const heroStats: HeroStat[] = [
   },
 ];
 
+export const heroPlaybook = [
+  {
+    title: "Clarity sprints",
+    copy: "Stakeholder goals → AI use cases in under 10 days.",
+  },
+  {
+    title: "Design guardrails",
+    copy: "Maya tokens keep accessibility, speed, and truth in sync.",
+  },
+  {
+    title: "AI in production",
+    copy: "Pods own copilots, telemetry, and adoption rituals post launch.",
+  },
+];
+
+export const marqueeClients = [
+  "Govt. of Telangana",
+  "NTPC",
+  "Indian Railways",
+  "Kendriya Vidyalayas",
+  "TTD Board",
+  "Vidyabharati SVP",
+  "Lion's Club",
+  "Kapil Group",
+];
+
+export const ctaContent = {
+  eyebrow: "Next step",
+  title: "Brief us once. We’ll choreograph the pod.",
+  copy:
+    "Share the audience, stakes, and timeline. We’ll align JobReady.ai pilots, Maya governance, and WTAI enablement so the next launch stays focused and measurable.",
+  primaryLabel: "Start a strategy call",
+  primaryHref: "mailto:hello@arwinaisolutions.com",
+  secondaryLabel: "Meet the team",
+  secondaryHref: "/about",
+};
+
 export const pillars: Pillar[] = [
   {
     name: "WTAI",
@@ -71,6 +114,18 @@ export const pillars: Pillar[] = [
       "AI learning platform democratizing education through structured cohorts, hands-on labs, and practitioner-led sessions.",
     url: "https://wtai.in/",
     accent: "Community & Learning",
+    tagline: "Community + cohorts",
+    summary: "Structured cohorts, labs, and AMAs help teams practise AI responsibly.",
+    highlights: [
+      "Hands-on labs for GenAI, ASR, and CV",
+      "Peer accountability and office hours",
+    ],
+    metrics: [
+      { value: "Phase 1", label: "resource hub live" },
+      { value: "3", label: "program formats" },
+    ],
+    ctaLabel: "Enter wtai.in",
+    external: true,
   },
   {
     name: "Maya Design System",
@@ -80,6 +135,18 @@ export const pillars: Pillar[] = [
       "Token-driven design system ensuring consistent, accessible experiences across all Arwin AI products and client engagements.",
     url: "https://www.npmjs.com/package/@maya-design-system/design-system",
     accent: "Design Language",
+    tagline: "Design governance",
+    summary: "Semantic tokens and review rituals keep accessibility, speed, and honesty intact.",
+    highlights: [
+      "White-label tokens per client",
+      "Accessibility + audit kits",
+    ],
+    metrics: [
+      { value: "v2.0", label: "current release" },
+      { value: "7+", label: "touchpoints per rollout" },
+    ],
+    ctaLabel: "Review Maya on npm",
+    external: true,
   },
   {
     name: "JobReady.ai",
@@ -89,6 +156,17 @@ export const pillars: Pillar[] = [
       "AI co-pilot for career acceleration: resume intelligence, personal branding, interview prep, and automated job search.",
     url: "/jobready",
     accent: "Career Platform",
+    tagline: "AI career workspace",
+    summary: "Copilots for resumes, branding, and outreach unify career workflows.",
+    highlights: [
+      "Resume intelligence scoring",
+      "Interview rehearsal + pipelines",
+    ],
+    metrics: [
+      { value: "4", label: "copilots in prototype" },
+      { value: "Phase 1", label: "orchestration builds" },
+    ],
+    ctaLabel: "Follow the build",
   },
 ];
 
