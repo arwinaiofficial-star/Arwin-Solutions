@@ -3,10 +3,8 @@
 /* ========================================
    Arwin AI Solutions - Fresh Design System
    Clean, Professional, Impactful
+   Built with Maya Design System principles
    ======================================== */
-
-/* Import Maya Design System */
-@import "@maya-design-system/design-system/css";
 
 /* ===== DESIGN TOKENS ===== */
 :root {
@@ -385,6 +383,7 @@ a:hover {
   font-weight: 800;
   line-height: 1.1;
   margin-bottom: var(--space-md);
+  color: var(--color-primary);
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
