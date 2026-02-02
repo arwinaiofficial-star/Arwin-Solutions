@@ -115,7 +115,7 @@ export default function ContactPage() {
           <div className="grid grid-3 gap-6">
             {teamMembers.map((member, index) => (
               <div key={index} className="card text-center" style={{ padding: '2rem' }}>
-                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center text-2xl font-semibold text-gray-600">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center text-2xl font-semibold text-gray-600" aria-label={member.name}>
                   {getInitials(member.name)}
                 </div>
                 <h3 className="text-lg font-semibold mb-1">{member.name}</h3>

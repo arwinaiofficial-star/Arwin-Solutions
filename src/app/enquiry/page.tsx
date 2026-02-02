@@ -45,8 +45,8 @@ export default function EnquiryPage() {
 
     if (!formData.phone.trim()) {
       newErrors.phone = "Phone number is required";
-    } else if (!/^[\d\s+()-]{10,}$/.test(formData.phone)) {
-      newErrors.phone = "Please enter a valid phone number";
+    } else if (formData.phone.replace(/\D/g, '').length < 10) {
+      newErrors.phone = "Please enter a valid phone number (at least 10 digits)";
     }
 
     if (!formData.organization.trim()) {
@@ -135,10 +135,10 @@ export default function EnquiryPage() {
           <div className="max-w-3xl mx-auto">
             {isSubmitted ? (
               <div className="card text-center" style={{ padding: '3rem' }}>
-                <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-green-100 flex items-center justify-center text-4xl">
+                <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-green-100 flex items-center justify-center text-4xl" aria-hidden="true">
                   ✓
                 </div>
-                <h2 className="mb-4 text-success">Thank You!</h2>
+                <h2 className="mb-4 text-success" role="status" aria-live="polite">Thank You!</h2>
                 <p className="lead mb-6">
                   Your enquiry has been submitted successfully. We&rsquo;ll get back to you within 24-48 hours.
                 </p>
@@ -278,7 +278,7 @@ export default function EnquiryPage() {
                     {errors.message && (
                       <p className="text-error text-xs mt-1">{errors.message}</p>
                     )}
-                    <p className="text-tertiary text-xs mt-1">
+                    <p className="text-tertiary text-xs mt-1" aria-live="polite">
                       {formData.message.length < 20 
                         ? `${formData.message.length}/20 characters (minimum 20)`
                         : `${formData.message.length} characters`
