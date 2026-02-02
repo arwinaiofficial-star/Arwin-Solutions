@@ -16,8 +16,8 @@ const footerNav = {
   ],
   company: [
     { name: 'About', href: '/about' },
-    { name: 'Solutions', href: '/solutions' },
-    { name: 'Contact', href: 'mailto:hello@arwinaisolutions.com' },
+    { name: 'Contact', href: '/contact' },
+    { name: 'Enquiry', href: '/enquiry' },
     { name: 'Careers / Collaborations', href: 'mailto:hello@arwinaisolutions.com?subject=Collaboration' },
   ],
 };
