@@ -116,7 +116,7 @@ export default function HomePage() {
           <div
             className="card text-center"
             style={{
-              background: "linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%)",
+              background: "var(--color-primary)",
               border: "none",
               padding: "var(--space-2xl)",
             }}
@@ -127,7 +127,7 @@ export default function HomePage() {
             <p
               style={{
                 color: "rgba(255, 255, 255, 0.9)",
-                fontSize: "1.125rem",
+                fontSize: "clamp(1rem, 2vw, 1.125rem)",
                 maxWidth: "700px",
                 margin: "0 auto var(--space-xl)",
               }}
@@ -136,7 +136,7 @@ export default function HomePage() {
               From government portals to educational platforms and enterprise solutions, we've
               delivered excellence for 14+ years.
             </p>
-            <div className="flex gap-md justify-center">
+            <div className="flex gap-md justify-center" style={{ flexWrap: "wrap" }}>
               <Link
                 href="/contact"
                 className="btn btn-lg"

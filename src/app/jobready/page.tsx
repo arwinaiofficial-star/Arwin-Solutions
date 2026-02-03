@@ -165,7 +165,7 @@ export default function JobReadyPage() {
             <div
               className="card"
               style={{
-                background: "linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-accent-light) 100%)",
+                background: "var(--color-primary)",
                 border: "none",
                 color: "white",
               }}
@@ -313,7 +313,7 @@ export default function JobReadyPage() {
           <div
             className="card text-center"
             style={{
-              background: "linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%)",
+              background: "var(--color-primary)",
               border: "none",
               padding: "var(--space-2xl)",
             }}
@@ -324,7 +324,7 @@ export default function JobReadyPage() {
             <p
               style={{
                 color: "rgba(255, 255, 255, 0.9)",
-                fontSize: "1.125rem",
+                fontSize: "clamp(1rem, 2vw, 1.125rem)",
                 maxWidth: "700px",
                 margin: "0 auto var(--space-xl)",
               }}
@@ -332,7 +332,7 @@ export default function JobReadyPage() {
               Get in touch with our team to learn more about how JobReady.ai can help you find your
               next opportunity.
             </p>
-            <div className="flex gap-md justify-center">
+            <div className="flex gap-md justify-center" style={{ flexWrap: "wrap" }}>
               <Link
                 href="/contact"
                 className="btn btn-lg"
