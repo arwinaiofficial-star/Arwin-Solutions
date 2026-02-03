@@ -72,14 +72,14 @@ export const homeContent = {
     {
       name: "JobReady.ai",
       tagline: "AI Job Application Platform",
-      description: "Phase 1 complete: Users fill out a form, and we pull relevant job openings from job platforms. Future: Automatically apply for jobs on your behalf.",
+      description: "Phase 1 is live: Users fill out a form, and AI searches multiple job platforms in real-time. Future: Automatically apply for jobs on your behalf.",
       url: "/jobready",
       external: false,
-      phase: "Phase 1 Complete",
+      phase: "Phase 1 Live",
       features: [
-        "Automated job search",
+        "Real-time job search",
         "Multi-platform integration",
-        "One-click redirects",
+        "AI-ranked results",
         "Future: Agentic AI auto-apply",
       ],
     },
@@ -330,18 +330,18 @@ export const jobreadyContent = {
   hero: {
     title: "JobReady.ai",
     tagline: "Simplifying Job Applications with AI",
-    description: "Fill out a form once, and let AI find and connect you to relevant job opportunities. Phase 1 is complete, with Phase 2 bringing automated applications.",
+    description: "Fill out a form once, and let AI find relevant job opportunities across multiple platforms. Phase 1 is live with real-time job search powered by AI.",
   },
 
   currentPhase: {
     phase: "Phase 1",
-    status: "Complete",
+    status: "Live",
     features: [
-      "Simple form submission",
-      "AI-powered job matching",
-      "Multi-platform job search",
-      "Direct redirects to job listings",
-      "Personalized recommendations",
+      "Simple profile form submission",
+      "AI-powered skill matching",
+      "Real-time multi-platform job search (Remotive, Arbeitnow)",
+      "Relevance-scored job recommendations",
+      "Direct links to apply on job platforms",
     ],
   },
 
@@ -352,9 +352,9 @@ export const jobreadyContent = {
       "Agentic AI implementation",
       "MCP (Model Context Protocol) integration",
       "Automated job applications",
-      "Application tracking",
+      "Application tracking dashboard",
       "Interview scheduling",
-      "All-in-one platform experience",
+      "Resume optimization",
     ],
   },
 
@@ -367,12 +367,12 @@ export const jobreadyContent = {
     {
       step: 2,
       title: "AI Matches Jobs",
-      description: "Our AI scans multiple job platforms to find opportunities matching your profile.",
+      description: "Our AI scans Remotive, Arbeitnow, and other platforms to find matching opportunities in real-time.",
     },
     {
       step: 3,
-      title: "Get Redirected",
-      description: "Click to be redirected to the job platform where you can apply directly.",
+      title: "Browse & Apply",
+      description: "Review AI-ranked job matches and click through to apply directly on the original platforms.",
     },
     {
       step: 4,

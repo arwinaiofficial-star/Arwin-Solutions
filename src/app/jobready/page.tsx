@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { jobreadyContent } from "@/lib/content";
+import JobSearchClient from "@/components/jobready/JobSearchClient";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -15,14 +16,16 @@ export default function JobReadyPage() {
       <section className="hero">
         <div className="container">
           <div className="text-center max-w-screen-lg mx-auto">
-            {/* <div className="badge badge-accent mb-md">{jobreadyContent.currentPhase.phase} {jobreadyContent.currentPhase.status}</div> */}
+            <div className="badge badge-success mb-md">
+              {jobreadyContent.currentPhase.phase} - Live & Working
+            </div>
             <h1 className="hero-title">{jobreadyContent.hero.title}</h1>
             <p className="hero-subtitle mx-auto mb-xl">
               {jobreadyContent.hero.description}
             </p>
             <div className="flex gap-md justify-center">
               <a href="#get-started" className="btn btn-primary btn-lg">
-                Get Started
+                Find Jobs Now
               </a>
               <a href="#how-it-works" className="btn btn-outline btn-lg">
                 How It Works
@@ -40,7 +43,7 @@ export default function JobReadyPage() {
               <div className="badge badge-success mb-md">
                 {jobreadyContent.currentPhase.phase} - {jobreadyContent.currentPhase.status}
               </div>
-              <h2 className="mb-md">What's Available Now</h2>
+              <h2 className="mb-md">What&apos;s Available Now</h2>
               <p className="text-muted" style={{ fontSize: "1.125rem" }}>
                 Our AI-powered job matching platform is live and helping job seekers find
                 opportunities across multiple platforms.
@@ -104,7 +107,7 @@ export default function JobReadyPage() {
           </div>
 
           <div className="grid grid-2">
-            {jobreadyContent.howItWorks.map((step, index) => (
+            {jobreadyContent.howItWorks.slice(0, 3).map((step, index) => (
               <div
                 key={index}
                 className="card"
@@ -148,17 +151,34 @@ export default function JobReadyPage() {
         </div>
       </section>
 
+      {/* Get Started - Job Search */}
+      <section id="get-started" className="section">
+        <div className="container">
+          <div className="max-w-screen-md mx-auto">
+            <div className="text-center mb-xl">
+              <h2 className="mb-md">Find Your Next Opportunity</h2>
+              <p className="text-muted" style={{ fontSize: "1.125rem" }}>
+                Enter your skills and preferences below. Our AI will search across multiple job platforms
+                to find the best matches for you.
+              </p>
+            </div>
+
+            <JobSearchClient />
+          </div>
+        </div>
+      </section>
+
       {/* Future Phase */}
-      <section className="section">
+      <section className="section" style={{ background: "var(--color-background-alt)" }}>
         <div className="container">
           <div className="max-w-screen-md mx-auto">
             <div className="text-center mb-xl">
               <div className="badge mb-md">
                 {jobreadyContent.futurePhase.phase} - {jobreadyContent.futurePhase.status}
               </div>
-              <h2 className="mb-md">What's Coming Next</h2>
+              <h2 className="mb-md">What&apos;s Coming Next</h2>
               <p className="text-muted" style={{ fontSize: "1.125rem" }}>
-                We're building the future of job applications with agentic AI and advanced automation.
+                We&apos;re building the future of job applications with agentic AI and advanced automation.
               </p>
             </div>
 
@@ -206,102 +226,6 @@ export default function JobReadyPage() {
               >
                 Fill the form once. Let AI do the rest. No more repetitive applications.
               </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Get Started */}
-      <section id="get-started" className="section" style={{ background: "var(--color-background-alt)" }}>
-        <div className="container">
-          <div className="max-w-screen-md mx-auto">
-            <div className="text-center mb-xl">
-              <h2 className="mb-md">Ready to Get Started?</h2>
-              <p className="text-muted" style={{ fontSize: "1.125rem" }}>
-                Sign up now and let our AI help you find your next opportunity.
-              </p>
-            </div>
-
-            <div className="card">
-              <form style={{ display: "flex", flexDirection: "column", gap: "var(--space-md)" }}>
-                <div className="form-group">
-                  <label htmlFor="name" className="form-label">
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    id="name"
-                    name="name"
-                    className="form-input"
-                    placeholder="Enter your full name"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="email" className="form-label">
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    className="form-input"
-                    placeholder="your.email@example.com"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="skills" className="form-label">
-                    Key Skills
-                  </label>
-                  <input
-                    type="text"
-                    id="skills"
-                    name="skills"
-                    className="form-input"
-                    placeholder="e.g., React, Node.js, Python"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="experience" className="form-label">
-                    Years of Experience
-                  </label>
-                  <input
-                    type="number"
-                    id="experience"
-                    name="experience"
-                    className="form-input"
-                    placeholder="0"
-                    min="0"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="preferences" className="form-label">
-                    Job Preferences
-                  </label>
-                  <textarea
-                    id="preferences"
-                    name="preferences"
-                    className="form-textarea"
-                    placeholder="Tell us about your ideal job (location, role type, etc.)"
-                    required
-                  ></textarea>
-                </div>
-
-                <button type="submit" className="btn btn-primary btn-lg" style={{ width: "100%" }}>
-                  Find Jobs Now
-                </button>
-
-                <p style={{ textAlign: "center", color: "var(--color-text-light)", fontSize: "0.875rem" }}>
-                  By submitting this form, you'll receive personalized job matches from our AI.
-                </p>
-              </form>
             </div>
           </div>
         </div>
