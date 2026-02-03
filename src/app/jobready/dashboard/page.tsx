@@ -13,7 +13,6 @@ import {
   SearchIcon,
   DocumentIcon,
   HomeIcon,
-  BriefcaseIcon,
   LocationIcon,
   ClockIcon,
   CheckIcon,

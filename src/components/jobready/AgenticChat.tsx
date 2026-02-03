@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useAuth, GeneratedCV, WorkExperience, Education } from "@/context/AuthContext";
-import { SendIcon, BotIcon, UserIcon, DocumentIcon, CheckIcon, DownloadIcon, EyeIcon } from "@/components/icons/Icons";
+import { SendIcon, BotIcon, UserIcon, CheckIcon, EyeIcon } from "@/components/icons/Icons";
 
 interface Message {
   id: string;
@@ -136,7 +136,19 @@ const QUESTIONNAIRE_STEPS = [
 
 export default function AgenticChat() {
   const { user, saveGeneratedCV, updateProfile } = useAuth();
-  const [messages, setMessages] = useState<Message[]>([]);
+  
+  // Initialize messages with welcome message (lazy initialization)
+  const getInitialMessages = (): Message[] => {
+    const welcomeStep = QUESTIONNAIRE_STEPS[0];
+    return [{
+      id: "welcome",
+      role: "bot",
+      content: welcomeStep.question,
+      options: welcomeStep.options,
+    }];
+  };
+  
+  const [messages, setMessages] = useState<Message[]>(getInitialMessages);
   const [currentStep, setCurrentStep] = useState(0);
   const [inputValue, setInputValue] = useState("");
   const [formData, setFormData] = useState<CVFormData>({
@@ -167,19 +179,6 @@ export default function AgenticChat() {
   const [isComplete, setIsComplete] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
-
-  // Initialize with welcome message
-  useEffect(() => {
-    if (messages.length === 0) {
-      const welcomeStep = QUESTIONNAIRE_STEPS[0];
-      setMessages([{
-        id: "welcome",
-        role: "bot",
-        content: welcomeStep.question,
-        options: welcomeStep.options,
-      }]);
-    }
-  }, [messages.length]);
 
   // Auto-scroll to bottom
   useEffect(() => {

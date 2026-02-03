@@ -81,24 +81,32 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [applications, setApplications] = useState<Application[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+// Helper to safely get from localStorage (only on client)
+function getStoredUser(): UserProfile | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = localStorage.getItem("jobready_user");
+    return stored ? JSON.parse(stored) : null;
+  } catch {
+    return null;
+  }
+}
 
-  // Load user from localStorage on mount
-  useEffect(() => {
-    const storedUser = localStorage.getItem("jobready_user");
-    const storedApps = localStorage.getItem("jobready_applications");
-    
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    if (storedApps) {
-      setApplications(JSON.parse(storedApps));
-    }
-    setIsLoading(false);
-  }, []);
+function getStoredApplications(): Application[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const stored = localStorage.getItem("jobready_applications");
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  // Use lazy initialization to avoid useEffect setState issues
+  const [user, setUser] = useState<UserProfile | null>(() => getStoredUser());
+  const [applications, setApplications] = useState<Application[]>(() => getStoredApplications());
+  const [isLoading, setIsLoading] = useState(false);
 
   // Persist user to localStorage
   useEffect(() => {
