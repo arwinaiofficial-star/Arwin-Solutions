@@ -222,7 +222,7 @@ export default function WorkPage() {
                   width: "60px",
                   height: "60px",
                   borderRadius: "var(--radius-md)",
-                  background: "linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%)",
+                  background: "var(--color-primary)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -268,7 +268,7 @@ export default function WorkPage() {
                   width: "60px",
                   height: "60px",
                   borderRadius: "var(--radius-md)",
-                  background: "linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-dark) 100%)",
+                  background: "var(--color-accent)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -314,7 +314,7 @@ export default function WorkPage() {
                   width: "60px",
                   height: "60px",
                   borderRadius: "var(--radius-md)",
-                  background: "linear-gradient(135deg, var(--color-success) 0%, #059669 100%)",
+                  background: "var(--color-success)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -353,7 +353,7 @@ export default function WorkPage() {
           <div
             className="card text-center"
             style={{
-              background: "linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%)",
+              background: "var(--color-primary)",
               border: "none",
               padding: "var(--space-2xl)",
             }}
@@ -364,7 +364,7 @@ export default function WorkPage() {
             <p
               style={{
                 color: "rgba(255, 255, 255, 0.9)",
-                fontSize: "1.125rem",
+                fontSize: "clamp(1rem, 2vw, 1.125rem)",
                 maxWidth: "700px",
                 margin: "0 auto var(--space-xl)",
               }}
@@ -372,7 +372,7 @@ export default function WorkPage() {
               Let's discuss how our proven expertise and AI-powered solutions can transform your
               organization.
             </p>
-            <div className="flex gap-md justify-center">
+            <div className="flex gap-md justify-center" style={{ flexWrap: "wrap" }}>
               <Link
                 href="/enquiry"
                 className="btn btn-lg"

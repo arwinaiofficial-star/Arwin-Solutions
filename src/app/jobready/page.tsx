@@ -258,7 +258,7 @@ export default function JobReadyPage() {
           <div
             className="card text-center"
             style={{
-              background: "linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%)",
+              background: "var(--color-primary)",
               border: "none",
               padding: "var(--space-2xl)",
             }}
@@ -269,7 +269,7 @@ export default function JobReadyPage() {
             <p
               style={{
                 color: "rgba(255, 255, 255, 0.9)",
-                fontSize: "1.125rem",
+                fontSize: "clamp(1rem, 2vw, 1.125rem)",
                 maxWidth: "700px",
                 margin: "0 auto var(--space-xl)",
               }}
