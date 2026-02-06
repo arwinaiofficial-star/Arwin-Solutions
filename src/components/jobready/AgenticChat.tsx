@@ -137,6 +137,11 @@ const QUESTIONNAIRE_STEPS = [
   },
 ];
 
+// Utility function to parse comma-separated skills
+const parseSkillsString = (value: string): string[] => {
+  return value.split(",").map(s => s.trim()).filter(s => s.length > 0);
+};
+
 interface AgenticChatProps {
   onNavigateToSearch?: () => void;
 }
@@ -242,7 +247,7 @@ export default function AgenticChat({ onNavigateToSearch }: AgenticChatProps) {
     // Update the form data based on the field
     if (field) {
       if (field === "skills") {
-        const skillsArray = editValue.split(",").map(s => s.trim()).filter(s => s);
+        const skillsArray = parseSkillsString(editValue);
         setFormData(prev => ({ ...prev, skills: skillsArray }));
       } else {
         setFormData(prev => ({ ...prev, [field]: editValue }));
@@ -399,7 +404,7 @@ export default function AgenticChat({ onNavigateToSearch }: AgenticChatProps) {
     // Handle regular fields
     if (step?.field) {
       if (step.field === "skills") {
-        const skillsArray = value.split(",").map(s => s.trim()).filter(s => s);
+        const skillsArray = parseSkillsString(value);
         setFormData(prev => ({ ...prev, skills: skillsArray }));
       } else if (step.field === "summary") {
         const finalSummary = value.toLowerCase() === "auto" ? generateAutoSummary() : value;
@@ -635,18 +640,32 @@ export default function AgenticChat({ onNavigateToSearch }: AgenticChatProps) {
                   background: "var(--color-surface-highlight)",
                   border: "2px solid var(--color-primary)",
                 }}>
-                  <input
-                    type="text"
-                    value={editValue}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    className="form-input"
-                    style={{ marginBottom: "var(--space-xs)" }}
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleSaveEdit(msg.id, msg.field);
-                      if (e.key === "Escape") handleCancelEdit();
-                    }}
-                  />
+                  {/* Use textarea for fields that originally used textarea (skills, summary) */}
+                  {msg.field === "skills" || msg.field === "summary" || msg.inputType === "textarea" ? (
+                    <textarea
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      className="form-textarea"
+                      style={{ marginBottom: "var(--space-xs)", minHeight: "60px", resize: "none" }}
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") handleCancelEdit();
+                      }}
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      className="form-input"
+                      style={{ marginBottom: "var(--space-xs)" }}
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSaveEdit(msg.id, msg.field);
+                        if (e.key === "Escape") handleCancelEdit();
+                      }}
+                    />
+                  )}
                   <div style={{ display: "flex", gap: "var(--space-xs)" }}>
                     <button 
                       onClick={() => handleSaveEdit(msg.id, msg.field)}

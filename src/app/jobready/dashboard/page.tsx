@@ -593,7 +593,32 @@ function JobSearchWithCV({ user }: JobSearchWithCVProps) {
   const handleApply = async (job: Job) => {
     setApplyingTo(job.id);
     
-    // Simulate application submission (in production, this would call a real API)
+    /**
+     * DEMO/PROTOTYPE MODE: Application Simulation
+     * 
+     * In production, this would be replaced with a real API call:
+     * 
+     * 1. API Endpoint: POST /api/applications
+     * 2. Required Payload:
+     *    {
+     *      jobId: string,
+     *      jobDetails: { title, company, location, salary, url },
+     *      cvData: user.cvData (full CV object),
+     *      userProfile: { name, email, phone },
+     *      appliedAt: ISO timestamp
+     *    }
+     * 3. Error Handling:
+     *    - Handle network failures with retry logic
+     *    - Validate CV exists before submission
+     *    - Handle duplicate application attempts
+     *    - Show success/error notifications
+     * 4. Integration Options:
+     *    - Direct integration with job portal APIs (LinkedIn, Naukri, etc.)
+     *    - Email-based application with CV attachment
+     *    - ATS integration via API
+     * 
+     * Current simulation waits 1.5s to mimic network latency
+     */
     await new Promise(resolve => setTimeout(resolve, 1500));
     
     addApplication({
