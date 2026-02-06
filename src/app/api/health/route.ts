@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import packageJson from "../../../../package.json";
 
 interface HealthResponse {
   status: "healthy" | "degraded" | "unhealthy";
@@ -23,7 +24,7 @@ export async function GET(): Promise<NextResponse<HealthResponse>> {
   const response: HealthResponse = {
     status: "healthy",
     timestamp: new Date().toISOString(),
-    version: process.env.npm_package_version || "1.0.0",
+    version: packageJson.version,
     uptime: uptimeSeconds,
     checks: {
       api: "ok",

@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
 import logger from "@/lib/logger";
 
+// API input validation constants
+const MAX_SKILL_LENGTH = 50;
+const MAX_SKILLS_COUNT = 20;
+
 interface Job {
   id: string;
   title: string;
@@ -452,8 +456,8 @@ export async function POST(request: NextRequest) {
     const skillArray = skills
       .split(",")
       .map((s: string) => s.trim())
-      .filter((s: string) => s.length > 0 && s.length <= 50) // Max 50 chars per skill
-      .slice(0, 20); // Max 20 skills
+      .filter((s: string) => s.length > 0 && s.length <= MAX_SKILL_LENGTH)
+      .slice(0, MAX_SKILLS_COUNT);
 
     if (skillArray.length === 0) {
       return NextResponse.json(

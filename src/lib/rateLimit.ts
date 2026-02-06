@@ -1,6 +1,14 @@
 /**
  * Simple in-memory rate limiter for API protection
- * In production, consider using Redis for distributed rate limiting
+ * 
+ * NOTE: This is a basic in-memory implementation suitable for single-instance deployments.
+ * For production deployments on serverless platforms (Vercel, AWS Lambda) or multi-instance
+ * environments, replace with Redis-based rate limiting using packages like:
+ * - @upstash/ratelimit (for serverless)
+ * - rate-limiter-flexible with Redis adapter
+ * 
+ * The cleanup interval below is safe for Node.js servers but may not run reliably
+ * in serverless environments. Redis TTL handles expiration automatically.
  */
 
 interface RateLimitEntry {
@@ -8,19 +16,22 @@ interface RateLimitEntry {
   resetTime: number;
 }
 
-// In-memory store for rate limiting (use Redis in production for multi-instance)
+// In-memory store for rate limiting
 const rateLimitStore = new Map<string, RateLimitEntry>();
 
-// Clean up expired entries periodically
-const CLEANUP_INTERVAL_MS = 60000; // 1 minute
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of rateLimitStore.entries()) {
-    if (entry.resetTime < now) {
-      rateLimitStore.delete(key);
+// Clean up expired entries periodically (only effective in long-running Node.js processes)
+// In serverless environments, each function invocation may have a fresh store anyway
+const CLEANUP_INTERVAL_MS = 60000;
+if (typeof global !== "undefined" && process.env.NODE_ENV !== "test") {
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of rateLimitStore.entries()) {
+      if (entry.resetTime < now) {
+        rateLimitStore.delete(key);
+      }
     }
-  }
-}, CLEANUP_INTERVAL_MS);
+  }, CLEANUP_INTERVAL_MS);
+}
 
 interface RateLimitConfig {
   maxRequests: number;

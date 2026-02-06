@@ -70,9 +70,9 @@ export const logger = {
   warn: (message: string, context?: Record<string, unknown>) => log("warn", message, context),
   error: (message: string, context?: Record<string, unknown>) => log("error", message, context),
   
-  // Specialized logging for API requests
-  apiRequest: (method: string, path: string, duration: number, status: number) => {
-    log("info", `API ${method} ${path}`, { duration: `${duration}ms`, status });
+  // Specialized logging for API requests (durationMs as number for easier aggregation)
+  apiRequest: (method: string, path: string, durationMs: number, status: number) => {
+    log("info", `API ${method} ${path}`, { durationMs, status });
   },
   
   // Log job search operations
