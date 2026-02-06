@@ -94,7 +94,20 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div style={{ display: "flex", minHeight: "calc(100vh - 80px)" }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 80px)" }}>
+      {/* Demo Banner */}
+      <div style={{
+        background: "linear-gradient(90deg, var(--color-warning) 0%, #f59e0b 100%)",
+        color: "#1a1a2e",
+        padding: "var(--space-sm) var(--space-md)",
+        textAlign: "center",
+        fontSize: "0.875rem",
+        fontWeight: 500,
+      }}>
+        🚧 <strong>Demo Mode:</strong> Data is stored in your browser (localStorage). For production, a database backend is needed.
+      </div>
+      
+      <div style={{ display: "flex", flex: 1 }}>
       {/* Mobile Menu Button */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -293,7 +306,7 @@ export default function DashboardPage() {
                 Chat with our AI to create your ATS-friendly CV and find the perfect job
               </p>
             </div>
-            <AgenticChat />
+            <AgenticChat onNavigateToSearch={() => setActiveTab("search")} />
           </div>
         )}
 
@@ -318,11 +331,7 @@ export default function DashboardPage() {
                 </button>
               </div>
             ) : (
-              <div className="card">
-                <p style={{ textAlign: "center", color: "var(--color-text-muted)" }}>
-                  Job search functionality coming soon! Your CV is ready for applications.
-                </p>
-              </div>
+              <JobSearchWithCV user={user} />
             )}
           </div>
         )}
@@ -501,6 +510,332 @@ export default function DashboardPage() {
           </div>
         )}
       </main>
+      </div>
+    </div>
+  );
+}
+
+// Job Search Component with CV integration
+interface JobSearchWithCVProps {
+  user: {
+    cvData?: {
+      skills: string[];
+      personalInfo: {
+        name: string;
+        email: string;
+        phone: string;
+        location: string;
+      };
+    } | null;
+    name: string;
+    email: string;
+  };
+}
+
+interface Job {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  description: string;
+  url: string;
+  source: string;
+  salary?: string;
+  jobType?: string;
+  postedAt?: string;
+  tags?: string[];
+  relevanceScore: number;
+}
+
+function JobSearchWithCV({ user }: JobSearchWithCVProps) {
+  const { addApplication } = useAuth();
+  const [isSearching, setIsSearching] = useState(false);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [applyingTo, setApplyingTo] = useState<string | null>(null);
+  const [appliedJobs, setAppliedJobs] = useState<Set<string>>(new Set());
+  const [searchError, setSearchError] = useState<string | null>(null);
+
+  // Pre-fill search with user's skills
+  const userSkills = user.cvData?.skills?.join(", ") || "";
+  const [skillsInput, setSkillsInput] = useState(userSkills);
+
+  const handleSearch = async () => {
+    if (!skillsInput.trim()) return;
+    
+    setIsSearching(true);
+    setSearchError(null);
+    
+    try {
+      const response = await fetch("/api/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          skills: skillsInput,
+          preferences: user.cvData?.personalInfo?.location || "",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to search jobs");
+      }
+
+      const data = await response.json();
+      setJobs(data.jobs || []);
+      setHasSearched(true);
+    } catch (error) {
+      setSearchError(error instanceof Error ? error.message : "Failed to search jobs");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleApply = async (job: Job) => {
+    setApplyingTo(job.id);
+    
+    /**
+     * DEMO/PROTOTYPE MODE: Application Simulation
+     * 
+     * In production, this would be replaced with a real API call:
+     * 
+     * 1. API Endpoint: POST /api/applications
+     * 2. Required Payload:
+     *    {
+     *      jobId: string,
+     *      jobDetails: { title, company, location, salary, url },
+     *      cvData: user.cvData (full CV object),
+     *      userProfile: { name, email, phone },
+     *      appliedAt: ISO timestamp
+     *    }
+     * 3. Error Handling:
+     *    - Handle network failures with retry logic
+     *    - Validate CV exists before submission
+     *    - Handle duplicate application attempts
+     *    - Show success/error notifications
+     * 4. Integration Options:
+     *    - Direct integration with job portal APIs (LinkedIn, Naukri, etc.)
+     *    - Email-based application with CV attachment
+     *    - ATS integration via API
+     * 
+     * Current simulation waits 1.5s to mimic network latency
+     */
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    addApplication({
+      jobId: job.id,
+      jobTitle: job.title,
+      company: job.company,
+      location: job.location,
+      salary: job.salary,
+      status: "submitted",
+      cvUsed: user.cvData?.personalInfo?.name || "Generated CV",
+    });
+    
+    setAppliedJobs(prev => new Set([...prev, job.id]));
+    setApplyingTo(null);
+  };
+
+  return (
+    <div>
+      {/* CV Summary Card */}
+      <div className="card" style={{ 
+        marginBottom: "var(--space-lg)", 
+        background: "var(--color-surface-elevated)",
+        borderLeft: "4px solid var(--color-success)",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-sm)", marginBottom: "var(--space-sm)" }}>
+          <CheckIcon size={20} color="var(--color-success)" />
+          <h4 style={{ margin: 0 }}>Your CV is Ready</h4>
+        </div>
+        <p style={{ color: "var(--color-text-muted)", marginBottom: "var(--space-sm)", fontSize: "0.875rem" }}>
+          {user.cvData?.personalInfo?.name} • {user.cvData?.personalInfo?.email}
+        </p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-xs)" }}>
+          {user.cvData?.skills?.slice(0, 5).map((skill, idx) => (
+            <span key={idx} style={{
+              background: "var(--color-surface-highlight)",
+              padding: "4px 8px",
+              borderRadius: "var(--radius-sm)",
+              fontSize: "0.75rem",
+            }}>
+              {skill}
+            </span>
+          ))}
+          {(user.cvData?.skills?.length || 0) > 5 && (
+            <span style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>
+              +{(user.cvData?.skills?.length || 0) - 5} more
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Search Form */}
+      <div className="card" style={{ marginBottom: "var(--space-lg)" }}>
+        <h4 style={{ marginBottom: "var(--space-md)" }}>🔍 Search for Jobs</h4>
+        <div style={{ display: "flex", gap: "var(--space-sm)", flexWrap: "wrap" }}>
+          <input
+            type="text"
+            value={skillsInput}
+            onChange={(e) => setSkillsInput(e.target.value)}
+            placeholder="Enter skills (e.g., React, Node.js, Python)"
+            className="form-input"
+            style={{ flex: 1, minWidth: "200px" }}
+          />
+          <button 
+            onClick={handleSearch}
+            disabled={isSearching || !skillsInput.trim()}
+            className="btn btn-primary"
+            style={{ display: "flex", alignItems: "center", gap: "var(--space-xs)" }}
+          >
+            {isSearching ? (
+              <>
+                <LoadingSpinner />
+                Searching...
+              </>
+            ) : (
+              <>
+                <SearchIcon size={16} />
+                Search Jobs
+              </>
+            )}
+          </button>
+        </div>
+        <p style={{ 
+          fontSize: "0.75rem", 
+          color: "var(--color-text-muted)", 
+          marginTop: "var(--space-sm)",
+          marginBottom: 0,
+        }}>
+          Pre-filled with your CV skills. Modify as needed.
+        </p>
+      </div>
+
+      {/* Search Error */}
+      {searchError && (
+        <div className="card" style={{ 
+          marginBottom: "var(--space-lg)",
+          background: "rgba(239, 68, 68, 0.1)",
+          borderColor: "var(--color-error)",
+        }}>
+          <p style={{ color: "var(--color-error)", margin: 0 }}>{searchError}</p>
+        </div>
+      )}
+
+      {/* Results */}
+      {hasSearched && (
+        <div>
+          <h4 style={{ marginBottom: "var(--space-md)" }}>
+            {jobs.length > 0 ? `Found ${jobs.length} matching jobs` : "No jobs found"}
+          </h4>
+          
+          {jobs.length === 0 && (
+            <div className="card text-center" style={{ background: "var(--color-surface-elevated)" }}>
+              <p style={{ color: "var(--color-text-muted)" }}>
+                Try adjusting your skills or search terms to find more opportunities.
+              </p>
+            </div>
+          )}
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-md)" }}>
+            {jobs.map((job) => (
+              <div key={job.id} className="card" style={{ 
+                borderLeft: appliedJobs.has(job.id) ? "4px solid var(--color-success)" : "4px solid var(--color-primary)" 
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "var(--space-md)", marginBottom: "var(--space-sm)" }}>
+                  <div>
+                    <h4 style={{ marginBottom: "var(--space-xs)" }}>{job.title}</h4>
+                    <p style={{ color: "var(--color-accent)", fontWeight: 600, marginBottom: "var(--space-xs)" }}>
+                      {job.company}
+                    </p>
+                    <div style={{ display: "flex", gap: "var(--space-md)", flexWrap: "wrap", color: "var(--color-text-muted)", fontSize: "0.875rem" }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                        <LocationIcon size={14} /> {job.location}
+                      </span>
+                      {job.salary && (
+                        <span style={{ color: "var(--color-success)", fontWeight: 600 }}>
+                          {job.salary}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <span className="badge" style={{ background: "var(--color-primary)" }}>
+                    {job.source}
+                  </span>
+                </div>
+                
+                <p style={{ color: "var(--color-text-muted)", marginBottom: "var(--space-md)", fontSize: "0.875rem" }}>
+                  {job.description.slice(0, 200)}...
+                </p>
+
+                {job.tags && job.tags.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-xs)", marginBottom: "var(--space-md)" }}>
+                    {job.tags.slice(0, 4).map((tag, idx) => (
+                      <span key={idx} style={{
+                        background: "var(--color-surface-highlight)",
+                        padding: "2px 6px",
+                        borderRadius: "var(--radius-sm)",
+                        fontSize: "0.7rem",
+                      }}>
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div style={{ display: "flex", gap: "var(--space-sm)" }}>
+                  {appliedJobs.has(job.id) ? (
+                    <button className="btn btn-secondary" disabled style={{ flex: 1 }}>
+                      <CheckIcon size={16} />
+                      <span style={{ marginLeft: "var(--space-xs)" }}>Applied</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleApply(job)}
+                      disabled={applyingTo === job.id}
+                      className="btn btn-primary"
+                      style={{ flex: 1 }}
+                    >
+                      {applyingTo === job.id ? (
+                        <>
+                          <LoadingSpinner />
+                          <span style={{ marginLeft: "var(--space-xs)" }}>Applying...</span>
+                        </>
+                      ) : (
+                        <>
+                          🚀 Auto Apply with CV
+                        </>
+                      )}
+                    </button>
+                  )}
+                  <a
+                    href={job.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-secondary"
+                  >
+                    View ↗
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LoadingSpinner() {
+  return (
+    <div style={{
+      width: "16px",
+      height: "16px",
+      border: "2px solid rgba(255,255,255,0.3)",
+      borderTopColor: "white",
+      borderRadius: "50%",
+      animation: "spin 1s linear infinite",
+    }}>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
