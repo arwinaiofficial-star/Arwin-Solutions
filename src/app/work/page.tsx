@@ -21,7 +21,7 @@ export default function WorkPage() {
             </h1>
             <p className="hero-subtitle mx-auto">
               From government portals serving millions to educational platforms transforming
-              learning—delivering measurable impact across India's critical sectors since 2011.
+              learning—delivering measurable impact across India&apos;s critical sectors since 2011.
             </p>
           </div>
 
@@ -202,7 +202,7 @@ export default function WorkPage() {
             <div className="badge mb-md">2011–2024 — Legacy Portfolio</div>
             <h2 className="mb-md">{stats.yearsInBusiness} Years of Digital Excellence</h2>
             <p className="text-muted max-w-screen-md mx-auto" style={{ fontSize: "1.125rem" }}>
-              Foundation projects that established Arwin Solutions as a trusted partner for India's
+              Foundation projects that established Arwin Solutions as a trusted partner for India&apos;s
               government, education, and enterprise sectors.
             </p>
           </div>
@@ -369,7 +369,7 @@ export default function WorkPage() {
                 margin: "0 auto var(--space-xl)",
               }}
             >
-              Let's discuss how our proven expertise and AI-powered solutions can transform your
+              Let&apos;s discuss how our proven expertise and AI-powered solutions can transform your
               organization.
             </p>
             <div className="flex gap-md justify-center" style={{ flexWrap: "wrap" }}>

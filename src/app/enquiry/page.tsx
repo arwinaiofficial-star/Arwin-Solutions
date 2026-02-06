@@ -17,7 +17,7 @@ export default function EnquiryPage() {
             {/* <div className="badge mb-md">Project Enquiry</div> */}
             <h1 className="hero-title">Start Your Digital Transformation</h1>
             <p className="hero-subtitle mx-auto">
-              Tell us about your project and let's discuss how our AI-powered solutions can help you
+              Tell us about your project and let&apos;s discuss how our AI-powered solutions can help you
               achieve your goals. We typically respond within 24 hours.
             </p>
           </div>
@@ -320,7 +320,7 @@ export default function EnquiryPage() {
                 margin: "0 auto var(--space-xl)",
               }}
             >
-              Feel free to reach out directly via phone or email. We're here to help!
+              Feel free to reach out directly via phone or email. We&apos;re here to help!
             </p>
             <div className="flex gap-md justify-center" style={{ flexWrap: "wrap" }}>
               <Link
