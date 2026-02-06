@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth, GeneratedCV, WorkExperience, Education } from "@/context/AuthContext";
-import { SendIcon, BotIcon, UserIcon, CheckIcon, EyeIcon } from "@/components/icons/Icons";
+import { SendIcon, BotIcon, UserIcon, CheckIcon, EyeIcon, SearchIcon, ArrowRightIcon } from "@/components/icons/Icons";
 
 interface Message {
   id: string;
@@ -11,6 +11,9 @@ interface Message {
   options?: string[];
   inputType?: "text" | "textarea" | "select" | "multiselect";
   selectOptions?: string[];
+  stepIndex?: number; // Track which step this message belongs to for editing
+  field?: string; // Field name for edit functionality
+  isEditable?: boolean; // Whether this response can be edited
 }
 
 interface CVFormData {
@@ -134,7 +137,11 @@ const QUESTIONNAIRE_STEPS = [
   },
 ];
 
-export default function AgenticChat() {
+interface AgenticChatProps {
+  onNavigateToSearch?: () => void;
+}
+
+export default function AgenticChat({ onNavigateToSearch }: AgenticChatProps) {
   const { user, saveGeneratedCV, updateProfile } = useAuth();
   
   // Initialize messages with welcome message (lazy initialization)
@@ -177,8 +184,17 @@ export default function AgenticChat() {
   const [generatedCV, setGeneratedCV] = useState<GeneratedCV | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+  const [cvAccepted, setCvAccepted] = useState(false);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+
+  // Calculate progress percentage
+  const progressPercentage = Math.min(
+    Math.round((currentStep / (QUESTIONNAIRE_STEPS.length - 1)) * 100),
+    100
+  );
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -190,15 +206,57 @@ export default function AgenticChat() {
     inputRef.current?.focus();
   }, [currentStep]);
 
-  const addMessage = (role: "bot" | "user", content: string, options?: string[], inputType?: Message["inputType"], selectOptions?: string[]) => {
+  // Counter for unique message IDs
+  const messageCounterRef = useRef(0);
+
+  const addMessage = useCallback((role: "bot" | "user", content: string, options?: string[], inputType?: Message["inputType"], selectOptions?: string[], stepIndex?: number, field?: string, isEditable?: boolean) => {
+    messageCounterRef.current += 1;
     setMessages(prev => [...prev, {
-      id: `msg_${Date.now()}`,
+      id: `msg_${Date.now()}_${messageCounterRef.current}`,
       role,
       content,
       options,
       inputType,
       selectOptions,
+      stepIndex,
+      field,
+      isEditable: isEditable ?? (role === "user" && !options),
     }]);
+  }, []);
+
+  // Start editing a message
+  const handleEditMessage = (messageId: string, currentContent: string) => {
+    setEditingMessageId(messageId);
+    setEditValue(currentContent);
+  };
+
+  // Save edited message
+  const handleSaveEdit = (messageId: string, field?: string) => {
+    if (!editValue.trim()) return;
+    
+    // Update the message content
+    setMessages(prev => prev.map(msg => 
+      msg.id === messageId ? { ...msg, content: editValue } : msg
+    ));
+    
+    // Update the form data based on the field
+    if (field) {
+      if (field === "skills") {
+        const skillsArray = editValue.split(",").map(s => s.trim()).filter(s => s);
+        setFormData(prev => ({ ...prev, skills: skillsArray }));
+      } else {
+        setFormData(prev => ({ ...prev, [field]: editValue }));
+      }
+    }
+    
+    setEditingMessageId(null);
+    setEditValue("");
+  };
+
+  // Cancel editing
+  const handleCancelEdit = () => {
+    setEditingMessageId(null);
+    setEditValue("");
   };
 
   const generateAutoSummary = () => {
@@ -409,7 +467,7 @@ export default function AgenticChat() {
         skills: formData.skills,
       });
       
-      addMessage("bot", "Your ATS-friendly CV has been generated! Click 'Preview CV' to review it. If you're happy with it, click 'Accept & Continue' to start applying for jobs!");
+      addMessage("bot", "🎉 Your ATS-friendly CV has been generated! Review it below and click 'Accept & Find Jobs' to start your job search.");
       setShowPreview(true);
       setIsComplete(true);
     }, 2000);
@@ -417,7 +475,8 @@ export default function AgenticChat() {
 
   const acceptCV = () => {
     if (generatedCV) {
-      addMessage("bot", "Excellent! Your CV has been saved and is ready to be attached to job applications. You can now search for jobs and apply with one click!");
+      setCvAccepted(true);
+      addMessage("bot", "✅ Excellent! Your CV has been saved and is ready! You can now:\n\n• Search for matching jobs\n• Apply with one click using your CV\n• Track your application status\n\nClick 'Find Jobs Now' below to start searching!");
     }
   };
 
@@ -472,22 +531,64 @@ export default function AgenticChat() {
       overflow: "hidden",
       background: "var(--color-surface)",
     }}>
-      {/* Chat Header */}
+      {/* Chat Header with Progress */}
       <div style={{ 
-        padding: "var(--space-md)", 
         borderBottom: "1px solid var(--color-border)",
         background: "var(--color-surface-elevated)",
-        display: "flex",
-        alignItems: "center",
-        gap: "var(--space-sm)",
       }}>
-        <BotIcon size={24} />
-        <div>
-          <h4 style={{ margin: 0 }}>JobReady AI Assistant</h4>
-          <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
-            Creating your ATS-optimized CV
-          </p>
+        <div style={{ 
+          padding: "var(--space-md)", 
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-sm)" }}>
+            <BotIcon size={24} />
+            <div>
+              <h4 style={{ margin: 0 }}>JobReady AI Assistant</h4>
+              <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
+                {cvAccepted ? "Ready to find jobs!" : isComplete ? "CV Generated - Review below" : "Creating your ATS-optimized CV"}
+              </p>
+            </div>
+          </div>
+          {!isComplete && (
+            <div style={{ 
+              display: "flex", 
+              alignItems: "center", 
+              gap: "var(--space-xs)",
+              fontSize: "0.75rem",
+              color: "var(--color-text-muted)",
+            }}>
+              <span>Step {currentStep + 1} of {QUESTIONNAIRE_STEPS.length}</span>
+            </div>
+          )}
+          {cvAccepted && (
+            <span style={{ 
+              padding: "4px 8px", 
+              borderRadius: "var(--radius-sm)", 
+              background: "var(--color-success)", 
+              color: "white", 
+              fontSize: "0.75rem",
+              fontWeight: 600,
+            }}>
+              ✓ CV Ready
+            </span>
+          )}
         </div>
+        {/* Progress Bar */}
+        {!isComplete && (
+          <div style={{ 
+            height: "4px", 
+            background: "var(--color-border)",
+          }}>
+            <div style={{ 
+              height: "100%", 
+              background: "var(--color-primary)", 
+              width: `${progressPercentage}%`,
+              transition: "width 0.3s ease",
+            }} />
+          </div>
+        )}
       </div>
       
       {/* Messages */}
@@ -524,12 +625,76 @@ export default function AgenticChat() {
             )}
             <div style={{
               maxWidth: "80%",
-              padding: "var(--space-sm) var(--space-md)",
-              borderRadius: "var(--radius-lg)",
-              background: msg.role === "user" ? "var(--color-primary)" : "var(--color-surface-highlight)",
-              color: msg.role === "user" ? "white" : "var(--color-text)",
+              position: "relative",
             }}>
-              {msg.content}
+              {editingMessageId === msg.id ? (
+                // Edit mode
+                <div style={{
+                  padding: "var(--space-sm)",
+                  borderRadius: "var(--radius-lg)",
+                  background: "var(--color-surface-highlight)",
+                  border: "2px solid var(--color-primary)",
+                }}>
+                  <input
+                    type="text"
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    className="form-input"
+                    style={{ marginBottom: "var(--space-xs)" }}
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveEdit(msg.id, msg.field);
+                      if (e.key === "Escape") handleCancelEdit();
+                    }}
+                  />
+                  <div style={{ display: "flex", gap: "var(--space-xs)" }}>
+                    <button 
+                      onClick={() => handleSaveEdit(msg.id, msg.field)}
+                      className="btn btn-primary"
+                      style={{ padding: "4px 8px", fontSize: "0.75rem" }}
+                    >
+                      Save
+                    </button>
+                    <button 
+                      onClick={handleCancelEdit}
+                      className="btn btn-secondary"
+                      style={{ padding: "4px 8px", fontSize: "0.75rem" }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                // Display mode
+                <div style={{
+                  padding: "var(--space-sm) var(--space-md)",
+                  borderRadius: "var(--radius-lg)",
+                  background: msg.role === "user" ? "var(--color-primary)" : "var(--color-surface-highlight)",
+                  color: msg.role === "user" ? "white" : "var(--color-text)",
+                  whiteSpace: "pre-wrap",
+                }}>
+                  {msg.content}
+                  {/* Edit button for user messages (only when not complete) */}
+                  {msg.role === "user" && msg.isEditable && !isComplete && (
+                    <button
+                      onClick={() => handleEditMessage(msg.id, msg.content)}
+                      style={{
+                        display: "block",
+                        marginTop: "var(--space-xs)",
+                        padding: "2px 6px",
+                        fontSize: "0.7rem",
+                        background: "rgba(255,255,255,0.2)",
+                        border: "none",
+                        borderRadius: "var(--radius-sm)",
+                        color: "white",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Edit
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
             {msg.role === "user" && (
               <div style={{
@@ -551,30 +716,75 @@ export default function AgenticChat() {
         {/* Render options or select if available */}
         {renderCurrentInput()}
         
-        {/* CV Preview Button */}
+        {/* CV Preview and Action Buttons */}
         {showPreview && generatedCV && (
           <div style={{ 
-            display: "flex", 
-            gap: "var(--space-sm)", 
+            background: "var(--color-surface-elevated)",
+            padding: "var(--space-md)",
+            borderRadius: "var(--radius-md)",
+            border: "1px solid var(--color-border)",
             marginTop: "var(--space-md)",
-            flexWrap: "wrap",
           }}>
-            <button 
-              className="btn btn-secondary"
-              onClick={() => setShowPreview(!showPreview)}
-              style={{ display: "flex", alignItems: "center", gap: "var(--space-xs)" }}
-            >
-              <EyeIcon size={16} />
-              {showPreview ? "Hide Preview" : "Preview CV"}
-            </button>
-            <button 
-              className="btn btn-primary"
-              onClick={acceptCV}
-              style={{ display: "flex", alignItems: "center", gap: "var(--space-xs)" }}
-            >
-              <CheckIcon size={16} />
-              Accept & Continue
-            </button>
+            {/* Action Buttons */}
+            <div style={{ 
+              display: "flex", 
+              gap: "var(--space-sm)", 
+              flexWrap: "wrap",
+              marginBottom: showPreview ? "var(--space-md)" : 0,
+            }}>
+              {!cvAccepted ? (
+                <>
+                  <button 
+                    className="btn btn-primary"
+                    onClick={acceptCV}
+                    style={{ display: "flex", alignItems: "center", gap: "var(--space-xs)", flex: "1 1 auto" }}
+                  >
+                    <CheckIcon size={16} />
+                    Accept & Find Jobs
+                  </button>
+                  <button 
+                    className="btn btn-secondary"
+                    onClick={() => setShowPreview(!showPreview)}
+                    style={{ display: "flex", alignItems: "center", gap: "var(--space-xs)" }}
+                  >
+                    <EyeIcon size={16} />
+                    {showPreview ? "Hide" : "Preview"}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button 
+                    className="btn btn-primary"
+                    onClick={() => onNavigateToSearch?.()}
+                    style={{ display: "flex", alignItems: "center", gap: "var(--space-xs)", flex: "1 1 auto" }}
+                  >
+                    <SearchIcon size={16} />
+                    Find Jobs Now
+                    <ArrowRightIcon size={16} />
+                  </button>
+                  <button 
+                    className="btn btn-secondary"
+                    onClick={() => setShowPreview(!showPreview)}
+                    style={{ display: "flex", alignItems: "center", gap: "var(--space-xs)" }}
+                  >
+                    <EyeIcon size={16} />
+                    {showPreview ? "Hide CV" : "View CV"}
+                  </button>
+                </>
+              )}
+            </div>
+            
+            {cvAccepted && (
+              <p style={{ 
+                fontSize: "0.875rem", 
+                color: "var(--color-text-muted)", 
+                textAlign: "center",
+                marginTop: "var(--space-sm)",
+                marginBottom: 0,
+              }}>
+                Your CV will be automatically attached when you apply for jobs
+              </p>
+            )}
           </div>
         )}
         
