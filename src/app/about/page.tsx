@@ -17,7 +17,7 @@ export default function AboutPage() {
           <div className="text-center max-w-screen-lg mx-auto">
             {/* <div className="badge mb-md">About Arwin AI Solutions</div> */}
             <h1 className="hero-title">
-              Transforming India's Digital Landscape Since 2011
+              Transforming India&apos;s Digital Landscape Since 2011
             </h1>
             <p className="hero-subtitle mx-auto">
               From a custom software studio to an AI-powered solutions provider, serving
@@ -213,7 +213,7 @@ export default function AboutPage() {
             }}
           >
             <h2 style={{ color: "white", marginBottom: "var(--space-md)" }}>
-              Let's Build Something Amazing Together
+              Let&apos;s Build Something Amazing Together
             </h2>
             <p
               style={{

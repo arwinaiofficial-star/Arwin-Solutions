@@ -15,9 +15,9 @@ export default function ContactPage() {
         <div className="container">
           <div className="text-center max-w-screen-lg mx-auto">
             {/* <div className="badge mb-md">Contact Us</div> */}
-            <h1 className="hero-title">Let's Start a Conversation</h1>
+            <h1 className="hero-title">Let&apos;s Start a Conversation</h1>
             <p className="hero-subtitle mx-auto">
-              Have a project in mind? Want to learn more about our AI-powered solutions? We're here
+              Have a project in mind? Want to learn more about our AI-powered solutions? We&apos;re here
               to help transform your business.
             </p>
           </div>
@@ -218,7 +218,7 @@ export default function ContactPage() {
             <div className="text-center mb-xl">
               <h2 className="mb-md">Send Us a Message</h2>
               <p className="text-muted" style={{ fontSize: "1.125rem" }}>
-                Fill out the form below and we'll get back to you as soon as possible.
+                Fill out the form below and we&apos;ll get back to you as soon as possible.
               </p>
             </div>
 

@@ -1,4 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
+import logger from "@/lib/logger";
+
+// API input validation constants
+const MAX_SKILL_LENGTH = 50;
+const MAX_SKILLS_COUNT = 20;
 
 interface Job {
   id: string;
@@ -415,10 +421,30 @@ function scoreJob(job: Job, skills: string[], preferences: string): number {
 }
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const clientIP = getClientIP(request.headers);
+  
+  // Rate limiting check
+  const rateLimitResult = checkRateLimit(clientIP);
+  if (!rateLimitResult.allowed) {
+    logger.warn("Rate limit exceeded", { ip: clientIP });
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { 
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000)),
+          "X-RateLimit-Remaining": "0",
+        },
+      }
+    );
+  }
+
   try {
     const body = await request.json();
     const { skills, experience, preferences } = body;
 
+    // Input validation
     if (!skills || typeof skills !== "string") {
       return NextResponse.json(
         { error: "Skills are required" },
@@ -426,10 +452,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Sanitize and validate skills input
     const skillArray = skills
       .split(",")
       .map((s: string) => s.trim())
-      .filter((s: string) => s.length > 0);
+      .filter((s: string) => s.length > 0 && s.length <= MAX_SKILL_LENGTH)
+      .slice(0, MAX_SKILLS_COUNT);
 
     if (skillArray.length === 0) {
       return NextResponse.json(
@@ -474,6 +502,12 @@ export async function POST(request: NextRequest) {
       { seen: new Set<string>(), jobs: [] as typeof scoredJobs }
     ).jobs;
 
+    // Log successful job search
+    const duration = Date.now() - startTime;
+    const sources = [...new Set(uniqueJobs.map(j => j.source))];
+    logger.jobSearch(skillArray, uniqueJobs.length, sources);
+    logger.apiRequest("POST", "/api/jobs", duration, 200);
+
     return NextResponse.json({
       success: true,
       totalJobs: uniqueJobs.length,
@@ -485,7 +519,11 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Job search error:", error);
+    const duration = Date.now() - startTime;
+    logger.error("Job search error", { 
+      error: error instanceof Error ? error.message : "Unknown error",
+      duration: `${duration}ms`,
+    });
     return NextResponse.json(
       { error: "Failed to search for jobs. Please try again." },
       { status: 500 }

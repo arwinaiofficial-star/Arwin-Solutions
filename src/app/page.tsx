@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { homeContent, stats } from "@/lib/content";
+import { homeContent } from "@/lib/content";
 
 export default function HomePage() {
   return (
@@ -132,8 +132,8 @@ export default function HomePage() {
                 margin: "0 auto var(--space-xl)",
               }}
             >
-              Let's discuss how our AI-enabled solutions can help solve your real-life challenges.
-              From government portals to educational platforms and enterprise solutions, we've
+              Let&apos;s discuss how our AI-enabled solutions can help solve your real-life challenges.
+              From government portals to educational platforms and enterprise solutions, we&apos;ve
               delivered excellence for 14+ years.
             </p>
             <div className="flex gap-md justify-center" style={{ flexWrap: "wrap" }}>
