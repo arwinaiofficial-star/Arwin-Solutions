@@ -125,6 +125,11 @@ export const aboutContent = {
       role: "COO",
       bio: "Ensuring operational excellence and delivery of high-quality solutions across all projects.",
     },
+    {
+      name: "Krishna Chaitanya",
+      role: "Managing Director",
+      bio: "Overseeing business operations and driving strategic growth initiatives across the organization.",
+    },
   ],
 };
 
