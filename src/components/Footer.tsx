@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { companyInfo } from "@/lib/content";
 
@@ -12,21 +11,19 @@ export default function Footer() {
         <div className="footer-grid">
           {/* Company Info */}
           <div className="footer-section">
-            <Link href="/" className="footer-logo" aria-label="Arwin AI Solutions home">
-              <Image
-                src="/arwin_logo.jpeg"
-                alt="ArwinAI logo"
-                width={56}
-                height={56}
+            <Link href="/" className="footer-logo" aria-label="Arwin Group home">
+              <img
+                src="/arwin_logo_only.svg"
+                alt="Arwin Group logo"
                 className="footer-logo-mark"
               />
               <div className="footer-logo-copy">
-                <span className="footer-logo-title">Arwin AI Solutions</span>
-                <span className="footer-logo-tagline">AI-powered digital transformation</span>
+                <span className="footer-logo-title">Arwin Group</span>
+                <span className="footer-logo-tagline">Technology &amp; Intelligence Partner</span>
               </div>
             </Link>
             <p className="footer-highlight">
-              Solving real-life problems with AI-enabled solutions since 2011.
+              15+ years of trust. One ecosystem.
             </p>
             <div className="footer-contact">
               <a href={`tel:${sanitizedPhone}`} className="footer-contact-item">
@@ -38,48 +35,30 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Quick Links */}
+          {/* Solutions */}
           <div className="footer-section">
-            <h3>Quick Links</h3>
+            <h3>Solutions</h3>
             <ul className="footer-links">
-              <li>
-                <Link href="/">Home</Link>
-              </li>
-              <li>
-                <Link href="/about">About Us</Link>
-              </li>
-              <li>
-                <Link href="/work">Our Work</Link>
-              </li>
-              <li>
-                <Link href="/jobready">JobReady.ai</Link>
-              </li>
-              <li>
-                <Link href="/contact">Contact</Link>
-              </li>
-              <li>
-                <Link href="/enquiry">Enquiry</Link>
-              </li>
+              <li><Link href="/work">Arwin Forge</Link></li>
+              <li><Link href="/finlens">FinLens</Link></li>
+              <li><a href="https://wtai.in/" target="_blank" rel="noopener noreferrer">WTAI</a></li>
+            </ul>
+
+            <h3 style={{ marginTop: "var(--space-lg)" }}>Products</h3>
+            <ul className="footer-links">
+              <li><Link href="/jobready">JobReady</Link></li>
+              <li><a href="https://wtai.in/design-system/" target="_blank" rel="noopener noreferrer">Maya Design System</a></li>
             </ul>
           </div>
 
-          {/* Our Pillars */}
+          {/* Quick Links */}
           <div className="footer-section">
-            <h3>Our Pillars</h3>
+            <h3>Company</h3>
             <ul className="footer-links">
-              <li>
-                <a href="https://wtai.in/" target="_blank" rel="noopener noreferrer">
-                  WTAI - AI Learning Platform ↗
-                </a>
-              </li>
-              <li>
-                <a href="https://wtai.in/design-system/" target="_blank" rel="noopener noreferrer">
-                  Maya Design System ↗
-                </a>
-              </li>
-              <li>
-                <Link href="/jobready">JobReady.ai</Link>
-              </li>
+              <li><Link href="/about">About Us</Link></li>
+              <li><Link href="/work">Our Work</Link></li>
+              <li><Link href="/contact">Contact</Link></li>
+              <li><Link href="/enquiry">Start a Project</Link></li>
             </ul>
           </div>
 
@@ -88,19 +67,16 @@ export default function Footer() {
             <h3>Location</h3>
             <address className="footer-address">
               {companyInfo.address}
-              <br />
-              <br />
-              <strong>HR Email:</strong>{" "}
-              <a href={`mailto:${companyInfo.email.hr}`}>
-                {companyInfo.email.hr}
-              </a>
+              <br /><br />
+              <strong>HR:</strong>{" "}
+              <a href={`mailto:${companyInfo.email.hr}`}>{companyInfo.email.hr}</a>
             </address>
           </div>
         </div>
 
         <div className="footer-bottom">
-          <p>
-            © {currentYear} Arwin AI Solutions. All rights reserved. | Founded in {companyInfo.founded}
+          <p style={{ marginBottom: 0 }}>
+            &copy; {currentYear} Arwin Group. All rights reserved. | Founded in {companyInfo.founded}
           </p>
         </div>
       </div>

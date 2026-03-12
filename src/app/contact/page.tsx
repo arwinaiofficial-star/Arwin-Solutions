@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Contact Us",
   description:
-    "Get in touch with Arwin AI Solutions. We're here to help transform your business with AI-powered digital solutions.",
+    "Get in touch with Arwin Group. We're here to help transform your business with AI-powered digital solutions.",
 };
 
 export default function ContactPage() {

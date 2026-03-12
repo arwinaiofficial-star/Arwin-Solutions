@@ -1,31 +1,42 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { AuthProvider } from "@/context/AuthContext";
 
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: {
-    default: "Arwin AI Solutions - Solving Real-Life Problems with AI",
-    template: "%s | Arwin AI Solutions",
+    default: "Arwin Group — Technology & Intelligence Partner",
+    template: "%s | Arwin Group",
   },
   description:
-    "Arwin AI Solutions: 14+ years of digital transformation. Specializing in government, education, and enterprise solutions. Now equipped with AI capabilities through WTAI, Maya Design System, and JobReady.ai.",
+    "Arwin Group: 15+ years of digital transformation. Arwin Forge for enterprise solutions, FinLens for financial clarity, JobReady for AI-powered careers, and Maya Design System — serving government, education, and enterprise sectors.",
   keywords: [
-    "Arwin AI Solutions",
+    "Arwin Group",
+    "Arwin Forge",
+    "FinLens",
     "Digital Transformation",
     "AI Solutions",
     "Government Technology",
     "Education Technology",
     "Maya Design System",
     "WTAI",
-    "JobReady.ai",
+    "JobReady",
+    "SIP Calculator",
+    "EMI Calculator",
     "Hyderabad",
     "India",
   ],
-  authors: [{ name: "Arwin AI Solutions" }],
-  creator: "Arwin AI Solutions",
-  publisher: "Arwin AI Solutions",
+  authors: [{ name: "Arwin Group" }],
+  creator: "Arwin Group",
+  publisher: "Arwin Group",
   formatDetection: {
     email: false,
     address: false,
@@ -40,11 +51,11 @@ export const metadata: Metadata = {
     shortcut: "/favicon.svg",
   },
   openGraph: {
-    title: "Arwin AI Solutions - Solving Real-Life Problems with AI",
+    title: "Arwin Group — Technology & Intelligence Partner",
     description:
-      "14+ years of digital transformation across government, education, and enterprise sectors. Now equipped with AI capabilities.",
+      "15+ years of digital transformation. Arwin Forge, FinLens, JobReady, Maya Design System — serving government, education, and enterprise sectors.",
     url: "https://arwinaisolutions.com",
-    siteName: "Arwin AI Solutions",
+    siteName: "Arwin Group",
     locale: "en_US",
     type: "website",
   },
@@ -68,7 +79,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>
+      <body className={inter.className}>
         <AuthProvider>
           <Header />
           <main>{children}</main>

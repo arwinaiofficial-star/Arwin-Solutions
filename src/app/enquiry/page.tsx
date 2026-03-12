@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Enquiry",
   description:
-    "Start your digital transformation journey with Arwin AI Solutions. Fill out our enquiry form to discuss your project.",
+    "Start your digital transformation journey with Arwin Group. Fill out our enquiry form to discuss your project.",
 };
 
 export default function EnquiryPage() {
@@ -258,7 +258,7 @@ export default function EnquiryPage() {
         <div className="container">
           <div className="max-w-screen-md mx-auto">
             <div className="text-center mb-xl">
-              <h2 className="mb-md">Why Choose Arwin AI Solutions?</h2>
+              <h2 className="mb-md">Why Choose Arwin Group?</h2>
             </div>
 
             <div className="grid grid-2">
