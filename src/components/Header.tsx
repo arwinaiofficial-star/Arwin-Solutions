@@ -156,7 +156,7 @@ export default function Header() {
             <Link href="/contact" className="nav-link" onClick={closeAll}>
               Contact
             </Link>
-            <Link href="/enquiry" className="btn btn-primary" onClick={closeAll}>
+            <Link href="/contact?intent=project" className="btn btn-primary" onClick={closeAll}>
               Get Started
               <ArrowRightIcon size={14} />
             </Link>

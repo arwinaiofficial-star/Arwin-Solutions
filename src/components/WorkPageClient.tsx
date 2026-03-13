@@ -187,7 +187,7 @@ export default function WorkPageClient() {
               15+ years of proven expertise. Let&apos;s discuss how Arwin Forge can transform your organization.
             </p>
             <div className="flex gap-md justify-center" style={{ flexWrap: "wrap" }}>
-              <Link href="/enquiry" className="btn btn-primary btn-lg">
+              <Link href="/contact?intent=project" className="btn btn-primary btn-lg">
                 Start a Project
                 <ArrowRightIcon size={18} />
               </Link>

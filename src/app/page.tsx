@@ -42,7 +42,7 @@ export default function HomePage() {
               {homeContent.hero.subtitle}
             </p>
             <div className="home-hero-actions">
-              <Link href="/enquiry" className="btn btn-primary btn-lg">
+              <Link href="/contact?intent=project" className="btn btn-primary btn-lg">
                 Start a Project
                 <ArrowRightIcon size={18} />
               </Link>
@@ -261,7 +261,7 @@ export default function HomePage() {
               {homeContent.cta.description}
             </p>
             <div className="flex gap-md justify-center" style={{ flexWrap: "wrap" }}>
-              <Link href="/enquiry" className="btn btn-primary btn-lg">
+              <Link href="/contact?intent=project" className="btn btn-primary btn-lg">
                 Start a Project
                 <ArrowRightIcon size={18} />
               </Link>

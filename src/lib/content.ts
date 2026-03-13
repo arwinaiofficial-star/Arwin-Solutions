@@ -17,7 +17,7 @@ export const companyInfo = {
   city: "Hyderabad",
   phone: "094909 37683",
   email: {
-    official: "arwinai.official@gmail.com",
+    official: "hr@arwinai.com",
     hr: "hr@arwinai.com",
   },
   founders: {
