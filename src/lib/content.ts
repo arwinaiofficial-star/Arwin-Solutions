@@ -46,9 +46,9 @@ export const homeContent = {
         detail: "Government, Education, Enterprise",
       },
       {
-        value: "3",
+        value: "4",
         label: "Solutions",
-        detail: "Forge \u00b7 FinLens \u00b7 WTAI",
+        detail: "Forge \u00b7 FinLens \u00b7 BuiltIQ \u00b7 WTAI",
       },
       {
         value: "2",
@@ -86,6 +86,20 @@ export const homeContent = {
         "Home loan EMI calculator",
         "Financial guides & tips",
         "Expert-led content by Sai Vinil",
+      ],
+    },
+    {
+      name: "BuiltIQ",
+      tagline: "Intelligence for the Built Environment",
+      description:
+        "Free construction calculators, BIM guides, and expert-led tools \u2014 built to help architects, engineers, and developers make smarter building decisions.",
+      url: "/builtiq",
+      external: false,
+      features: [
+        "Room acoustics RT60 calculator",
+        "Material quantity estimator",
+        "Carpet area converter (RERA)",
+        "Expert-led content by Anirudh Chakrahari",
       ],
     },
     {
@@ -146,7 +160,7 @@ export const aboutContent = {
     content: [
       "Arwin Solutions was established in 2011 with a clear mission: solve real-life problems through digital transformation. For over a decade, we worked with government institutions like Indian Railways, NTPC, and Kendriya Vidyalayas \u2014 building robust platforms that serve millions.",
       "In 2024, we evolved. Rebranding as Arwin Group, we expanded from pure digital services into an ecosystem \u2014 launching AI-powered products, a design system, a community platform, and now financial education tools. The philosophy hasn\u2019t changed: goodwill first, excellence always.",
-      "Today, Arwin operates across two dimensions: Solutions (Arwin Forge, FinLens, WTAI) and Products (JobReady, Maya Design System) \u2014 each designed to solve a specific, meaningful problem.",
+      "Today, Arwin operates across two dimensions: Solutions (Arwin Forge, FinLens, BuiltIQ, WTAI) and Products (JobReady, Maya Design System) \u2014 each designed to solve a specific, meaningful problem.",
     ],
   },
 
@@ -154,7 +168,7 @@ export const aboutContent = {
     "To empower businesses, professionals, and individuals through an integrated ecosystem of digital solutions, intelligent products, and financial clarity \u2014 built on 15+ years of proven trust and real-world impact.",
 
   vision:
-    "To be India\u2019s most trusted technology and intelligence partner \u2014 transforming how organizations grow, professionals build careers, and people achieve financial well-being.",
+    "To be India\u2019s most trusted technology and intelligence partner \u2014 transforming how organizations grow, professionals build careers, people achieve financial well-being, and the built environment evolves.",
 
   values: [
     "Goodwill First \u2014 Money is a by-product of value created",
@@ -164,31 +178,58 @@ export const aboutContent = {
     "Long-Term Thinking \u2014 Relationships over transactions, always",
   ],
 
-  team: [
+  leadership: [
     {
       name: "Narender Raju Chakrahari",
-      role: "Founder",
-      bio: "Visionary leader who established Arwin Solutions in 2011 with a mission to solve real-world problems through technology.",
+      role: "Founder & Marketing Head",
+      portrait: "/Potraits/Narender.png",
+      tier: "founder" as const,
+      leads: null,
+      bio: "Visionary founder who established Arwin Solutions in 2011 with a clear mission: solve real-world problems through technology. 15+ years later, he continues to shape the brand narrative and market strategy that drives Arwin Group\u2019s growth across India.",
     },
     {
       name: "Aravind Chakrahari",
       role: "CEO",
-      bio: "Driving strategic direction and the AI transformation \u2014 leading Arwin Group into the future of intelligent technology.",
+      portrait: "/Potraits/Aravind.png",
+      tier: "executive" as const,
+      leads: "JobReady",
+      leadsColor: "#2563eb",
+      bio: "Steering Arwin Group\u2019s strategic direction and AI transformation. Under his leadership, the group expanded from a digital services studio into a multi-product technology ecosystem. Also leads JobReady \u2014 the AI-powered career platform.",
     },
     {
       name: "Chaithanya Bonthala",
       role: "COO",
-      bio: "Ensuring operational excellence and the delivery of high-quality solutions across all projects and products.",
+      portrait: "/Potraits/Chaithanya.png",
+      tier: "executive" as const,
+      leads: "WTAI",
+      leadsColor: "#7c3aed",
+      bio: "Ensuring operational excellence across all projects and products. Architects the delivery pipeline that turns ideas into shipped solutions. Also leads WTAI \u2014 the AI community platform for education and implementation.",
     },
     {
       name: "Krishna Chaitanya",
-      role: "Managing Director",
-      bio: "Overseeing business operations and driving strategic growth initiatives across the organization.",
+      role: "Marketing Lead",
+      portrait: "/Potraits/Krishna Chaitanya.png",
+      tier: "lead" as const,
+      leads: null,
+      bio: "Driving brand awareness, go-to-market strategy, and growth initiatives across the Arwin Group ecosystem. Bridges the gap between product vision and market reach.",
     },
     {
       name: "Sai Vinil",
-      role: "Financial Expert \u2014 FinLens",
-      bio: "Leading Arwin\u2019s financial education initiative, bringing expert-level financial knowledge to make personal finance accessible for everyone.",
+      role: "FinLens Lead",
+      portrait: "/Potraits/Sai Vinil.png",
+      tier: "lead" as const,
+      leads: "FinLens",
+      leadsColor: "#10b981",
+      bio: "Heads Arwin\u2019s financial education initiative. Brings expert-level financial knowledge to make personal finance accessible for everyone \u2014 from SIP strategies to term insurance planning.",
+    },
+    {
+      name: "Anirudh Chakrahari",
+      role: "BuiltIQ Lead",
+      portrait: "/Potraits/Anirudh.png",
+      tier: "lead" as const,
+      leads: "BuiltIQ",
+      leadsColor: "#f59e0b",
+      bio: "Heads Arwin\u2019s built-environment intelligence initiative. Brings hands-on BIM consulting and acoustic design expertise from WSP and AECOM. NIT Bhopal alumnus passionate about AR, VR, and the future of construction.",
     },
   ],
 };
@@ -418,9 +459,9 @@ export const timeline = [
   },
   {
     year: "2026",
-    title: "FinLens Launch",
+    title: "FinLens & BuiltIQ Launch",
     description:
-      "Launched FinLens \u2014 free financial tools and expert-led education. Sai Vinil joins as Financial Expert. Ecosystem expands to 3 Solutions + 2 Products.",
+      "Launched FinLens \u2014 free financial tools and expert-led education. Launched BuiltIQ \u2014 construction intelligence and BIM tools. Sai Vinil and Anirudh Chakrahari join the team. Ecosystem expands to 4 Solutions + 2 Products.",
     milestone: true,
   },
 ];
@@ -478,6 +519,62 @@ export const finlensContent = {
     "Emergency Fund Building",
     "Insurance Basics",
     "Retirement Planning",
+  ],
+};
+
+// ===== BUILTIQ CONTENT =====
+export const builtiqContent = {
+  hero: {
+    title: "BuiltIQ",
+    tagline: "Intelligence for the Built Environment",
+    description:
+      "Free construction calculators, BIM guides, and expert-led tools \u2014 built to help architects, engineers, and developers make smarter building decisions.",
+  },
+
+  expert: {
+    name: "Anirudh Chakrahari",
+    role: "BIM Consultant & Acoustics Specialist",
+    bio: "Anirudh brings hands-on BIM consulting and acoustic design expertise from WSP, one of the world\u2019s leading engineering firms. From Walmart\u2019s transformative Brand Identity Program to Metro Manila network documentation at AECOM \u2014 he bridges the gap between design intent and built reality. An NIT Bhopal alumnus passionate about AR, VR, and the future of the built environment.",
+  },
+
+  calculators: [
+    {
+      name: "Room Acoustics Calculator",
+      description:
+        "Calculate RT60 reverberation time for any room using the Sabine equation. Optimize acoustic comfort for offices, studios, and auditoriums.",
+      url: "/builtiq/acoustics",
+      icon: "wave",
+    },
+    {
+      name: "Material Estimator",
+      description:
+        "Estimate concrete, steel, bricks, cement, and sand quantities for your construction project with Indian thumb rules.",
+      url: "/builtiq/material-estimator",
+      icon: "chart",
+    },
+    {
+      name: "Carpet Area Calculator",
+      description:
+        "Convert between Super Built-up, Built-up, and Carpet Area. Know what you actually get when buying property in India.",
+      url: "/builtiq/carpet-area",
+      icon: "home",
+    },
+    {
+      name: "Embodied Carbon Calculator",
+      description:
+        "Estimate the carbon footprint of your building materials and discover how much nature needs to offset it.",
+      url: "/builtiq/carbon-footprint",
+      icon: "shield",
+    },
+  ],
+
+  topics: [
+    "BIM & Digital Twin Technology",
+    "Acoustic Design Principles",
+    "Sustainable Construction",
+    "Construction Project Management",
+    "AR/VR in Architecture",
+    "Indian Building Codes & Standards",
   ],
 };
 
@@ -553,6 +650,6 @@ export const stats = {
   governmentProjects: 9,
   educationProjects: 11,
   enterpriseProjects: 6,
-  solutions: 3,
+  solutions: 4,
   products: 2,
 };

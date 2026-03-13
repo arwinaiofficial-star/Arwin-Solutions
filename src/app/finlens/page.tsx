@@ -67,29 +67,6 @@ export default function FinLensPage() {
         </div>
       </section>
 
-      {/* Expert — Split Layout */}
-      <section className="section">
-        <div className="container">
-          <div className="fl-expert-split">
-            <div className="fl-expert-img-wrap">
-              <img
-                src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=80"
-                alt="Financial analysis"
-                className="fl-expert-img"
-              />
-            </div>
-            <div className="fl-expert-content">
-              <div className="eyebrow mb-sm">Meet Our Expert</div>
-              <h2 className="mb-sm">{finlensContent.expert.name}</h2>
-              <p className="fl-expert-role">{finlensContent.expert.role}</p>
-              <p className="text-muted" style={{ fontSize: "1.0625rem", lineHeight: 1.7 }}>
-                {finlensContent.expert.bio}
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Calculators */}
       <section id="calculators" className="section" style={{ background: "var(--color-background-alt)" }}>
         <div className="container">

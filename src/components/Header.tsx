@@ -5,6 +5,7 @@ import { useState } from "react";
 import {
   ForgeIcon,
   FinLensIcon,
+  BuiltIQIcon,
   CommunityIcon,
   JobReadyIcon,
   DesignSystemIcon,
@@ -101,6 +102,17 @@ export default function Header() {
                     <div>
                       <strong>FinLens</strong>
                       <span>Financial Tools &amp; Education</span>
+                    </div>
+                  </div>
+                </Link>
+                <Link href="/builtiq" className="dropdown-item" onClick={closeAll}>
+                  <div className="dropdown-item-header">
+                    <span className="dropdown-icon" style={{ background: "rgba(245, 158, 11, 0.1)" }}>
+                      <BuiltIQIcon size={16} color="#f59e0b" />
+                    </span>
+                    <div>
+                      <strong>BuiltIQ</strong>
+                      <span>Construction &amp; BIM Intelligence</span>
                     </div>
                   </div>
                 </Link>

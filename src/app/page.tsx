@@ -3,6 +3,7 @@ import { homeContent, stats } from "@/lib/content";
 import {
   ForgeIcon,
   FinLensIcon,
+  BuiltIQIcon,
   CommunityIcon,
   JobReadyIcon,
   DesignSystemIcon,
@@ -17,8 +18,8 @@ import {
 } from "@/components/icons/SiteIcons";
 import { TrustSection } from "@/components/ClientLogos";
 
-const solutionIcons = [ForgeIcon, FinLensIcon, CommunityIcon];
-const solutionColors = ["#2563eb", "#10b981", "#7c3aed"];
+const solutionIcons = [ForgeIcon, FinLensIcon, BuiltIQIcon, CommunityIcon];
+const solutionColors = ["#2563eb", "#10b981", "#f59e0b", "#7c3aed"];
 const productIcons = [JobReadyIcon, DesignSystemIcon];
 const productColors = ["#2563eb", "#7c3aed"];
 
@@ -68,7 +69,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid grid-3">
+          <div className="grid grid-2">
             {homeContent.solutions.map((solution, index) => {
               const Icon = solutionIcons[index];
               const color = solutionColors[index];

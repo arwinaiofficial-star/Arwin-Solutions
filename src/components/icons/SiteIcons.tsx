@@ -32,6 +32,28 @@ export function FinLensIcon({ size = 24, color = "currentColor", className }: Ic
   );
 }
 
+export function BuiltIQIcon({ size = 24, color = "currentColor", className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <rect x="4" y="8" width="16" height="14" rx="1" />
+      <path d="M8 8V5a4 4 0 0 1 8 0v3" />
+      <path d="M8 14h.01M12 14h.01M16 14h.01" />
+      <path d="M8 18h.01M12 18h.01M16 18h.01" />
+      <path d="M2 22h20" />
+    </svg>
+  );
+}
+
+export function BuiltIQWaveIcon({ size = 24, color = "currentColor", className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M2 12c1.5-3 3-5 5-5s3.5 5 5 5 3.5-5 5-5 3.5 2 5 5" />
+      <path d="M2 16c1.5-2 3-3.5 5-3.5s3.5 3.5 5 3.5 3.5-3.5 5-3.5 3.5 1.5 5 3.5" />
+      <path d="M2 8c1.5-2 3-3.5 5-3.5s3.5 3.5 5 3.5 3.5-3.5 5-3.5 3.5 1.5 5 3.5" />
+    </svg>
+  );
+}
+
 export function CommunityIcon({ size = 24, color = "currentColor", className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>

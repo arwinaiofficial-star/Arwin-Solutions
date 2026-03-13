@@ -41,6 +41,7 @@ export default function Footer() {
             <ul className="footer-links">
               <li><Link href="/work">Arwin Forge</Link></li>
               <li><Link href="/finlens">FinLens</Link></li>
+              <li><Link href="/builtiq">BuiltIQ</Link></li>
               <li><a href="https://wtai.in/" target="_blank" rel="noopener noreferrer">WTAI</a></li>
             </ul>
 

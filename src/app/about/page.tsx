@@ -3,6 +3,7 @@ import { aboutContent, timeline, stats } from "@/lib/content";
 import {
   ForgeIcon,
   FinLensIcon,
+  BuiltIQIcon,
   CommunityIcon,
   JobReadyIcon,
   DesignSystemIcon,
@@ -25,7 +26,6 @@ export const metadata: Metadata = {
 
 const valueIcons = [HeartHandshakeIcon, ShieldIcon, LightbulbIcon, GlobeIcon, TargetIcon, UsersIcon];
 const valueColors = ["#2563eb", "#10b981", "#f59e0b", "#7c3aed", "#ef4444", "#06b6d4"];
-const teamColors = ["#2563eb", "#7c3aed", "#10b981"];
 
 export default function AboutPage() {
   return (
@@ -110,6 +110,7 @@ export default function AboutPage() {
                 {[
                   { icon: ForgeIcon, color: "#2563eb", name: "Arwin Forge", desc: "AI-Powered Digital Solutions" },
                   { icon: FinLensIcon, color: "#10b981", name: "FinLens", desc: "Financial Tools & Education" },
+                  { icon: BuiltIQIcon, color: "#f59e0b", name: "BuiltIQ", desc: "Construction & BIM Intelligence" },
                   { icon: CommunityIcon, color: "#7c3aed", name: "WTAI", desc: "AI Community Platform" },
                 ].map((item, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: "var(--space-sm)" }}>
@@ -199,32 +200,34 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Team */}
+      {/* Leadership */}
       <section className="section" style={{ background: "var(--color-background-alt)" }}>
         <div className="container">
           <div className="text-center mb-xl">
-            <h2>Leadership Team</h2>
+            <div className="eyebrow mb-sm">Who We Are</div>
+            <h2>Leadership</h2>
             <p className="text-muted max-w-screen-md mx-auto" style={{ fontSize: "1.0625rem" }}>
-              The people driving Arwin Group forward.
+              The people steering Arwin Group — from vision to execution.
             </p>
           </div>
 
-          <div className="grid grid-3">
-            {aboutContent.team.map((member, index) => {
-              const color = teamColors[index % teamColors.length];
-              return (
-                <div key={index} className="card text-center">
-                  <div style={{ width: 80, height: 80, borderRadius: "50%", background: `${color}18`, border: `2px solid ${color}30`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", fontWeight: 800, color: color, margin: "0 auto var(--space-md)", letterSpacing: "0.05em" }}>
-                    {member.name.split(" ").map((n) => n[0]).join("")}
-                  </div>
-                  <h3 style={{ marginBottom: "0.25rem", fontSize: "1.125rem" }}>{member.name}</h3>
-                  <p style={{ color: "var(--color-text-light)", fontWeight: 500, fontSize: "0.875rem", marginBottom: "var(--space-md)" }}>
-                    {member.role}
-                  </p>
-                  <p className="text-muted" style={{ fontSize: "0.9375rem" }}>{member.bio}</p>
+          <div className="team-grid">
+            {aboutContent.leadership.map((member) => (
+              <div key={member.name} className="team-card">
+                <div className="team-portrait-wrap">
+                  <img src={member.portrait} alt={member.name} className="team-portrait" />
                 </div>
-              );
-            })}
+                <div className="team-info">
+                  <h3 className="team-name">{member.name}</h3>
+                  <p className="team-role">{member.role}</p>
+                  {member.leads && (
+                    <span className="team-leads-badge" style={{ background: `${member.leadsColor}14`, color: member.leadsColor, border: `1px solid ${member.leadsColor}30` }}>
+                      Leads {member.leads}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
