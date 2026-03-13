@@ -1,6 +1,12 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let _resend: Resend | null = null;
+function getResend(): Resend {
+  if (!_resend) {
+    _resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return _resend;
+}
 
 const NOTIFY_TO = process.env.CONNECT_NOTIFY_EMAIL || "hr@arwinai.com";
 const FROM_ADDRESS = process.env.CONNECT_FROM_EMAIL || "Arwin Connect <onboarding@resend.dev>";
@@ -168,7 +174,7 @@ export async function sendNotification(data: Submission): Promise<{ success: boo
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
 
-    const { error } = await resend.emails.send({
+    const { error } = await getResend().emails.send({
       from: FROM_ADDRESS,
       to: [NOTIFY_TO],
       replyTo: data.email,

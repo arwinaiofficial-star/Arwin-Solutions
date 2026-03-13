@@ -196,7 +196,7 @@ export const aboutContent = {
 // ===== WORK/PROJECTS CONTENT =====
 export const recentProjects = [
   {
-    name: "Bhatraju Lakalyana Vedika",
+    name: "Bhatrajula Kalyana Vedika",
     category: "Community Matrimony Platform",
     url: "https://bhatrajulakalyanavedika.com/",
     description:
@@ -214,7 +214,7 @@ export const recentProjects = [
       "Significantly increased community registrations and simplified the matchmaking process",
   },
   {
-    name: "Vidyabharati SVP",
+    name: "Vidya Bharati Vignana Kendra",
     category: "Educational Institution",
     url: "https://vidyabharatisvp.com/",
     description:
@@ -413,7 +413,7 @@ export const timeline = [
     year: "2025",
     title: "Products Go Live",
     description:
-      "JobReady.ai Phase 1 & 2 launched. Delivered Bhatraju Lakalyana Vedika and Vidyabharati SVP. Maya Design System v2.0 released.",
+      "JobReady.ai Phase 1 & 2 launched. Delivered Bhatrajula Kalyana Vedika and Vidya Bharati Vignana Kendra. Maya Design System v2.0 released.",
     milestone: true,
   },
   {
