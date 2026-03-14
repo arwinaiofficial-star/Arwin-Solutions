@@ -76,7 +76,13 @@ export default function WorkPageClient() {
             {recentProjects.map((project, index) => (
               <div key={index} className="project-card">
                 <div className="project-card-image">
-                  <span style={{ position: "relative", zIndex: 1, opacity: 0.7 }}><ForgeIcon size={48} color="var(--color-primary-light)" /></span>
+                  <div className="browser-chrome">
+                    <span className="browser-dot" />
+                    <span className="browser-dot" />
+                    <span className="browser-dot" />
+                    <span className="browser-url">{project.url.replace(/^https?:\/\//, '')}</span>
+                  </div>
+                  <img src={project.image} alt={project.name} className="project-card-img" />
                 </div>
                 <div className="project-card-body">
                   <div style={{ marginBottom: "var(--space-sm)" }}>
@@ -181,14 +187,14 @@ export default function WorkPageClient() {
           <div className="cta-card">
             <SparklesIcon size={32} color="var(--color-primary-light)" />
             <h2 style={{ marginTop: "var(--space-md)", marginBottom: "var(--space-md)" }}>
-              Ready to Build With Arwin Forge?
+              Interested in Partnerships? Contact the Founder.
             </h2>
             <p className="text-muted" style={{ fontSize: "1.0625rem", maxWidth: "640px", margin: "0 auto var(--space-xl)" }}>
-              15+ years of proven expertise. Let&apos;s discuss how Arwin Forge can transform your organization.
+              15+ years of proven expertise. Let&apos;s discuss how Arwin Forge can support your goals.
             </p>
             <div className="flex gap-md justify-center" style={{ flexWrap: "wrap" }}>
-              <Link href="/contact?intent=project" className="btn btn-primary btn-lg">
-                Start a Project
+              <Link href="/contact?intent=partnership" className="btn btn-primary btn-lg">
+                Contact the Founder
                 <ArrowRightIcon size={18} />
               </Link>
               <Link href="/about" className="btn btn-outline btn-lg">

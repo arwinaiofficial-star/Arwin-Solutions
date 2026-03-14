@@ -5,11 +5,11 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Arwin Connect",
   description:
-    "Get in touch with Arwin Group. Send a message, start a project, explore partnerships, or join our team — all from one place.",
+    "Get in touch with Arwin Group. Send a message, explore partnerships, or just say hello.",
 };
 
-type Intent = "message" | "project" | "partnership" | "careers";
-const VALID_INTENTS: Intent[] = ["message", "project", "partnership", "careers"];
+type Intent = "message" | "project" | "partnership";
+const VALID_INTENTS: Intent[] = ["message", "project", "partnership"];
 
 export default async function ContactPage({
   searchParams,
@@ -28,10 +28,10 @@ export default async function ContactPage({
         <div className="container">
           <div className="text-center max-w-screen-lg mx-auto">
             <div className="badge mb-md">Arwin Connect</div>
-            <h1 className="hero-title">Let&apos;s Build Something Together</h1>
+            <h1 className="hero-title">Interested in Partnerships? Contact the Founder.</h1>
             <p className="hero-subtitle mx-auto">
-              One place for every conversation — whether you&apos;re starting a project,
-              exploring a partnership, or just saying hello.
+              One place for every conversation &mdash; whether you&apos;re exploring a partnership,
+              discussing a product idea, or just saying hello.
             </p>
           </div>
         </div>
@@ -80,7 +80,7 @@ export default async function ContactPage({
         </div>
       </section>
 
-      {/* Office & Team */}
+      {/* Office & Founder Contact */}
       <section className="section" style={{ background: "var(--color-background-alt)" }}>
         <div className="container">
           <div className="max-w-screen-md mx-auto">
@@ -103,39 +103,22 @@ export default async function ContactPage({
               </address>
             </div>
 
-            {/* Department contacts */}
-            <div className="grid grid-2">
-              <div className="card">
-                <h4 style={{ marginBottom: "var(--space-sm)" }}>HR & Careers</h4>
-                <p style={{ color: "var(--color-text-muted)", marginBottom: "var(--space-sm)" }}>
-                  For recruitment and career inquiries.
-                </p>
-                <a
-                  href={`mailto:${companyInfo.email.hr}`}
-                  style={{
-                    color: "var(--color-primary)",
-                    fontWeight: 600,
-                    wordBreak: "break-word",
-                  }}
-                >
-                  {companyInfo.email.hr}
-                </a>
-              </div>
-
-              <div className="card">
-                <h4 style={{ marginBottom: "var(--space-sm)" }}>Leadership</h4>
-                <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-xs)" }}>
-                  <p style={{ color: "var(--color-text-muted)", marginBottom: 0, fontSize: "0.9375rem" }}>
-                    <strong>Founder:</strong> {companyInfo.founders.founder}
-                  </p>
-                  <p style={{ color: "var(--color-text-muted)", marginBottom: 0, fontSize: "0.9375rem" }}>
-                    <strong>CEO:</strong> {companyInfo.founders.ceo}
-                  </p>
-                  <p style={{ color: "var(--color-text-muted)", marginBottom: 0, fontSize: "0.9375rem" }}>
-                    <strong>COO:</strong> {companyInfo.founders.coo}
-                  </p>
-                </div>
-              </div>
+            {/* Founder contact */}
+            <div className="card text-center">
+              <h4 style={{ marginBottom: "var(--space-sm)" }}>Founder Contact</h4>
+              <p style={{ color: "var(--color-text-muted)", marginBottom: "var(--space-sm)", fontSize: "0.9375rem" }}>
+                <strong>{companyInfo.founder}</strong> &mdash; Founder &amp; Chair
+              </p>
+              <a
+                href={`mailto:${companyInfo.email.official}`}
+                style={{
+                  color: "var(--color-primary)",
+                  fontWeight: 600,
+                  wordBreak: "break-word",
+                }}
+              >
+                {companyInfo.email.official}
+              </a>
             </div>
           </div>
         </div>

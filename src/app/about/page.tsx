@@ -21,7 +21,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "About Us",
   description:
-    "Learn about Arwin Group — 15+ years of digital transformation across government, education, and enterprise sectors. Our story, mission, vision, and team.",
+    "Learn about Arwin Group — 15+ years of digital transformation across government, education, and enterprise sectors. Our story, mission, vision, and contributors.",
 };
 
 const valueIcons = [HeartHandshakeIcon, ShieldIcon, LightbulbIcon, GlobeIcon, TargetIcon, UsersIcon];
@@ -200,14 +200,14 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Leadership */}
+      {/* Contributors */}
       <section className="section" style={{ background: "var(--color-background-alt)" }}>
         <div className="container">
           <div className="text-center mb-xl">
             <div className="eyebrow mb-sm">Who We Are</div>
-            <h2>Leadership</h2>
+            <h2>Contributors</h2>
             <p className="text-muted max-w-screen-md mx-auto" style={{ fontSize: "1.0625rem" }}>
-              The people steering Arwin Group — from vision to execution.
+              The people who contribute to Arwin Group initiatives.
             </p>
           </div>
 
@@ -220,11 +220,6 @@ export default function AboutPage() {
                 <div className="team-info">
                   <h3 className="team-name">{member.name}</h3>
                   <p className="team-role">{member.role}</p>
-                  {member.leads && (
-                    <span className="team-leads-badge" style={{ background: `${member.leadsColor}14`, color: member.leadsColor, border: `1px solid ${member.leadsColor}30` }}>
-                      Leads {member.leads}
-                    </span>
-                  )}
                 </div>
               </div>
             ))}
@@ -238,14 +233,14 @@ export default function AboutPage() {
           <div className="cta-card">
             <SparklesIcon size={32} color="var(--color-primary-light)" />
             <h2 style={{ marginTop: "var(--space-md)", marginBottom: "var(--space-md)" }}>
-              Let&apos;s Build Something That Matters
+              Interested in Partnerships? Contact the Founder.
             </h2>
             <p className="text-muted" style={{ fontSize: "1.0625rem", maxWidth: "640px", margin: "0 auto var(--space-xl)" }}>
-              15+ years of experience. A growing ecosystem. The right team for your next project.
+              Learn more about our initiatives or explore how we can collaborate.
             </p>
             <div className="flex gap-md justify-center" style={{ flexWrap: "wrap" }}>
-              <Link href="/contact?intent=project" className="btn btn-primary btn-lg">
-                Start a Project
+              <Link href="/contact?intent=partnership" className="btn btn-primary btn-lg">
+                Contact the Founder
                 <ArrowRightIcon size={18} />
               </Link>
               <Link href="/work" className="btn btn-outline btn-lg">

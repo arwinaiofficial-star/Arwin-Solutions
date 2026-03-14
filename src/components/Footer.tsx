@@ -59,7 +59,7 @@ export default function Footer() {
               <li><Link href="/about">About Us</Link></li>
               <li><Link href="/work">Our Work</Link></li>
               <li><Link href="/contact">Arwin Connect</Link></li>
-              <li><Link href="/contact?intent=project">Start a Project</Link></li>
+              <li><Link href="/contact?intent=partnership">Partner with Us</Link></li>
             </ul>
           </div>
 

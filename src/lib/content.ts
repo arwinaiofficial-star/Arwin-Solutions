@@ -20,11 +20,7 @@ export const companyInfo = {
     official: "hr@arwinai.com",
     hr: "hr@arwinai.com",
   },
-  founders: {
-    founder: "Narender Raju Chakrahari",
-    ceo: "Aravind Chakrahari",
-    coo: "Chaithanya Bonthala",
-  },
+  founder: "Narender Raju Chakrahari",
 };
 
 // ===== HOME PAGE CONTENT =====
@@ -85,7 +81,7 @@ export const homeContent = {
         "SIP & Step-up SIP calculators",
         "Home loan EMI calculator",
         "Financial guides & tips",
-        "Expert-led content by Sai Vinil",
+        "Expert-led content",
       ],
     },
     {
@@ -99,7 +95,7 @@ export const homeContent = {
         "Room acoustics RT60 calculator",
         "Material quantity estimator",
         "Carpet area converter (RERA)",
-        "Expert-led content by Anirudh Chakrahari",
+        "Expert-led content",
       ],
     },
     {
@@ -147,9 +143,9 @@ export const homeContent = {
   },
 
   cta: {
-    title: "Ready to Build Something That Matters?",
+    title: "Interested in Partnerships?",
     description:
-      "Whether you need a digital platform for your business, want to explore AI solutions, or have an idea that needs the right team \u2014 let\u2019s talk.",
+      "Whether you want to explore a collaboration, discuss a product idea, or learn more about our initiatives \u2014 reach out to the Founder.",
   },
 };
 
@@ -181,55 +177,55 @@ export const aboutContent = {
   leadership: [
     {
       name: "Narender Raju Chakrahari",
-      role: "Founder & Marketing Head",
+      role: "Founder & Chair",
       portrait: "/Potraits/Narender.png",
       tier: "founder" as const,
       leads: null,
-      bio: "Visionary founder who established Arwin Solutions in 2011 with a clear mission: solve real-world problems through technology. 15+ years later, he continues to shape the brand narrative and market strategy that drives Arwin Group\u2019s growth across India.",
+      bio: "Founder and public contact. Leads strategy and partnerships for Arwin Group.",
     },
     {
       name: "Aravind Chakrahari",
-      role: "CEO",
+      role: "AI Advisor",
       portrait: "/Potraits/Aravind.png",
-      tier: "executive" as const,
+      tier: "contributor" as const,
       leads: "JobReady",
       leadsColor: "#2563eb",
-      bio: "Steering Arwin Group\u2019s strategic direction and AI transformation. Under his leadership, the group expanded from a digital services studio into a multi-product technology ecosystem. Also leads JobReady \u2014 the AI-powered career platform.",
+      bio: "Contributes to AI research and product direction for JobReady & WTAI.",
     },
     {
       name: "Chaithanya Bonthala",
-      role: "COO",
+      role: "Product & Design Contributor",
       portrait: "/Potraits/Chaithanya.png",
-      tier: "executive" as const,
+      tier: "contributor" as const,
       leads: "WTAI",
       leadsColor: "#7c3aed",
-      bio: "Ensuring operational excellence across all projects and products. Architects the delivery pipeline that turns ideas into shipped solutions. Also leads WTAI \u2014 the AI community platform for education and implementation.",
+      bio: "Contributes to product strategy and design for WTAI and other prototypes.",
     },
     {
       name: "Krishna Chaitanya",
-      role: "Marketing Lead",
+      role: "Community & Outreach Lead",
       portrait: "/Potraits/Krishna Chaitanya.png",
-      tier: "lead" as const,
+      tier: "contributor" as const,
       leads: null,
-      bio: "Driving brand awareness, go-to-market strategy, and growth initiatives across the Arwin Group ecosystem. Bridges the gap between product vision and market reach.",
+      bio: "Leads community programs and outreach for JobReady.",
     },
     {
       name: "Sai Vinil",
-      role: "FinLens Lead",
+      role: "FinLens Product Contributor",
       portrait: "/Potraits/Sai Vinil.png",
-      tier: "lead" as const,
+      tier: "contributor" as const,
       leads: "FinLens",
       leadsColor: "#10b981",
-      bio: "Heads Arwin\u2019s financial education initiative. Brings expert-level financial knowledge to make personal finance accessible for everyone \u2014 from SIP strategies to term insurance planning.",
+      bio: "Contributes product research and insights for FinLens.",
     },
     {
       name: "Anirudh Chakrahari",
-      role: "BuiltIQ Lead",
+      role: "BuiltIQ Contributor",
       portrait: "/Potraits/Anirudh.png",
-      tier: "lead" as const,
+      tier: "contributor" as const,
       leads: "BuiltIQ",
       leadsColor: "#f59e0b",
-      bio: "Heads Arwin\u2019s built-environment intelligence initiative. Brings hands-on BIM consulting and acoustic design expertise from WSP and AECOM. NIT Bhopal alumnus passionate about AR, VR, and the future of construction.",
+      bio: "Contributes to BuiltIQ domain research and prototyping.",
     },
   ],
 };
@@ -240,6 +236,7 @@ export const recentProjects = [
     name: "Bhatrajula Kalyana Vedika",
     category: "Community Matrimony Platform",
     url: "https://bhatrajulakalyanavedika.com/",
+    image: "/Bhatrajula Kalyana Vedika@4x.png",
     description:
       "Created a comprehensive matrimony platform from scratch for the Bhatraju community, boosting registrations and providing an easy-to-use matchmaking process with strong foundation for data communication.",
     year: 2025,
@@ -258,6 +255,7 @@ export const recentProjects = [
     name: "Vidya Bharati Vignana Kendra",
     category: "Educational Institution",
     url: "https://vidyabharatisvp.com/",
+    image: "/Vidya Bharati Vignana Kendra@4x.png",
     description:
       "Complete website rebrand with new design language and in-house CMS panel for content management, resulting in boosted admissions and improved user experience.",
     year: 2025,
@@ -461,7 +459,7 @@ export const timeline = [
     year: "2026",
     title: "FinLens & BuiltIQ Launch",
     description:
-      "Launched FinLens \u2014 free financial tools and expert-led education. Launched BuiltIQ \u2014 construction intelligence and BIM tools. Sai Vinil and Anirudh Chakrahari join the team. Ecosystem expands to 4 Solutions + 2 Products.",
+      "Launched FinLens \u2014 free financial tools and expert-led education. Launched BuiltIQ \u2014 construction intelligence and BIM tools. Sai Vinil and Anirudh Chakrahari begin contributing. Ecosystem expands to 4 Solutions + 2 Products.",
     milestone: true,
   },
 ];
@@ -477,8 +475,8 @@ export const finlensContent = {
 
   expert: {
     name: "Sai Vinil",
-    role: "Financial Expert",
-    bio: "Sai Vinil brings deep financial expertise to help make personal finance accessible and actionable for everyone. From SIP strategies to home loan planning \u2014 practical knowledge you can use today.",
+    role: "FinLens Product Contributor",
+    bio: "Sai Vinil contributes financial expertise to help make personal finance accessible and actionable for everyone. From SIP strategies to home loan planning \u2014 practical knowledge you can use today.",
   },
 
   calculators: [
@@ -533,8 +531,8 @@ export const builtiqContent = {
 
   expert: {
     name: "Anirudh Chakrahari",
-    role: "BIM Consultant & Acoustics Specialist",
-    bio: "Anirudh brings hands-on BIM consulting and acoustic design expertise from WSP, one of the world\u2019s leading engineering firms. From Walmart\u2019s transformative Brand Identity Program to Metro Manila network documentation at AECOM \u2014 he bridges the gap between design intent and built reality. An NIT Bhopal alumnus passionate about AR, VR, and the future of the built environment.",
+    role: "BuiltIQ Contributor",
+    bio: "Anirudh contributes domain expertise in BIM consulting and acoustic design to BuiltIQ. Passionate about AR, VR, and the future of the built environment.",
   },
 
   calculators: [

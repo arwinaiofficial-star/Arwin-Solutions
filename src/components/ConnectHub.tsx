@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 
-type Intent = "message" | "project" | "partnership" | "careers";
+type Intent = "message" | "project" | "partnership";
 type FormStatus = "idle" | "submitting" | "success" | "error";
 
 interface ConnectHubProps {
@@ -28,11 +28,6 @@ const intentOptions: {
     id: "partnership",
     title: "Partnership",
     description: "Explore business collaboration",
-  },
-  {
-    id: "careers",
-    title: "Careers",
-    description: "Join our team or explore opportunities",
   },
 ];
 
@@ -122,13 +117,6 @@ function IntentIcon({ intent, active }: { intent: Intent; active: boolean }) {
           <circle cx="9" cy="7" r="4" />
           <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
           <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-        </svg>
-      );
-    case "careers":
-      return (
-        <svg {...props}>
-          <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
         </svg>
       );
   }
@@ -223,11 +211,6 @@ export default function ConnectHub({ defaultIntent }: ConnectHubProps) {
         payload.organization = formData.organization;
         payload.partnershipType = formData.partnershipType;
         if (formData.partnershipType === "custom") payload.customPartnershipType = formData.customPartnershipType;
-        payload.message = formData.message;
-        break;
-      case "careers":
-        payload.position = formData.position;
-        payload.portfolio = formData.portfolio;
         payload.message = formData.message;
         break;
     }
@@ -716,58 +699,6 @@ export default function ConnectHub({ defaultIntent }: ConnectHubProps) {
                 </>
               )}
 
-              {selectedIntent === "careers" && (
-                <>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label htmlFor="ch-position" className="form-label">
-                      Position of Interest *
-                    </label>
-                    <input
-                      type="text"
-                      id="ch-position"
-                      name="position"
-                      className="form-input"
-                      placeholder="e.g., Frontend Developer, UI/UX Designer"
-                      value={formData.position}
-                      onChange={handleChange}
-                      required
-                      maxLength={200}
-                    />
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label htmlFor="ch-portfolio" className="form-label">
-                      Portfolio / LinkedIn URL
-                    </label>
-                    <input
-                      type="url"
-                      id="ch-portfolio"
-                      name="portfolio"
-                      className="form-input"
-                      placeholder="https://linkedin.com/in/your-profile"
-                      value={formData.portfolio}
-                      onChange={handleChange}
-                      maxLength={500}
-                    />
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label htmlFor="ch-career-msg" className="form-label">
-                      Tell us about yourself *
-                    </label>
-                    <textarea
-                      id="ch-career-msg"
-                      name="message"
-                      className="form-textarea"
-                      placeholder="Share your experience, skills, and what excites you about Arwin Group..."
-                      value={formData.message}
-                      onChange={handleChange}
-                      required
-                      maxLength={5000}
-                      style={{ minHeight: "120px" }}
-                    />
-                  </div>
-                </>
-              )}
-
               {/* Error message */}
               {formStatus === "error" && (
                 <div
@@ -855,8 +786,6 @@ function getSubmitLabel(intent: Intent): string {
       return "Submit Project Enquiry";
     case "partnership":
       return "Submit Partnership Enquiry";
-    case "careers":
-      return "Submit Application";
   }
 }
 
@@ -927,7 +856,7 @@ function SuccessModal({
         <div style={{ display: "flex", gap: "var(--space-sm)", marginBottom: "var(--space-xl)", textAlign: "left" }}>
           <div style={{ flex: 1, padding: "var(--space-sm)", background: "var(--color-surface)", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)" }}>
             <p style={{ fontSize: "0.75rem", color: "var(--color-primary-light)", fontWeight: 600, marginBottom: "2px" }}>Within 2 Hours</p>
-            <p style={{ fontSize: "0.8125rem", marginBottom: 0, lineHeight: 1.4 }}>Acknowledgment from our team</p>
+            <p style={{ fontSize: "0.8125rem", marginBottom: 0, lineHeight: 1.4 }}>Acknowledgment from Arwin</p>
           </div>
           <div style={{ flex: 1, padding: "var(--space-sm)", background: "var(--color-surface)", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)" }}>
             <p style={{ fontSize: "0.75rem", color: "var(--color-primary-light)", fontWeight: 600, marginBottom: "2px" }}>Within 24 Hours</p>

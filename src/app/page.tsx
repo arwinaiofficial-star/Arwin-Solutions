@@ -43,8 +43,8 @@ export default function HomePage() {
               {homeContent.hero.subtitle}
             </p>
             <div className="home-hero-actions">
-              <Link href="/contact?intent=project" className="btn btn-primary btn-lg">
-                Start a Project
+              <Link href="/contact?intent=partnership" className="btn btn-primary btn-lg">
+                Partner with Us
                 <ArrowRightIcon size={18} />
               </Link>
               <Link href="/work" className="btn btn-secondary btn-lg">
@@ -262,12 +262,12 @@ export default function HomePage() {
               {homeContent.cta.description}
             </p>
             <div className="flex gap-md justify-center" style={{ flexWrap: "wrap" }}>
-              <Link href="/contact?intent=project" className="btn btn-primary btn-lg">
-                Start a Project
+              <Link href="/contact?intent=partnership" className="btn btn-primary btn-lg">
+                Contact the Founder
                 <ArrowRightIcon size={18} />
               </Link>
               <Link href="/contact" className="btn btn-outline btn-lg">
-                Contact Us
+                Arwin Connect
               </Link>
             </div>
           </div>
