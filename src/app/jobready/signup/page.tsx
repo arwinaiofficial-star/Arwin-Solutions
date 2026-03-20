@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -13,8 +13,15 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { signup } = useAuth();
+  const { signup, isAuthenticated } = useAuth();
   const router = useRouter();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push("/jobready/dashboard");
+    }
+  }, [isAuthenticated, router]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -33,11 +40,11 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      const success = await signup(email, password, name);
-      if (success) {
+      const result = await signup(email, password, name);
+      if (result.success) {
         router.push("/jobready/dashboard");
       } else {
-        setError("An account with this email already exists.");
+        setError(result.error || "An account with this email already exists.");
       }
     } catch {
       setError("An error occurred. Please try again.");
@@ -80,10 +87,10 @@ export default function SignupPage() {
               <p style={{ fontWeight: 600, marginBottom: "var(--space-sm)" }}>What you&apos;ll get:</p>
               <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "var(--space-xs)" }}>
                 {[
-                  "AI-powered CV builder",
-                  "One-click job applications",
-                  "Application tracking dashboard",
-                  "Jobs from top Indian companies",
+                  "AI-powered ATS resume builder",
+                  "Multi-source job matching (Naukri, LinkedIn)",
+                  "Semantic job relevance scoring",
+                  "DOCX resume downloads",
                 ].map((benefit, idx) => (
                   <li key={idx} style={{ display: "flex", alignItems: "center", gap: "var(--space-xs)" }}>
                     <CheckIcon size={16} color="var(--color-success)" />
