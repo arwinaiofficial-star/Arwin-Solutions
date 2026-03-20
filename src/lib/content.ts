@@ -1,134 +1,231 @@
 /**
- * Central content repository for Arwin AI Solutions
+ * Central content repository for Arwin Group
  * All copy, stats, and data live here for easy maintenance
+ *
+ * Structure:
+ *   Solutions — Arwin Forge | FinLens | WTAI
+ *   Products  — JobReady | Maya Design System
  */
 
 // ===== COMPANY INFO =====
 export const companyInfo = {
-  name: "Arwin AI Solutions",
+  name: "Arwin Group",
   founded: 2011,
-  tagline: "Solving Real-Life Problems with AI-Enabled Solutions",
-  address: "258D, Prajay Sai Gardens Rd, Kundanpally, Cheeriyal, Hyderabad, Telangana 501301",
+  tagline: "Technology & Intelligence Partner",
+  address:
+    "258D, Prajay Sai Gardens Rd, Kundanpally, Cheeriyal, Hyderabad, Telangana 501301",
   city: "Hyderabad",
   phone: "094909 37683",
   email: {
-    official: "arwinai.official@gmail.com",
+    official: "hr@arwinai.com",
     hr: "hr@arwinai.com",
   },
-  founders: {
-    founder: "Narender Raju Chakrahari",
-    ceo: "Aravind Chakrahari",
-    coo: "Chaithanya Bonthala",
-  },
+  founder: "Narender Raju Chakrahari",
 };
 
 // ===== HOME PAGE CONTENT =====
 export const homeContent = {
   hero: {
-    badge: "Established 2011 • AI-Enabled Since 2024",
-    title: "Solving Real-Life Problems with AI-Powered Solutions",
-    subtitle: "For almost 14 years, Arwin Solutions has been transforming businesses and communities through digital innovation. Now rebranded as Arwin AI Solutions, we're equipped with AI capabilities to solve your challenges smarter and faster.",
+    badge: "15+ Years of Digital Excellence",
+    title: "Building India\u2019s Digital Future",
+    subtitle:
+      "From government institutions to ambitious startups \u2014 we craft digital solutions, build intelligent products, and empower individuals through technology. 15 years of trust. One ecosystem.",
     stats: [
-      { value: "14+", label: "Years of Excellence", detail: "Since 2011" },
-      { value: "26+", label: "Projects Delivered", detail: "Government, Education, Enterprise" },
-      { value: "3", label: "AI Pillars", detail: "WTAI • Maya • JobReady.ai" },
+      {
+        value: "15+",
+        label: "Years of Trust",
+        detail: "Since 2011",
+      },
+      {
+        value: "26+",
+        label: "Projects Delivered",
+        detail: "Government, Education, Enterprise",
+      },
+      {
+        value: "4",
+        label: "Solutions",
+        detail: "Forge \u00b7 FinLens \u00b7 BuiltIQ \u00b7 WTAI",
+      },
+      {
+        value: "2",
+        label: "Products",
+        detail: "JobReady \u00b7 Maya",
+      },
     ],
   },
-  
-  philosophy: {
-    title: "Our Philosophy",
-    description: "Our main aim has always been to solve real-life problems, challenges, and legacy procedures by providing digital solutions. For most of our firm's work, it's about goodwill, not just money. We help small-scale to large-scale businesses establish their digital footprint, reaching more people and making a real impact.",
-  },
 
-  pillars: [
+  // Solutions \u2014 What we offer
+  solutions: [
+    {
+      name: "Arwin Forge",
+      tagline: "AI-Powered Digital Solutions",
+      description:
+        "We take your business challenges and forge them into powerful digital solutions. From web platforms to AI integrations \u2014 crafted with 15 years of proven expertise.",
+      url: "/work",
+      external: false,
+      features: [
+        "Web & mobile applications",
+        "AI-powered integrations",
+        "CMS & e-commerce platforms",
+        "Enterprise digital transformation",
+      ],
+    },
+    {
+      name: "FinLens",
+      tagline: "See Your Finances Clearly",
+      description:
+        "Free financial tools, calculators, and expert-led guides to help you make smarter money decisions. No jargon. No paywalls. Just clarity.",
+      url: "/finlens",
+      external: false,
+      features: [
+        "SIP & Step-up SIP calculators",
+        "Home loan EMI calculator",
+        "Financial guides & tips",
+        "Expert-led content",
+      ],
+    },
+    {
+      name: "BuiltIQ",
+      tagline: "Intelligence for the Built Environment",
+      description:
+        "Free construction calculators, BIM guides, and expert-led tools \u2014 built to help architects, engineers, and developers make smarter building decisions.",
+      url: "/builtiq",
+      external: false,
+      features: [
+        "Room acoustics RT60 calculator",
+        "Material quantity estimator",
+        "Carpet area converter (RERA)",
+        "Expert-led content",
+      ],
+    },
     {
       name: "WTAI",
-      tagline: "AI Learning Platform",
-      description: "Comprehensive AI learning and resource platform. We're building the future of AI education and practical implementation.",
+      tagline: "AI Community Platform",
+      description:
+        "What The AI \u2014 a community-driven platform for learning, exploring, and implementing AI. Education resources, practical guides, and real-world applications.",
       url: "https://wtai.in/",
       external: true,
-      phase: "Live",
       features: [
         "AI education resources",
         "Practical implementation guides",
         "Community-driven learning",
-        "Future of AI education",
-      ],
-    },
-    {
-      name: "Maya Design System",
-      tagline: "Design System 2.0",
-      description: "Built on a modular, token-driven architecture. CSS-first design system made to use in all our projects according to their needs.",
-      url: "https://wtai.in/design-system/",
-      external: true,
-      phase: "v2.0.0 Released",
-      features: [
-        "Modular architecture",
-        "Token-driven design",
-        "CSS-first approach",
-        "NPM: @maya-design-system/design-system",
-      ],
-    },
-    {
-      name: "JobReady.ai",
-      tagline: "AI Job Application Platform for India",
-      description: "Phase 1 & 2 are live: Search jobs from top Indian companies, auto-apply with one click, and track all your applications. Salaries in INR, jobs in Bangalore, Hyderabad, Mumbai & more.",
-      url: "/jobready",
-      external: false,
-      phase: "Phase 1 & 2 Live",
-      features: [
-        "Indian job market focused",
-        "Auto-apply feature",
-        "Application tracking",
-        "Resume upload support",
+        "Real-world AI applications",
       ],
     },
   ],
+
+  // Products \u2014 What we build
+  products: [
+    {
+      name: "JobReady",
+      tagline: "AI-Powered Career Platform",
+      description:
+        "One-stop platform for job seekers in India. AI agents build your CV, match you with top companies, and auto-apply \u2014 so you focus on preparing, not searching.",
+      url: "/jobready",
+      external: false,
+      status: "Phase 1 & 2 Live",
+    },
+    {
+      name: "Maya Design System",
+      tagline: "Flexible Design System",
+      description:
+        "A modular, token-driven design system powering UX across all our client and in-house products. CSS-first, built for scale.",
+      url: "https://wtai.in/design-system/",
+      external: true,
+      status: "v2.0.0 Released",
+    },
+  ],
+
+  philosophy: {
+    title: "Goodwill First",
+    description:
+      "For most of our work, it\u2019s about goodwill \u2014 not just money. We help small-scale to large-scale businesses establish their digital footprint, reaching more people and making real impact. That\u2019s how we\u2019ve earned trust from government institutions, educational organizations, and enterprises across India for over 15 years.",
+  },
+
+  cta: {
+    title: "Interested in Partnerships?",
+    description:
+      "Whether you want to explore a collaboration, discuss a product idea, or learn more about our initiatives \u2014 reach out to the Founder.",
+  },
 };
 
 // ===== ABOUT PAGE CONTENT =====
 export const aboutContent = {
   story: {
-    title: "Our Journey: From Solutions to AI Solutions",
+    title: "Our Story",
     content: [
-      "Arwin Solutions was established in 2011 with a clear mission: to solve real-life problems and challenges through digital transformation. For almost 14 years, we've worked with government institutions, educational organizations, and enterprises across India.",
-      "In 2024, we rebranded as Arwin AI Solutions, embracing AI capabilities to provide even smarter, more competitive services. Our philosophy remains unchanged - we work for goodwill first, with money being a by-product of the value we create.",
-      "We've helped small-scale to large-scale businesses establish their digital footprint, enabling them to reach more people and make a greater impact. Our work spans critical sectors including government, education, healthcare, and enterprise.",
+      "Arwin Solutions was established in 2011 with a clear mission: solve real-life problems through digital transformation. For over a decade, we worked with government institutions like Indian Railways, NTPC, and Kendriya Vidyalayas \u2014 building robust platforms that serve millions.",
+      "In 2024, we evolved. Rebranding as Arwin Group, we expanded from pure digital services into an ecosystem \u2014 launching AI-powered products, a design system, a community platform, and now financial education tools. The philosophy hasn\u2019t changed: goodwill first, excellence always.",
+      "Today, Arwin operates across two dimensions: Solutions (Arwin Forge, FinLens, BuiltIQ, WTAI) and Products (JobReady, Maya Design System) \u2014 each designed to solve a specific, meaningful problem.",
     ],
   },
 
-  mission: "To solve real-life problems and business challenges through AI-enabled digital solutions, helping organizations compete and thrive in the digital age.",
-  
-  vision: "To be the most trusted AI-powered digital transformation partner for government, education, and enterprise sectors across India.",
+  mission:
+    "To empower businesses, professionals, and individuals through an integrated ecosystem of digital solutions, intelligent products, and financial clarity \u2014 built on 15+ years of proven trust and real-world impact.",
+
+  vision:
+    "To be India\u2019s most trusted technology and intelligence partner \u2014 transforming how organizations grow, professionals build careers, people achieve financial well-being, and the built environment evolves.",
 
   values: [
-    "Goodwill First - Money is a by-product of value created",
-    "Real Impact - Solving genuine problems, not creating unnecessary complexity",
-    "Innovation - Embracing AI and modern technologies",
-    "Quality - Excellence in every project, big or small",
-    "Partnership - Long-term relationships over short-term gains",
+    "Goodwill First \u2014 Money is a by-product of value created",
+    "Real Impact \u2014 Solving genuine problems, not creating unnecessary complexity",
+    "Craftsmanship \u2014 Every project, big or small, is forged with excellence",
+    "Trust \u2014 15+ years of government, education, and enterprise partnerships",
+    "Long-Term Thinking \u2014 Relationships over transactions, always",
   ],
 
-  team: [
+  leadership: [
     {
       name: "Narender Raju Chakrahari",
-      role: "Founder",
-      bio: "Visionary leader who established Arwin Solutions in 2011 with a mission to solve real-world problems through technology.",
+      role: "Founder & Chair",
+      portrait: "/Potraits/Narender.png",
+      tier: "founder" as const,
+      leads: null,
+      bio: "Founder and public contact. Leads strategy and partnerships for Arwin Group.",
     },
     {
       name: "Aravind Chakrahari",
-      role: "CEO",
-      bio: "Driving the company's strategic direction and AI transformation, leading Arwin AI Solutions into the future.",
+      role: "AI Advisor",
+      portrait: "/Potraits/Aravind.png",
+      tier: "contributor" as const,
+      leads: "JobReady",
+      leadsColor: "#2563eb",
+      bio: "Contributes to AI research and product direction for JobReady & WTAI.",
     },
     {
       name: "Chaithanya Bonthala",
-      role: "COO",
-      bio: "Ensuring operational excellence and delivery of high-quality solutions across all projects.",
+      role: "Product & Design Contributor",
+      portrait: "/Potraits/Chaithanya.png",
+      tier: "contributor" as const,
+      leads: "WTAI",
+      leadsColor: "#7c3aed",
+      bio: "Contributes to product strategy and design for WTAI and other prototypes.",
     },
     {
       name: "Krishna Chaitanya",
-      role: "Managing Director",
-      bio: "Overseeing business operations and driving strategic growth initiatives across the organization.",
+      role: "Community & Outreach Lead",
+      portrait: "/Potraits/Krishna Chaitanya.png",
+      tier: "contributor" as const,
+      leads: null,
+      bio: "Leads community programs and outreach for JobReady.",
+    },
+    {
+      name: "Sai Vinil",
+      role: "FinLens Product Contributor",
+      portrait: "/Potraits/Sai Vinil.png",
+      tier: "contributor" as const,
+      leads: "FinLens",
+      leadsColor: "#10b981",
+      bio: "Contributes product research and insights for FinLens.",
+    },
+    {
+      name: "Anirudh Chakrahari",
+      role: "BuiltIQ Contributor",
+      portrait: "/Potraits/Anirudh.png",
+      tier: "contributor" as const,
+      leads: "BuiltIQ",
+      leadsColor: "#f59e0b",
+      bio: "Contributes to BuiltIQ domain research and prototyping.",
     },
   ],
 };
@@ -136,10 +233,12 @@ export const aboutContent = {
 // ===== WORK/PROJECTS CONTENT =====
 export const recentProjects = [
   {
-    name: "Bhatraju Lakalyana Vedika",
+    name: "Bhatrajula Kalyana Vedika",
     category: "Community Matrimony Platform",
     url: "https://bhatrajulakalyanavedika.com/",
-    description: "Created a comprehensive matrimony platform from scratch for the Bhatraju community, boosting registrations and providing an easy-to-use matchmaking process with strong foundation for data communication.",
+    image: "/Bhatrajula Kalyana Vedika@4x.png",
+    description:
+      "Created a comprehensive matrimony platform from scratch for the Bhatraju community, boosting registrations and providing an easy-to-use matchmaking process with strong foundation for data communication.",
     year: 2025,
     features: [
       "Complete registration system",
@@ -149,13 +248,16 @@ export const recentProjects = [
       "Community-focused features",
     ],
     technologies: ["Maya Design System", "Next.js", "AI-Enhanced UX"],
-    outcome: "Significantly increased community registrations and simplified the matchmaking process",
+    outcome:
+      "Significantly increased community registrations and simplified the matchmaking process",
   },
   {
-    name: "Vidyabharati SVP",
+    name: "Vidya Bharati Vignana Kendra",
     category: "Educational Institution",
     url: "https://vidyabharatisvp.com/",
-    description: "Complete website rebrand with new design language and in-house CMS panel for content management, resulting in boosted admissions and improved user experience.",
+    image: "/Vidya Bharati Vignana Kendra@4x.png",
+    description:
+      "Complete website rebrand with new design language and in-house CMS panel for content management, resulting in boosted admissions and improved user experience.",
     year: 2025,
     features: [
       "Modern design language",
@@ -165,7 +267,8 @@ export const recentProjects = [
       "Parent communication",
     ],
     technologies: ["Maya Design System", "Custom CMS", "Next.js"],
-    outcome: "Boosted admissions through improved branding and streamlined content management",
+    outcome:
+      "Boosted admissions through improved branding and streamlined content management",
   },
 ];
 
@@ -176,39 +279,48 @@ export const legacyProjects = {
     projects: [
       {
         name: "Kendriya Vidyalayas",
-        description: "Developed robust, scalable educational portals for India's largest chain of government schools, supporting their mission for quality and uniform education across the country.",
+        description:
+          "Developed robust, scalable educational portals for India\u2019s largest chain of government schools, supporting their mission for quality and uniform education across the country.",
       },
       {
         name: "Govt of Telangana & Andhra Pradesh",
-        description: "Engineered digital solutions for major state departments, streamlining citizen services and showcasing government initiatives efficiently and securely.",
+        description:
+          "Engineered digital solutions for major state departments, streamlining citizen services and showcasing government initiatives efficiently and securely.",
       },
       {
         name: "NTPC",
-        description: "Crafted dynamic websites for NTPC, India's premier power company, enabling public access to information, project updates, and sustainability reports.",
+        description:
+          "Crafted dynamic websites for NTPC, India\u2019s premier power company, enabling public access to information, project updates, and sustainability reports.",
       },
       {
         name: "Tirumala Tirupati Devasthanam Board",
-        description: "Engineered high-traffic, feature-rich portals handling pilgrim services, bookings, and temple information for one of the world's most visited religious sites.",
+        description:
+          "Engineered high-traffic, feature-rich portals handling pilgrim services, bookings, and temple information for one of the world\u2019s most visited religious sites.",
       },
       {
         name: "Indian Railways",
-        description: "Contributed to public-facing modules enhancing information dissemination and digital access for one of India's largest employers.",
+        description:
+          "Contributed to public-facing modules enhancing information dissemination and digital access for one of India\u2019s largest employers.",
       },
       {
         name: "NIC, National Informatics Centre",
-        description: "Designed secure, standards-compliant government portals collaborating with India's premier digital ICT solutions provider.",
+        description:
+          "Designed secure, standards-compliant government portals collaborating with India\u2019s premier digital ICT solutions provider.",
       },
       {
         name: "DRDA",
-        description: "Designed result-oriented platforms for government rural development organizations, driving project visibility and public participation.",
+        description:
+          "Designed result-oriented platforms for government rural development organizations, driving project visibility and public participation.",
       },
       {
         name: "Travancore Devaswom Board",
-        description: "Developed informative websites to improve transparency and service delivery for this prestigious temple board managing major heritage temples.",
+        description:
+          "Developed informative websites to improve transparency and service delivery for this prestigious temple board managing major heritage temples.",
       },
       {
         name: "Telugu Film Chambers Of Commerce",
-        description: "Created professional portals to facilitate communication and digital processes among film industry stakeholders.",
+        description:
+          "Created professional portals to facilitate communication and digital processes among film industry stakeholders.",
       },
     ],
   },
@@ -219,47 +331,58 @@ export const legacyProjects = {
     projects: [
       {
         name: "CBIT (Chaitanya Bharathi Institute of Technology)",
-        description: "Built interactive, user-centric academic websites that boost institutional outreach and streamline student-faculty engagement.",
+        description:
+          "Built interactive, user-centric academic websites that boost institutional outreach and streamline student-faculty engagement.",
       },
       {
         name: "Geetanjali Group Of Institutions",
-        description: "Implemented integrated digital solutions for education institutions, enabling admissions, resource access, and activity management online.",
+        description:
+          "Implemented integrated digital solutions for education institutions, enabling admissions, resource access, and activity management online.",
       },
       {
-        name: "St. Ann's Schools",
-        description: "Engineered modern school portals for information sharing, admissions, and parent interaction.",
+        name: "St. Ann\u2019s Schools",
+        description:
+          "Engineered modern school portals for information sharing, admissions, and parent interaction.",
       },
       {
-        name: "St. John's Institutions",
-        description: "Created comprehensive websites for multisectoral educational campuses, focused on ease-of-use and rich content integration.",
+        name: "St. John\u2019s Institutions",
+        description:
+          "Created comprehensive websites for multisectoral educational campuses, focused on ease-of-use and rich content integration.",
       },
       {
         name: "Carmel Convents",
-        description: "Provided dynamic, community-driven digital platforms for convent schools to showcase achievements and streamline communication.",
+        description:
+          "Provided dynamic, community-driven digital platforms for convent schools to showcase achievements and streamline communication.",
       },
       {
         name: "Nirmala Convents",
-        description: "Built engaging class-to-community online platforms for convent schools, integrating secure content and announcements.",
+        description:
+          "Built engaging class-to-community online platforms for convent schools, integrating secure content and announcements.",
       },
       {
         name: "Jeeyar Educational Trust",
-        description: "Designed comprehensive educational sites to enhance visibility, event registrations, and contribution tracking for this philanthropic educational trust.",
+        description:
+          "Designed comprehensive educational sites to enhance visibility, event registrations, and contribution tracking for this philanthropic educational trust.",
       },
       {
         name: "Akshara Group",
-        description: "Built robust websites for educational groups, focusing on admissions, courses, and academic highlights.",
+        description:
+          "Built robust websites for educational groups, focusing on admissions, courses, and academic highlights.",
       },
       {
-        name: "Lion's Club",
-        description: "Built engaging and community-driven platforms to amplify social outreach and charitable projects for this international service organization.",
+        name: "Lion\u2019s Club",
+        description:
+          "Built engaging and community-driven platforms to amplify social outreach and charitable projects for this international service organization.",
       },
       {
         name: "Telangana Bhatraju Community",
-        description: "Launched community-specific networking portals promoting social and cultural programs digitally.",
+        description:
+          "Launched community-specific networking portals promoting social and cultural programs digitally.",
       },
       {
         name: "Cheeryal Laxminarsimha Swamy Devasthanam",
-        description: "Digitally enabled temple management with informative and booking-friendly portals supporting traditions and pilgrim needs.",
+        description:
+          "Digitally enabled temple management with informative and booking-friendly portals supporting traditions and pilgrim needs.",
       },
     ],
   },
@@ -270,27 +393,33 @@ export const legacyProjects = {
     projects: [
       {
         name: "Kapil Group",
-        description: "Implemented interactive web solutions for a leading conglomerate, highlighting their multifaceted business profile and facilitating seamless communication.",
+        description:
+          "Implemented interactive web solutions for a leading conglomerate, highlighting their multifaceted business profile and facilitating seamless communication.",
       },
       {
         name: "Adarsha Motors",
-        description: "Developed responsive business websites for automotive dealerships, streamlining lead generation and customer support.",
+        description:
+          "Developed responsive business websites for automotive dealerships, streamlining lead generation and customer support.",
       },
       {
         name: "Soorya Hospitals",
-        description: "Delivered robust, patient-friendly hospital websites enabling appointment scheduling, service enquiry, and resource information.",
+        description:
+          "Delivered robust, patient-friendly hospital websites enabling appointment scheduling, service enquiry, and resource information.",
       },
       {
         name: "Amrutha IVF Centers",
-        description: "Created tailored medical web platforms for IVF and healthcare institutions to drive awareness, appointment, and education efforts.",
+        description:
+          "Created tailored medical web platforms for IVF and healthcare institutions to drive awareness, appointment, and education efforts.",
       },
       {
         name: "Aditya Ayur Gram, Chapadu, Cuddapah",
-        description: "Crafted wellness domain portals to showcase Ayurvedic healthcare practices, treatments, and booking options.",
+        description:
+          "Crafted wellness domain portals to showcase Ayurvedic healthcare practices, treatments, and booking options.",
       },
       {
         name: "Keesara Devasthanam",
-        description: "Developed engaging, mobile-optimized religious websites for local temples, facilitating event updates and donor engagement.",
+        description:
+          "Developed engaging, mobile-optimized religious websites for local temples, facilitating event updates and donor engagement.",
       },
     ],
   },
@@ -301,41 +430,159 @@ export const timeline = [
   {
     year: "2011",
     title: "Foundation",
-    description: "Arwin Solutions established with a mission to solve real-life problems through digital transformation.",
+    description:
+      "Arwin Solutions established in Hyderabad with a mission to solve real-life problems through digital transformation.",
     milestone: true,
   },
   {
-    year: "2011-2024",
-    title: "14 Years of Excellence",
-    description: "Delivered 26+ digital transformation projects across government, education, and enterprise sectors throughout India.",
+    year: "2011\u20132024",
+    title: "15 Years of Digital Excellence",
+    description:
+      "Delivered 26+ digital transformation projects across government, education, and enterprise sectors throughout India.",
     milestone: false,
   },
   {
     year: "2024",
     title: "AI Transformation",
-    description: "Rebranded as Arwin AI Solutions, introducing AI-enabled capabilities and modern solutions.",
+    description:
+      "Rebranded as Arwin Group. Launched WTAI community platform and Maya Design System. Introduced Arwin Forge as the digital solutions arm.",
     milestone: true,
   },
   {
-    year: "2024-2025",
-    title: "Three Pillars Launch",
-    description: "Launched WTAI AI learning platform, Maya Design System 2.0, and JobReady.ai Phase 1.",
-    milestone: false,
+    year: "2025",
+    title: "Products Go Live",
+    description:
+      "JobReady.ai Phase 1 & 2 launched. Delivered Bhatrajula Kalyana Vedika and Vidya Bharati Vignana Kendra. Maya Design System v2.0 released.",
+    milestone: true,
   },
   {
-    year: "2025",
-    title: "Recent Success",
-    description: "Successfully delivered Bhatraju Lakalyana Vedika matrimony platform and Vidyabharati SVP school website rebrand.",
+    year: "2026",
+    title: "FinLens & BuiltIQ Launch",
+    description:
+      "Launched FinLens \u2014 free financial tools and expert-led education. Launched BuiltIQ \u2014 construction intelligence and BIM tools. Sai Vinil and Anirudh Chakrahari begin contributing. Ecosystem expands to 4 Solutions + 2 Products.",
     milestone: true,
   },
 ];
 
+// ===== FINLENS CONTENT =====
+export const finlensContent = {
+  hero: {
+    title: "FinLens",
+    tagline: "See Your Finances Clearly",
+    description:
+      "Free financial calculators, expert guides, and actionable tips \u2014 built to help you make smarter money decisions. No jargon. No paywalls. Just clarity.",
+  },
+
+  expert: {
+    name: "Sai Vinil",
+    role: "FinLens Product Contributor",
+    bio: "Sai Vinil contributes financial expertise to help make personal finance accessible and actionable for everyone. From SIP strategies to home loan planning \u2014 practical knowledge you can use today.",
+  },
+
+  calculators: [
+    {
+      name: "SIP Calculator",
+      description:
+        "Calculate how much your monthly SIP investments can grow over time.",
+      url: "/finlens/sip",
+      icon: "chart",
+    },
+    {
+      name: "Step-up SIP Calculator",
+      description:
+        "See how increasing your SIP annually accelerates your wealth creation.",
+      url: "/finlens/stepup-sip",
+      icon: "trending",
+    },
+    {
+      name: "EMI Calculator",
+      description:
+        "Plan your home loan, car loan, or personal loan EMIs with clarity.",
+      url: "/finlens/emi",
+      icon: "home",
+    },
+    {
+      name: "Term Insurance Guide",
+      description:
+        "Discover how to make your investments pay your term insurance premium after just 10 years.",
+      url: "/finlens/term-insurance",
+      icon: "shield",
+    },
+  ],
+
+  topics: [
+    "Mutual Funds & SIP",
+    "Home Loan Planning",
+    "Tax Saving Strategies",
+    "Emergency Fund Building",
+    "Insurance Basics",
+    "Retirement Planning",
+  ],
+};
+
+// ===== BUILTIQ CONTENT =====
+export const builtiqContent = {
+  hero: {
+    title: "BuiltIQ",
+    tagline: "Intelligence for the Built Environment",
+    description:
+      "Free construction calculators, BIM guides, and expert-led tools \u2014 built to help architects, engineers, and developers make smarter building decisions.",
+  },
+
+  expert: {
+    name: "Anirudh Chakrahari",
+    role: "BuiltIQ Contributor",
+    bio: "Anirudh contributes domain expertise in BIM consulting and acoustic design to BuiltIQ. Passionate about AR, VR, and the future of the built environment.",
+  },
+
+  calculators: [
+    {
+      name: "Room Acoustics Calculator",
+      description:
+        "Calculate RT60 reverberation time for any room using the Sabine equation. Optimize acoustic comfort for offices, studios, and auditoriums.",
+      url: "/builtiq/acoustics",
+      icon: "wave",
+    },
+    {
+      name: "Material Estimator",
+      description:
+        "Estimate concrete, steel, bricks, cement, and sand quantities for your construction project with Indian thumb rules.",
+      url: "/builtiq/material-estimator",
+      icon: "chart",
+    },
+    {
+      name: "Carpet Area Calculator",
+      description:
+        "Convert between Super Built-up, Built-up, and Carpet Area. Know what you actually get when buying property in India.",
+      url: "/builtiq/carpet-area",
+      icon: "home",
+    },
+    {
+      name: "Embodied Carbon Calculator",
+      description:
+        "Estimate the carbon footprint of your building materials and discover how much nature needs to offset it.",
+      url: "/builtiq/carbon-footprint",
+      icon: "shield",
+    },
+  ],
+
+  topics: [
+    "BIM & Digital Twin Technology",
+    "Acoustic Design Principles",
+    "Sustainable Construction",
+    "Construction Project Management",
+    "AR/VR in Architecture",
+    "Indian Building Codes & Standards",
+  ],
+};
+
 // ===== JOBREADY.AI CONTENT =====
 export const jobreadyContent = {
   hero: {
-    title: "JobReady.ai",
-    tagline: "Simplifying Job Applications with AI for India",
-    description: "Fill out a form once, and let AI find relevant job opportunities across India's top platforms. Both Phase 1 (Job Search) and Phase 2 (Auto-Apply) are now live!",
+    title: "JobReady",
+    tagline: "AI-Powered Career Platform for India",
+    description:
+      "Fill out a form once, and let AI find relevant job opportunities across India\u2019s top platforms. Both Phase 1 (Job Search) and Phase 2 (Auto-Apply) are now live!",
   },
 
   currentPhase: {
@@ -346,7 +593,7 @@ export const jobreadyContent = {
       "AI-powered skill matching for Indian job market",
       "Real-time job search from top Indian companies",
       "Relevance-scored job recommendations",
-      "Salaries displayed in INR (₹)",
+      "Salaries displayed in INR (\u20b9)",
       "Resume/CV upload support",
       "Auto-apply to matching jobs with one click",
       "Application tracking dashboard",
@@ -370,22 +617,26 @@ export const jobreadyContent = {
     {
       step: 1,
       title: "Fill Out Your Profile",
-      description: "Complete a simple form with your skills, experience, and job preferences. Upload your resume for better matching.",
+      description:
+        "Complete a simple form with your skills, experience, and job preferences. Upload your resume for better matching.",
     },
     {
       step: 2,
       title: "AI Matches Jobs",
-      description: "Our AI scans top Indian companies and job platforms to find matching opportunities in cities like Bangalore, Hyderabad, Mumbai, and more.",
+      description:
+        "Our AI scans top Indian companies and job platforms to find matching opportunities in cities like Bangalore, Hyderabad, Mumbai, and more.",
     },
     {
       step: 3,
       title: "Auto-Apply with One Click",
-      description: "Review AI-ranked job matches and use our auto-apply feature to submit applications instantly. Track all your applications in one place.",
+      description:
+        "Review AI-ranked job matches and use our auto-apply feature to submit applications instantly. Track all your applications in one place.",
     },
     {
       step: 4,
       title: "Track & Manage",
-      description: "View all your applications in the dashboard. Get notified about status updates and interview invitations.",
+      description:
+        "View all your applications in the dashboard. Get notified about status updates and interview invitations.",
     },
   ],
 };
@@ -397,4 +648,6 @@ export const stats = {
   governmentProjects: 9,
   educationProjects: 11,
   enterpriseProjects: 6,
+  solutions: 4,
+  products: 2,
 };
