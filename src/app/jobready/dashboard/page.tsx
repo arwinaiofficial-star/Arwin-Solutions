@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, GeneratedCV } from "@/context/AuthContext";
-import ResumeWizard from "@/components/jobready/ResumeWizard";
+import ResumeWizard, { ResumeWizardHandle } from "@/components/jobready/ResumeWizard";
 import AICopilot from "@/components/jobready/AICopilot";
 import CommandPalette from "@/components/jobready/CommandPalette";
 import {
@@ -72,6 +72,9 @@ export default function DashboardPage() {
   const [trackedJobs, setTrackedJobs] = useState<TrackedJob[]>([]);
   const [coverLetterJob, setCoverLetterJob] = useState<JobResult | null>(null);
   const [coverLetterText, setCoverLetterText] = useState("");
+  const [resumeStep, setResumeStep] = useState(0);
+  const [resumeData, setResumeData] = useState<Record<string, unknown>>({});
+  const wizardHandleRef = useRef<ResumeWizardHandle | null>(null);
 
   // Load tracked jobs from localStorage
   useEffect(() => {
@@ -127,6 +130,54 @@ export default function DashboardPage() {
     setCoverLetterJob(job);
     setCoverLetterText(text);
     setActiveView("coverletter");
+  }, []);
+
+  // ── Copilot action handlers ──────────────────────────────────────────
+  const handleCopilotNavigate = useCallback((view: string) => {
+    if (["resume", "jobs", "tracker", "settings", "coverletter"].includes(view)) {
+      setActiveView(view as ViewType);
+    }
+  }, []);
+
+  const handleCopilotUpdateField = useCallback((field: string, value: unknown) => {
+    // For now, field updates go through the wizard handle
+    console.log("Copilot update field:", field, value);
+  }, []);
+
+  const handleCopilotAction = useCallback((action: string, payload?: Record<string, unknown>) => {
+    const handle = wizardHandleRef.current;
+    switch (action) {
+      case "setResumeStep":
+        if (payload?.step !== undefined) {
+          setActiveView("resume");
+          handle?.setStep(payload.step as number);
+        }
+        break;
+      case "triggerUpload":
+        setActiveView("resume");
+        setTimeout(() => handle?.triggerUpload(), 100);
+        break;
+      case "triggerSearch":
+        setActiveView("jobs");
+        break;
+      case "enhanceExperience":
+        setActiveView("resume");
+        handle?.enhanceExperience();
+        break;
+      case "generateSummary":
+        setActiveView("resume");
+        handle?.generateSummary();
+        break;
+      case "runATS":
+        setActiveView("resume");
+        handle?.runATS();
+        break;
+      case "downloadPDF":
+        handle?.downloadPDF();
+        break;
+      default:
+        console.log("Unknown copilot action:", action, payload);
+    }
   }, []);
 
   if (isLoading) {
@@ -211,7 +262,14 @@ export default function DashboardPage() {
           {/* Content */}
           <div className="ws-content">
             <div className="ws-panel">
-              {activeView === "resume" && <ResumeWizard onNavigateToSearch={() => setActiveView("jobs")} />}
+              {activeView === "resume" && (
+                <ResumeWizard
+                  onNavigateToSearch={() => setActiveView("jobs")}
+                  onStepChange={setResumeStep}
+                  onDataChange={(d) => setResumeData(d as unknown as Record<string, unknown>)}
+                  handleRef={(h) => { wizardHandleRef.current = h; }}
+                />
+              )}
               {activeView === "jobs" && (
                 <JobBoard
                   user={user}
@@ -248,7 +306,17 @@ export default function DashboardPage() {
             {/* AI Copilot */}
             {copilotOpen && (
               <div className="ws-copilot">
-                <AICopilot context={activeView} cvData={user.cvData as Record<string, unknown> | null} isOpen={copilotOpen} onClose={() => setCopilotOpen(false)} />
+                <AICopilot
+                  context={activeView}
+                  cvData={user.cvData as Record<string, unknown> | null}
+                  isOpen={copilotOpen}
+                  onClose={() => setCopilotOpen(false)}
+                  onNavigate={handleCopilotNavigate}
+                  onUpdateField={handleCopilotUpdateField}
+                  onTriggerAction={handleCopilotAction}
+                  resumeStep={resumeStep}
+                  resumeData={resumeData}
+                />
               </div>
             )}
           </div>

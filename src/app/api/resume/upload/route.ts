@@ -12,9 +12,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    // Validate file type
-    const allowedTypes = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
-    if (!allowedTypes.includes(file.type)) {
+    // Validate file type — check both MIME and extension for robustness
+    const allowedMimes = [
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/octet-stream", // some browsers send this for PDFs
+    ];
+    const ext = file.name.toLowerCase().split(".").pop();
+    const allowedExts = ["pdf", "docx"];
+
+    if (!allowedMimes.includes(file.type) && !allowedExts.includes(ext || "")) {
       return NextResponse.json({ error: "Only PDF and DOCX files are supported" }, { status: 400 });
     }
 
@@ -25,10 +32,11 @@ export async function POST(request: NextRequest) {
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+    const isPDF = file.type === "application/pdf" || ext === "pdf";
 
     let rawText = "";
 
-    if (file.type === "application/pdf") {
+    if (isPDF) {
       try {
         // pdf-parse doesn't have proper ESM types, use require
         // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -37,25 +45,29 @@ export async function POST(request: NextRequest) {
         rawText = pdfData.text;
       } catch (pdfError) {
         console.error("pdf-parse failed:", pdfError);
-        // Fallback: send raw buffer to backend for processing
-        rawText = buffer.toString("utf-8").replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s+/g, " ").trim();
+        // Fallback: try basic text extraction from buffer
+        rawText = buffer
+          .toString("utf-8")
+          .replace(/[^\x20-\x7E\n\r\t]/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
       }
     } else {
-      // For DOCX, extract basic text
+      // For DOCX, extract text content
       const text = buffer.toString("utf-8");
       rawText = text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
     }
 
     if (!rawText || rawText.trim().length < 20) {
       return NextResponse.json(
-        { error: "Could not extract text from the file. Please try a different file or paste your CV content directly." },
+        { error: "Could not extract text from the file. The file may be scanned/image-based. Please try a different file or start from scratch." },
         { status: 400 }
       );
     }
 
-    // Try to forward to backend LLM for structured extraction
+    // Try backend LLM extraction
     const token = request.headers.get("authorization");
-    const backendUrl = process.env.BACKEND_URL || "http://localhost:8000";
+    const backendUrl = process.env.FASTAPI_URL || process.env.BACKEND_URL || "http://localhost:8000";
 
     try {
       const extractResponse = await fetch(`${backendUrl}/api/v1/resume/chat`, {
@@ -78,8 +90,18 @@ export async function POST(request: NextRequest) {
           try {
             extractedData = JSON.parse(data.reply);
           } catch {
-            // Reply wasn't JSON, use as summary
-            extractedData = { summary: data.reply };
+            // Reply wasn't valid JSON — try to salvage
+            // The LLM sometimes wraps in markdown code blocks
+            const cleaned = data.reply
+              .replace(/^```(?:json)?\s*/m, "")
+              .replace(/\s*```\s*$/m, "")
+              .trim();
+            try {
+              extractedData = JSON.parse(cleaned);
+            } catch {
+              // Still not JSON — use the text as a summary
+              extractedData = { summary: data.reply };
+            }
           }
         }
         return NextResponse.json({
@@ -88,12 +110,14 @@ export async function POST(request: NextRequest) {
           extractedData,
           fileName: file.name,
         });
+      } else {
+        console.error("Backend extraction returned non-OK:", extractResponse.status);
       }
     } catch (backendError) {
       console.error("Backend extraction failed:", backendError);
     }
 
-    // If backend extraction fails, return raw text for frontend processing
+    // If backend extraction fails, return raw text so frontend can still populate summary
     return NextResponse.json({
       success: true,
       rawText: rawText.slice(0, 3000),

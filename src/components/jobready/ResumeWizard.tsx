@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useAuth, GeneratedCV, WorkExperience, Education } from "@/context/AuthContext";
 import { resumeApi } from "@/lib/api/client";
 import {
@@ -52,15 +52,31 @@ interface ResumeData {
 
 const STEP_LABELS = ["Start", "Personal", "Experience", "Education", "Skills", "Preview"];
 
+type ResumeTheme = "classic" | "modern" | "minimal";
+
+export interface ResumeWizardHandle {
+  triggerUpload: () => void;
+  setStep: (s: number) => void;
+  enhanceExperience: () => void;
+  generateSummary: () => void;
+  runATS: () => void;
+  downloadPDF: () => void;
+  getStep: () => number;
+  getData: () => ResumeData;
+}
+
 interface ResumeWizardProps {
   onNavigateToSearch?: () => void;
+  onStepChange?: (step: number) => void;
+  onDataChange?: (data: ResumeData) => void;
+  handleRef?: (handle: ResumeWizardHandle) => void;
 }
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 
-export default function ResumeWizard({ onNavigateToSearch }: ResumeWizardProps) {
+export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataChange, handleRef }: ResumeWizardProps) {
   const { user, saveGeneratedCV, updateProfile } = useAuth();
-  const [step, setStep] = useState(0);
+  const [step, setStepRaw] = useState(0);
   const [data, setData] = useState<ResumeData>({
     fullName: user?.name || "",
     email: user?.email || "",
@@ -74,18 +90,82 @@ export default function ResumeWizard({ onNavigateToSearch }: ResumeWizardProps) 
     education: [],
   });
   const [isUploading, setIsUploading] = useState(false);
-  const [isEnhancing, setIsEnhancing] = useState<string | null>(null); // ID of item being enhanced
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isEnhancing, setIsEnhancing] = useState<string | null>(null);
   const [generatedCV, setGeneratedCV] = useState<GeneratedCV | null>(null);
   const [uploadFileName, setUploadFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Preview state
+  const [theme, setTheme] = useState<ResumeTheme>("classic");
+  const [editingSection, setEditingSection] = useState<string | null>(null);
+  const [editBuffer, setEditBuffer] = useState("");
+  const [atsScore, setAtsScore] = useState<number | null>(null);
+  const [atsFeedback, setAtsFeedback] = useState<string[]>([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  // Wrapper for setStep that notifies parent
+  const setStep = useCallback((s: number) => {
+    setStepRaw(s);
+    onStepChange?.(s);
+  }, [onStepChange]);
+
+  // Notify parent when data changes
+  useEffect(() => {
+    onDataChange?.(data);
+  }, [data, onDataChange]);
+
+  // If user already has a CV, pre-populate
+  useEffect(() => {
+    if (user?.cvData && !data.fullName) {
+      const cv = user.cvData;
+      setData({
+        fullName: cv.personalInfo?.name || user.name || "",
+        email: cv.personalInfo?.email || user.email || "",
+        phone: cv.personalInfo?.phone || user.phone || "",
+        location: cv.personalInfo?.location || "",
+        linkedIn: cv.personalInfo?.linkedIn || "",
+        portfolio: cv.personalInfo?.portfolio || "",
+        summary: cv.summary || "",
+        skills: cv.skills || [],
+        experiences: (cv.experience || []).map(e => ({
+          id: uid(), title: e.title, company: e.company, location: e.location,
+          startDate: e.startDate, endDate: e.endDate, current: e.current,
+          highlights: e.highlights.length > 0 ? e.highlights : [""],
+        })),
+        education: (cv.education || []).map(e => ({
+          id: uid(), degree: e.degree, institution: e.institution,
+          location: e.location || "", graduationYear: e.graduationYear, gpa: e.gpa || "",
+        })),
+      });
+      // If they have a complete CV, go to preview
+      if (cv.skills && cv.skills.length > 0) {
+        const built = buildCVFromData({
+          fullName: cv.personalInfo?.name || "", email: cv.personalInfo?.email || "",
+          phone: cv.personalInfo?.phone || "", location: cv.personalInfo?.location || "",
+          linkedIn: cv.personalInfo?.linkedIn || "", portfolio: cv.personalInfo?.portfolio || "",
+          summary: cv.summary || "", skills: cv.skills || [],
+          experiences: (cv.experience || []).map(e => ({
+            id: uid(), title: e.title, company: e.company, location: e.location,
+            startDate: e.startDate, endDate: e.endDate, current: e.current,
+            highlights: e.highlights.length > 0 ? e.highlights : [""],
+          })),
+          education: (cv.education || []).map(e => ({
+            id: uid(), degree: e.degree, institution: e.institution,
+            location: e.location || "", graduationYear: e.graduationYear, gpa: e.gpa || "",
+          })),
+        });
+        setGeneratedCV(built);
+        setStep(5);
+      }
+    }
+  }, []); // eslint-disable-line
 
   // ─── Data Helpers ────────────────────────────────────────────────────────
 
   const updateField = useCallback(<K extends keyof ResumeData>(field: K, value: ResumeData[K]) => {
     setData(prev => ({ ...prev, [field]: value }));
   }, []);
-
-  const uid = () => `_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
   const addExperience = () => {
     setData(prev => ({
@@ -176,45 +256,56 @@ export default function ResumeWizard({ onNavigateToSearch }: ResumeWizardProps) 
   const handleUpload = async (file: File) => {
     setIsUploading(true);
     setUploadFileName(file.name);
+    setUploadError(null);
 
     try {
       const result = await resumeApi.uploadCV(file);
 
       if (result.data?.extractedData) {
         const ext = result.data.extractedData as Record<string, unknown>;
-        setData(prev => ({
-          ...prev,
-          fullName: (ext.fullName as string) || prev.fullName,
-          email: (ext.email as string) || prev.email,
-          phone: (ext.phone as string) || prev.phone,
-          location: (ext.location as string) || prev.location,
-          linkedIn: (ext.linkedIn as string) || prev.linkedIn,
-          summary: (ext.summary as string) || prev.summary,
-          skills: (ext.skills as string[]) || prev.skills,
-          experiences: ((ext.experiences as Array<Record<string, unknown>>)?.map(e => ({
-            id: uid(), title: (e.title as string) || "", company: (e.company as string) || "",
-            location: (e.location as string) || "", startDate: (e.startDate as string) || "",
-            endDate: (e.endDate as string) || "", current: (e.endDate as string)?.toLowerCase() === "present",
-            highlights: (e.highlights as string[]) || [""],
-          }))) || prev.experiences,
-          education: ((ext.education as Array<Record<string, unknown>>)?.map(e => ({
-            id: uid(), degree: (e.degree as string) || "", institution: (e.institution as string) || "",
-            location: (e.location as string) || "", graduationYear: (e.graduationYear as string) || "",
-            gpa: (e.gpa as string) || "",
-          }))) || prev.education,
-        }));
-        setStep(1); // Jump to personal info for review
+        const hasParseError = ext.parse_error === true;
+
+        if (hasParseError && result.data.rawText) {
+          // LLM couldn't parse — use raw text as summary, let user fill rest
+          setData(prev => ({ ...prev, summary: result.data!.rawText.slice(0, 500) }));
+          setUploadError("Could not fully extract your CV. Raw text was loaded into the summary — please fill in the details manually.");
+          setStep(1);
+        } else {
+          // Successful extraction — populate all fields
+          setData(prev => ({
+            ...prev,
+            fullName: (ext.fullName as string) || prev.fullName,
+            email: (ext.email as string) || prev.email,
+            phone: (ext.phone as string) || prev.phone,
+            location: (ext.location as string) || prev.location,
+            linkedIn: (ext.linkedIn as string) || prev.linkedIn,
+            summary: (ext.summary as string) || prev.summary,
+            skills: Array.isArray(ext.skills) ? (ext.skills as string[]) : prev.skills,
+            experiences: ((ext.experiences as Array<Record<string, unknown>>)?.map(e => ({
+              id: uid(), title: (e.title as string) || "", company: (e.company as string) || "",
+              location: (e.location as string) || "", startDate: (e.startDate as string) || "",
+              endDate: (e.endDate as string) || "", current: (e.endDate as string)?.toLowerCase() === "present",
+              highlights: Array.isArray(e.highlights) ? (e.highlights as string[]) : [""],
+            }))) || prev.experiences,
+            education: ((ext.education as Array<Record<string, unknown>>)?.map(e => ({
+              id: uid(), degree: (e.degree as string) || "", institution: (e.institution as string) || "",
+              location: (e.location as string) || "", graduationYear: (e.graduationYear as string) || "",
+              gpa: (e.gpa as string) || "",
+            }))) || prev.education,
+          }));
+          setStep(1);
+        }
       } else if (result.data?.rawText) {
-        // LLM extraction failed but we have raw text — store as summary for now
         setData(prev => ({ ...prev, summary: result.data!.rawText.slice(0, 500) }));
+        setUploadError("AI extraction is unavailable. Your CV text was loaded into the summary. Please fill in the structured fields manually.");
         setStep(1);
       } else {
+        setUploadError(result.error || "Failed to process file. Please try a different file or start from scratch.");
         setUploadFileName(null);
-        alert(result.error || "Failed to process file. Please try again or start from scratch.");
       }
     } catch {
       setUploadFileName(null);
-      alert("Upload failed. Please try again.");
+      setUploadError("Upload failed. Please check your connection and try again.");
     }
 
     setIsUploading(false);
@@ -248,7 +339,7 @@ export default function ResumeWizard({ onNavigateToSearch }: ResumeWizardProps) 
       const result = await resumeApi.chat("", "generate_summary", {
         fullName: data.fullName,
         skills: data.skills,
-        experiences: data.experiences.map(e => ({ title: e.title, company: e.company })),
+        experiences: data.experiences.map(e => ({ title: e.title, company: e.company, startDate: e.startDate, endDate: e.endDate })),
         education: data.education.map(e => ({ degree: e.degree, institution: e.institution })),
       });
       if (result.data?.reply) {
@@ -261,32 +352,7 @@ export default function ResumeWizard({ onNavigateToSearch }: ResumeWizardProps) 
   // ─── Generate Final CV ──────────────────────────────────────────────────
 
   const buildCV = useCallback((): GeneratedCV => {
-    let summary = data.summary;
-    if (!summary) {
-      const topSkills = data.skills.slice(0, 3).join(", ");
-      summary = `Results-driven professional specializing in ${topSkills || "technology"}. Committed to delivering impactful solutions.`;
-    }
-
-    return {
-      id: `cv_${crypto.randomUUID()}`,
-      personalInfo: {
-        name: data.fullName, email: data.email, phone: data.phone,
-        location: data.location, linkedIn: data.linkedIn || undefined,
-        portfolio: data.portfolio || undefined,
-      },
-      summary,
-      skills: data.skills,
-      experience: data.experiences.map(e => ({
-        title: e.title, company: e.company, location: e.location,
-        startDate: e.startDate, endDate: e.current ? "Present" : e.endDate,
-        current: e.current, highlights: e.highlights.filter(h => h.trim()),
-      })),
-      education: data.education.map(e => ({
-        degree: e.degree, institution: e.institution,
-        location: e.location, graduationYear: e.graduationYear, gpa: e.gpa,
-      })),
-      createdAt: new Date().toISOString(),
-    };
+    return buildCVFromData(data);
   }, [data]);
 
   const finishAndSave = () => {
@@ -299,7 +365,6 @@ export default function ResumeWizard({ onNavigateToSearch }: ResumeWizardProps) 
   };
 
   const goToStep = (s: number) => {
-    // Auto-save on step transitions
     if (step === 4 && s === 5) {
       finishAndSave();
       return;
@@ -307,9 +372,81 @@ export default function ResumeWizard({ onNavigateToSearch }: ResumeWizardProps) 
     setStep(s);
   };
 
+  // ─── Preview: ATS Analysis ─────────────────────────────────────────────
+
+  const analyzeATS = async () => {
+    if (!generatedCV) return;
+    setIsAnalyzing(true);
+    try {
+      const result = await resumeApi.chat(
+        `Analyze this resume for ATS (Applicant Tracking System) compatibility. Rate it 0-100 and provide specific suggestions. Resume data: Name: ${generatedCV.personalInfo.name}, Skills: ${generatedCV.skills.join(", ")}, Summary: ${generatedCV.summary}, Experience count: ${generatedCV.experience.length}, Education count: ${generatedCV.education.length}. Highlights: ${generatedCV.experience.flatMap(e => e.highlights).join("; ")}. Return ONLY a JSON object: {"score": number, "feedback": ["suggestion1", "suggestion2", ...]}`,
+        "chat"
+      );
+      if (result.data?.reply) {
+        try {
+          const cleaned = result.data.reply.replace(/^```(?:json)?\s*/m, "").replace(/\s*```\s*$/m, "").trim();
+          const parsed = JSON.parse(cleaned);
+          setAtsScore(parsed.score || null);
+          setAtsFeedback(parsed.feedback || []);
+        } catch {
+          // Try to extract a number from the response
+          const match = result.data.reply.match(/(\d{1,3})/);
+          setAtsScore(match ? parseInt(match[1]) : 70);
+          setAtsFeedback([result.data.reply]);
+        }
+      }
+    } catch { /* silent */ }
+    setIsAnalyzing(false);
+  };
+
+  // ─── Preview: Inline Editing ───────────────────────────────────────────
+
+  const startEditSection = (section: string, currentValue: string) => {
+    setEditingSection(section);
+    setEditBuffer(currentValue);
+  };
+
+  const saveEditSection = () => {
+    if (!generatedCV || !editingSection) return;
+
+    const updated = { ...generatedCV };
+    if (editingSection === "summary") {
+      updated.summary = editBuffer;
+      setData(prev => ({ ...prev, summary: editBuffer }));
+    } else if (editingSection === "skills") {
+      updated.skills = editBuffer.split(",").map(s => s.trim()).filter(Boolean);
+      setData(prev => ({ ...prev, skills: updated.skills }));
+    } else if (editingSection === "name") {
+      updated.personalInfo = { ...updated.personalInfo, name: editBuffer };
+      setData(prev => ({ ...prev, fullName: editBuffer }));
+    } else if (editingSection === "contact") {
+      // Parse contact line back
+      const parts = editBuffer.split("·").map(s => s.trim());
+      updated.personalInfo = {
+        ...updated.personalInfo,
+        email: parts[0] || updated.personalInfo.email,
+        phone: parts[1] || updated.personalInfo.phone,
+        location: parts[2] || updated.personalInfo.location,
+      };
+    }
+
+    setGeneratedCV(updated);
+    saveGeneratedCV(updated);
+    resumeApi.save(updated as unknown as Record<string, unknown>, "final").catch(() => {});
+    setEditingSection(null);
+    setEditBuffer("");
+  };
+
+  const cancelEdit = () => {
+    setEditingSection(null);
+    setEditBuffer("");
+  };
+
+  // ─── PDF Download ─────────────────────────────────────────────────────
+
   const downloadPDF = () => {
     const cv = generatedCV || buildCV();
-    const html = buildResumeHTML(cv);
+    const html = buildResumeHTML(cv, theme);
     const w = window.open("", "_blank");
     if (!w) return;
     w.document.write(html);
@@ -317,13 +454,31 @@ export default function ResumeWizard({ onNavigateToSearch }: ResumeWizardProps) 
     w.onload = () => w.print();
   };
 
+  // ─── Expose handle for copilot integration ───────────────────────────
+
+  useEffect(() => {
+    handleRef?.({
+      triggerUpload: () => fileInputRef.current?.click(),
+      setStep,
+      enhanceExperience: () => {
+        if (data.experiences.length > 0) enhanceExperience(data.experiences[0].id);
+      },
+      generateSummary,
+      runATS: analyzeATS,
+      downloadPDF,
+      getStep: () => step,
+      getData: () => data,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, data, generatedCV, theme]);
+
   // ─── Validation ─────────────────────────────────────────────────────────
 
   const canProceed = (s: number): boolean => {
     switch (s) {
       case 1: return !!(data.fullName.trim() && data.email.trim());
-      case 2: return true; // Experience is optional
-      case 3: return true; // Education is optional
+      case 2: return true;
+      case 3: return true;
       case 4: return data.skills.length > 0;
       default: return true;
     }
@@ -350,6 +505,15 @@ export default function ResumeWizard({ onNavigateToSearch }: ResumeWizardProps) 
           </div>
         )}
 
+        {/* Upload error banner */}
+        {uploadError && step === 1 && (
+          <div className="rw-upload-error">
+            <span>⚠️</span>
+            <p>{uploadError}</p>
+            <button onClick={() => setUploadError(null)}><XIcon size={12} /></button>
+          </div>
+        )}
+
         {/* Hidden file input */}
         <input ref={fileInputRef} type="file" accept=".pdf,.docx" style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); e.target.value = ""; }} />
 
@@ -365,7 +529,8 @@ export default function ResumeWizard({ onNavigateToSearch }: ResumeWizardProps) 
                 <UploadIcon size={24} />
                 <strong>{isUploading ? "Processing..." : "Upload my CV"}</strong>
                 <span>Upload a PDF and I&apos;ll extract your details into the form</span>
-                {uploadFileName && <span className="rw-option-file">📎 {uploadFileName}</span>}
+                {isUploading && <span className="rw-upload-progress">Extracting with AI...</span>}
+                {uploadFileName && !isUploading && <span className="rw-option-file">📎 {uploadFileName}</span>}
               </button>
 
               <button className="rw-option" onClick={() => { if (data.experiences.length === 0) addExperience(); if (data.education.length === 0) addEducation(); setStep(1); }}>
@@ -374,6 +539,14 @@ export default function ResumeWizard({ onNavigateToSearch }: ResumeWizardProps) 
                 <span>Fill in your details step by step — I&apos;ll help format everything</span>
               </button>
             </div>
+
+            {uploadError && step === 0 && (
+              <div className="rw-upload-error" style={{ marginTop: 20, maxWidth: 500, marginLeft: "auto", marginRight: "auto" }}>
+                <span>⚠️</span>
+                <p>{uploadError}</p>
+                <button onClick={() => setUploadError(null)}><XIcon size={12} /></button>
+              </div>
+            )}
           </div>
         )}
 
@@ -578,42 +751,144 @@ export default function ResumeWizard({ onNavigateToSearch }: ResumeWizardProps) 
           </div>
         )}
 
-        {/* ── Step 5: Preview ───────────────────────────────────────── */}
+        {/* ── Step 5: Preview Playground ─────────────────────────────── */}
         {step === 5 && generatedCV && (
           <div className="rw-section">
+            {/* Toolbar */}
+            <div className="rw-preview-toolbar">
+              <div className="rw-preview-toolbar-left">
+                <span className="rw-preview-title">Resume Preview</span>
+                <span className="rw-preview-hint">Click any section to edit inline</span>
+              </div>
+              <div className="rw-preview-toolbar-right">
+                {/* Theme Selector */}
+                <div className="rw-theme-picker">
+                  {(["classic", "modern", "minimal"] as ResumeTheme[]).map(t => (
+                    <button key={t} className={`rw-theme-btn ${theme === t ? "rw-theme-active" : ""}`} onClick={() => setTheme(t)}>
+                      {t === "classic" ? "📘" : t === "modern" ? "🎨" : "⚪"} {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* ATS Score */}
+            <div className="rw-ats-bar">
+              {atsScore !== null ? (
+                <div className="rw-ats-result">
+                  <div className={`rw-ats-badge ${atsScore >= 70 ? "rw-ats-good" : atsScore >= 40 ? "rw-ats-ok" : "rw-ats-low"}`}>
+                    ATS Score: {atsScore}/100
+                  </div>
+                  {atsFeedback.length > 0 && (
+                    <div className="rw-ats-feedback">
+                      {atsFeedback.slice(0, 4).map((f, i) => (
+                        <div key={i} className="rw-ats-tip">→ {f}</div>
+                      ))}
+                    </div>
+                  )}
+                  <button className="rw-btn-text" onClick={() => { setAtsScore(null); setAtsFeedback([]); }}>Dismiss</button>
+                </div>
+              ) : (
+                <button className="rw-ats-btn" onClick={analyzeATS} disabled={isAnalyzing}>
+                  {isAnalyzing ? <><span className="rw-spinner" /> Analyzing...</> : "🎯 Check ATS Compatibility"}
+                </button>
+              )}
+            </div>
+
+            {/* Actions Bar */}
             <div className="rw-preview-actions">
               <button className="rw-btn rw-btn-primary" onClick={downloadPDF}><DownloadIcon size={14} /> Download PDF</button>
               <button className="rw-btn rw-btn-primary" onClick={() => onNavigateToSearch?.()}>
                 <SearchIcon size={14} /> Find Matching Jobs <ArrowRightIcon size={14} />
               </button>
-              <button className="rw-btn rw-btn-ghost" onClick={() => setStep(1)}>Edit Resume</button>
+              <button className="rw-btn rw-btn-ghost" onClick={() => setStep(1)}>✏️ Full Edit</button>
+              <button className="rw-btn rw-btn-ghost" onClick={() => {
+                const cv = buildCV();
+                setGeneratedCV(cv);
+                saveGeneratedCV(cv);
+                resumeApi.save(cv as unknown as Record<string, unknown>, "final").catch(() => {});
+              }}>💾 Save</button>
             </div>
 
-            <div className="rw-preview">
-              <h1 className="rw-cv-name">{generatedCV.personalInfo.name}</h1>
-              <div className="rw-cv-contact">
-                {[generatedCV.personalInfo.email, generatedCV.personalInfo.phone, generatedCV.personalInfo.location, generatedCV.personalInfo.linkedIn].filter(Boolean).join(" · ")}
+            {/* Live Preview */}
+            <div className={`rw-preview rw-theme-${theme}`}>
+              {/* Name — clickable to edit */}
+              {editingSection === "name" ? (
+                <div className="rw-inline-edit">
+                  <input value={editBuffer} onChange={e => setEditBuffer(e.target.value)} className="rw-inline-input rw-inline-name" autoFocus />
+                  <div className="rw-inline-btns">
+                    <button onClick={saveEditSection}>✓</button>
+                    <button onClick={cancelEdit}>✕</button>
+                  </div>
+                </div>
+              ) : (
+                <h1 className="rw-cv-name rw-editable" onClick={() => startEditSection("name", generatedCV.personalInfo.name)} title="Click to edit">
+                  {generatedCV.personalInfo.name}
+                </h1>
+              )}
+
+              {/* Contact */}
+              <div className="rw-cv-contact" onClick={() => startEditSection("contact", [generatedCV.personalInfo.email, generatedCV.personalInfo.phone, generatedCV.personalInfo.location, generatedCV.personalInfo.linkedIn].filter(Boolean).join(" · "))} title="Click to edit">
+                {editingSection === "contact" ? (
+                  <div className="rw-inline-edit" onClick={e => e.stopPropagation()}>
+                    <input value={editBuffer} onChange={e => setEditBuffer(e.target.value)} className="rw-inline-input" autoFocus />
+                    <div className="rw-inline-btns">
+                      <button onClick={saveEditSection}>✓</button>
+                      <button onClick={cancelEdit}>✕</button>
+                    </div>
+                  </div>
+                ) : (
+                  <>{[generatedCV.personalInfo.email, generatedCV.personalInfo.phone, generatedCV.personalInfo.location, generatedCV.personalInfo.linkedIn].filter(Boolean).join(" · ")}</>
+                )}
               </div>
 
+              {/* Summary — editable */}
               {generatedCV.summary && (
                 <>
                   <div className="rw-cv-heading">Professional Summary</div>
-                  <p className="rw-cv-text">{generatedCV.summary}</p>
+                  {editingSection === "summary" ? (
+                    <div className="rw-inline-edit">
+                      <textarea value={editBuffer} onChange={e => setEditBuffer(e.target.value)} className="rw-inline-textarea" rows={4} autoFocus />
+                      <div className="rw-inline-btns">
+                        <button onClick={saveEditSection}>✓ Save</button>
+                        <button onClick={cancelEdit}>✕ Cancel</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="rw-cv-text rw-editable" onClick={() => startEditSection("summary", generatedCV.summary)} title="Click to edit">
+                      {generatedCV.summary}
+                    </p>
+                  )}
                 </>
               )}
 
+              {/* Skills — editable */}
               {generatedCV.skills.length > 0 && (
                 <>
                   <div className="rw-cv-heading">Technical Skills</div>
-                  <p className="rw-cv-text">{generatedCV.skills.join(" · ")}</p>
+                  {editingSection === "skills" ? (
+                    <div className="rw-inline-edit">
+                      <input value={editBuffer} onChange={e => setEditBuffer(e.target.value)} className="rw-inline-input" autoFocus />
+                      <span className="rw-inline-hint">Comma-separated</span>
+                      <div className="rw-inline-btns">
+                        <button onClick={saveEditSection}>✓ Save</button>
+                        <button onClick={cancelEdit}>✕ Cancel</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="rw-cv-text rw-editable" onClick={() => startEditSection("skills", generatedCV.skills.join(", "))} title="Click to edit">
+                      {generatedCV.skills.join(" · ")}
+                    </p>
+                  )}
                 </>
               )}
 
+              {/* Experience — click goes to full edit */}
               {generatedCV.experience.length > 0 && (
                 <>
                   <div className="rw-cv-heading">Work Experience</div>
                   {generatedCV.experience.map((exp, i) => (
-                    <div key={i} className="rw-cv-exp">
+                    <div key={i} className="rw-cv-exp rw-editable" onClick={() => { setStep(2); setEditingSection(null); }} title="Click to edit in wizard">
                       <div className="rw-cv-exp-row">
                         <strong>{exp.title}</strong>
                         <span>{exp.startDate} – {exp.endDate}</span>
@@ -627,11 +902,12 @@ export default function ResumeWizard({ onNavigateToSearch }: ResumeWizardProps) 
                 </>
               )}
 
+              {/* Education — click goes to full edit */}
               {generatedCV.education.length > 0 && (
                 <>
                   <div className="rw-cv-heading">Education</div>
                   {generatedCV.education.map((edu, i) => (
-                    <div key={i} className="rw-cv-edu">
+                    <div key={i} className="rw-cv-edu rw-editable" onClick={() => { setStep(3); setEditingSection(null); }} title="Click to edit in wizard">
                       <strong>{edu.degree}</strong> — {edu.institution}{edu.graduationYear ? `, ${edu.graduationYear}` : ""}
                       {edu.gpa && <span className="rw-cv-gpa"> (GPA: {edu.gpa})</span>}
                     </div>
@@ -658,13 +934,60 @@ export default function ResumeWizard({ onNavigateToSearch }: ResumeWizardProps) 
   );
 }
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function uid() {
+  return `_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function buildCVFromData(data: {
+  fullName: string; email: string; phone: string; location: string;
+  linkedIn: string; portfolio: string; summary: string; skills: string[];
+  experiences: { title: string; company: string; location: string; startDate: string; endDate: string; current: boolean; highlights: string[] }[];
+  education: { degree: string; institution: string; location: string; graduationYear: string; gpa: string }[];
+}): GeneratedCV {
+  let summary = data.summary;
+  if (!summary) {
+    const topSkills = data.skills.slice(0, 3).join(", ");
+    summary = `Results-driven professional specializing in ${topSkills || "technology"}. Committed to delivering impactful solutions.`;
+  }
+
+  return {
+    id: `cv_${crypto.randomUUID()}`,
+    personalInfo: {
+      name: data.fullName, email: data.email, phone: data.phone,
+      location: data.location, linkedIn: data.linkedIn || undefined,
+      portfolio: data.portfolio || undefined,
+    },
+    summary,
+    skills: data.skills,
+    experience: data.experiences.map(e => ({
+      title: e.title, company: e.company, location: e.location,
+      startDate: e.startDate, endDate: e.current ? "Present" : e.endDate,
+      current: e.current, highlights: e.highlights.filter(h => h.trim()),
+    })),
+    education: data.education.map(e => ({
+      degree: e.degree, institution: e.institution,
+      location: e.location, graduationYear: e.graduationYear, gpa: e.gpa,
+    })),
+    createdAt: new Date().toISOString(),
+  };
+}
+
 // ─── PDF Builder ────────────────────────────────────────────────────────────
 
-function buildResumeHTML(cv: GeneratedCV): string {
+function buildResumeHTML(cv: GeneratedCV, theme: ResumeTheme): string {
+  const themeStyles: Record<ResumeTheme, { accent: string; headingStyle: string; font: string }> = {
+    classic: { accent: "#2563eb", headingStyle: "border-bottom:2px solid #2563eb;padding-bottom:3px;", font: "'Segoe UI',Tahoma,sans-serif" },
+    modern: { accent: "#7c3aed", headingStyle: "background:#f5f3ff;padding:6px 12px;border-radius:4px;border-left:4px solid #7c3aed;", font: "'Inter','SF Pro',system-ui,sans-serif" },
+    minimal: { accent: "#111827", headingStyle: "border-bottom:1px solid #d1d5db;padding-bottom:2px;", font: "'Georgia','Times New Roman',serif" },
+  };
+  const t = themeStyles[theme];
+
   const exp = cv.experience.map(e => `
     <div style="margin-bottom:14px">
       <div style="display:flex;justify-content:space-between"><strong>${e.title}</strong><span style="color:#666;font-size:0.85em">${e.startDate} – ${e.endDate}</span></div>
-      <div style="color:#444">${e.company}${e.location ? ` · ${e.location}` : ""}</div>
+      <div style="color:${t.accent}">${e.company}${e.location ? ` · ${e.location}` : ""}</div>
       ${e.highlights.length > 0 ? `<ul style="margin:6px 0;padding-left:20px">${e.highlights.map(h => `<li>${h}</li>`).join("")}</ul>` : ""}
     </div>`).join("");
 
@@ -673,7 +996,7 @@ function buildResumeHTML(cv: GeneratedCV): string {
   ).join("");
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${cv.personalInfo.name} - Resume</title>
-<style>@page{margin:0.7in;size:A4}*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Tahoma,sans-serif;color:#1a1a2e;font-size:10.5pt;line-height:1.5;padding:40px}h1{font-size:22pt;font-weight:700;margin-bottom:4px}.contact{color:#555;font-size:9.5pt;margin-bottom:16px}.heading{font-size:11pt;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;border-bottom:2px solid #2563eb;padding-bottom:3px;margin:18px 0 10px}p{margin-bottom:6px}ul{margin:4px 0}li{margin-bottom:2px}</style></head><body>
+<style>@page{margin:0.7in;size:A4}*{margin:0;padding:0;box-sizing:border-box}body{font-family:${t.font};color:#1a1a2e;font-size:10.5pt;line-height:1.5;padding:40px}h1{font-size:22pt;font-weight:700;margin-bottom:4px;color:${theme === "modern" ? t.accent : "#1a1a2e"}}.contact{color:#555;font-size:9.5pt;margin-bottom:16px}.heading{font-size:11pt;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;${t.headingStyle}margin:18px 0 10px}p{margin-bottom:6px}ul{margin:4px 0}li{margin-bottom:2px}</style></head><body>
 <h1>${cv.personalInfo.name}</h1>
 <div class="contact">${[cv.personalInfo.email, cv.personalInfo.phone, cv.personalInfo.location, cv.personalInfo.linkedIn].filter(Boolean).join(" · ")}</div>
 ${cv.summary ? `<div class="heading">Professional Summary</div><p>${cv.summary}</p>` : ""}
@@ -687,6 +1010,19 @@ ${cv.education.length > 0 ? `<div class="heading">Education</div>${edu}` : ""}
 
 const wizardStyles = `
   .rw { max-width: 720px; margin: 0 auto; }
+
+  /* Upload Error Banner */
+  .rw-upload-error {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 12px 16px; border-radius: 8px;
+    background: rgba(234,179,8,0.1); border: 1px solid rgba(234,179,8,0.3);
+    margin-bottom: 16px; animation: rw-in 0.2s ease;
+  }
+  .rw-upload-error span { flex-shrink: 0; font-size: 1rem; }
+  .rw-upload-error p { margin: 0; font-size: 0.8125rem; color: #eab308; line-height: 1.5; flex: 1; }
+  .rw-upload-error button { background: none; border: none; color: #eab308; cursor: pointer; padding: 2px; flex-shrink: 0; }
+  .rw-upload-progress { font-size: 0.6875rem; color: #3b82f6; animation: rw-pulse 1.5s ease infinite; }
+  @keyframes rw-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
 
   /* Stepper */
   .rw-stepper { display: flex; gap: 4px; margin-bottom: 28px; }
@@ -854,12 +1190,100 @@ const wizardStyles = `
     margin-top: 28px; padding-top: 20px; border-top: 1px solid #1e293b;
   }
 
+  /* Preview Toolbar */
+  .rw-preview-toolbar {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 12px; flex-wrap: wrap; gap: 10px;
+  }
+  .rw-preview-toolbar-left { display: flex; align-items: baseline; gap: 12px; }
+  .rw-preview-toolbar-right { display: flex; align-items: center; gap: 8px; }
+  .rw-preview-title { font-size: 1.125rem; font-weight: 700; color: #f1f5f9; }
+  .rw-preview-hint { font-size: 0.6875rem; color: #475569; }
+
+  /* Theme Picker */
+  .rw-theme-picker { display: flex; gap: 4px; }
+  .rw-theme-btn {
+    padding: 4px 12px; border-radius: 6px;
+    background: #111827; border: 1px solid #1e293b;
+    color: #64748b; font-size: 0.6875rem; font-weight: 600;
+    cursor: pointer; transition: all 0.15s; text-transform: capitalize;
+  }
+  .rw-theme-btn:hover { border-color: #3b82f6; color: #94a3b8; }
+  .rw-theme-active { border-color: #3b82f6 !important; color: #3b82f6 !important; background: #131a2b !important; }
+
+  /* ATS Bar */
+  .rw-ats-bar { margin-bottom: 16px; }
+  .rw-ats-btn {
+    width: 100%; padding: 10px; border-radius: 8px;
+    background: #111318; border: 1px dashed #2d3748;
+    color: #94a3b8; font-size: 0.8125rem; font-weight: 600;
+    cursor: pointer; transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .rw-ats-btn:hover { border-color: #3b82f6; color: #e2e8f0; }
+  .rw-ats-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .rw-ats-result { padding: 14px 16px; background: #111318; border: 1px solid #1e293b; border-radius: 8px; }
+  .rw-ats-badge {
+    display: inline-block; padding: 4px 14px; border-radius: 20px;
+    font-size: 0.8125rem; font-weight: 700; margin-bottom: 8px;
+  }
+  .rw-ats-good { background: rgba(34,197,94,0.15); color: #22c55e; }
+  .rw-ats-ok { background: rgba(234,179,8,0.15); color: #eab308; }
+  .rw-ats-low { background: rgba(239,68,68,0.15); color: #ef4444; }
+  .rw-ats-feedback { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+  .rw-ats-tip { font-size: 0.75rem; color: #94a3b8; padding: 4px 0; }
+
   /* Preview */
   .rw-preview-actions { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+
+  /* Editable hint */
+  .rw-editable {
+    cursor: pointer; transition: background 0.15s, outline 0.15s; border-radius: 4px; padding: 2px 4px; margin: -2px -4px;
+  }
+  .rw-editable:hover { background: rgba(59,130,246,0.08); outline: 1px dashed rgba(59,130,246,0.3); }
+
+  /* Inline editing */
+  .rw-inline-edit { margin: 4px 0; }
+  .rw-inline-input {
+    width: 100%; padding: 8px 12px; border-radius: 6px;
+    background: white; border: 2px solid #3b82f6;
+    color: #1a1a2e; font-size: 0.8125rem; outline: none; font-family: inherit;
+  }
+  .rw-inline-name { font-size: 1.25rem; font-weight: 700; }
+  .rw-inline-textarea {
+    width: 100%; padding: 8px 12px; border-radius: 6px;
+    background: white; border: 2px solid #3b82f6;
+    color: #1a1a2e; font-size: 0.8125rem; outline: none; font-family: inherit;
+    resize: vertical; line-height: 1.5;
+  }
+  .rw-inline-hint { font-size: 0.625rem; color: #64748b; display: block; margin-top: 2px; }
+  .rw-inline-btns { display: flex; gap: 6px; margin-top: 6px; }
+  .rw-inline-btns button {
+    padding: 4px 12px; border-radius: 4px; font-size: 0.6875rem; font-weight: 600;
+    cursor: pointer; border: none; transition: all 0.15s;
+  }
+  .rw-inline-btns button:first-child { background: #3b82f6; color: white; }
+  .rw-inline-btns button:last-child { background: #e2e8f0; color: #475569; }
+
+  /* Theme variants for preview */
   .rw-preview {
     background: #fafafa; color: #1a1a2e; padding: 32px;
     border-radius: 10px; font-size: 0.8125rem; line-height: 1.6;
   }
+
+  .rw-theme-modern .rw-cv-heading {
+    background: #f5f3ff; padding: 6px 12px; border-radius: 4px;
+    border-left: 4px solid #7c3aed; border-bottom: none;
+  }
+  .rw-theme-modern .rw-cv-name { color: #7c3aed; }
+  .rw-theme-modern .rw-cv-exp-company { color: #7c3aed; }
+
+  .rw-theme-minimal .rw-cv-heading {
+    border-bottom: 1px solid #d1d5db; padding-bottom: 2px;
+    text-transform: none; letter-spacing: normal; font-size: 0.875rem;
+  }
+  .rw-theme-minimal .rw-preview { font-family: Georgia, 'Times New Roman', serif; }
+
   .rw-cv-name { font-size: 1.375rem; font-weight: 700; color: #0f172a; margin: 0 0 4px; }
   .rw-cv-contact { font-size: 0.75rem; color: #64748b; margin-bottom: 18px; }
   .rw-cv-heading {
@@ -893,5 +1317,7 @@ const wizardStyles = `
     .rw-start-options { flex-direction: column; }
     .rw-field-half, .rw-field-third { width: 100%; }
     .rw-cv-exp-row { flex-direction: column; }
+    .rw-preview-toolbar { flex-direction: column; }
+    .rw-theme-picker { flex-wrap: wrap; }
   }
 `;

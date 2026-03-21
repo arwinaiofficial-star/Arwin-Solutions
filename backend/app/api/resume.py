@@ -23,6 +23,7 @@ async def resume_chat(
     - chat: General career/resume Q&A
     - generate_summary: Generate professional summary from CV context
     - enhance_cv: Enhance/improve CV text
+    - extract_cv: Extract structured data from raw CV text
     """
     try:
         if data.action == "generate_summary":
@@ -42,6 +43,17 @@ async def resume_chat(
                 )
             reply = await resume_service.enhance_text(data.message)
             return ResumeChatResponse(reply=reply)
+
+        elif data.action == "extract_cv":
+            raw_text = data.message or (data.context or {}).get("raw_text", "")
+            if not raw_text:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Raw CV text is required for extraction",
+                )
+            import json
+            extracted = await resume_service.extract_cv_from_text(raw_text)
+            return ResumeChatResponse(reply=json.dumps(extracted))
 
         else:
             # Default: general chat
