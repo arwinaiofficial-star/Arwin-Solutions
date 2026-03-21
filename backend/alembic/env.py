@@ -5,7 +5,7 @@ from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import pool
-from sqlalchemy.ext.asyncio import async_engine_from_config
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.core.config import settings
 from app.core.database import Base
@@ -16,18 +16,36 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Normalize the database URL
-# Render provides postgresql:// but we need +asyncpg for async
-_db_url = settings.DATABASE_URL
+import ssl as _ssl
+from urllib.parse import urlparse, urlunparse
 
-# For offline/sync: strip async driver
-_sync_url = _db_url.replace("postgresql+asyncpg://", "postgresql://")
-# For online/async: ensure async driver
-_async_url = _db_url.replace("postgresql://", "postgresql+asyncpg://")
+# Normalize the database URL for both sync and async usage
+# Render provides postgresql:// with query params (sslmode, channel_binding)
+# that asyncpg doesn't support.
+_raw_url = settings.DATABASE_URL
+
+# Parse and remove all query parameters
+_parsed = urlparse(_raw_url)
+_clean_url = urlunparse(_parsed._replace(query=""))
+
+# For offline/sync: use plain postgresql://
+_sync_url = _clean_url.replace("postgresql+asyncpg://", "postgresql://")
+if not _sync_url.startswith("postgresql://"):
+    _sync_url = _clean_url
+
+# For online/async: use postgresql+asyncpg://
+_async_url = _clean_url.replace("postgresql://", "postgresql+asyncpg://")
 if not _async_url.startswith("postgresql+asyncpg://"):
-    _async_url = _db_url  # leave as-is if already correct
-# asyncpg doesn't support sslmode param — convert to ssl
-_async_url = _async_url.replace("sslmode=", "ssl=")
+    _async_url = _clean_url
+
+# SSL config for asyncpg (passed via connect_args, not URL)
+_needs_ssl = "sslmode=" in _raw_url or "ssl=" in _raw_url or ".neon.tech" in _raw_url or ".render.com" in _raw_url
+_connect_args = {}
+if _needs_ssl:
+    _ssl_ctx = _ssl.create_default_context()
+    _ssl_ctx.check_hostname = False
+    _ssl_ctx.verify_mode = _ssl.CERT_NONE
+    _connect_args["ssl"] = _ssl_ctx
 
 config.set_main_option("sqlalchemy.url", _sync_url)
 
@@ -56,14 +74,10 @@ def do_run_migrations(connection):
 
 async def run_async_migrations():
     """Run migrations in async mode."""
-    # Override the URL with the async version
-    section = dict(config.get_section(config.config_ini_section, {}))
-    section["sqlalchemy.url"] = _async_url
-
-    connectable = async_engine_from_config(
-        section,
-        prefix="sqlalchemy.",
+    connectable = create_async_engine(
+        _async_url,
         poolclass=pool.NullPool,
+        connect_args=_connect_args,
     )
 
     async with connectable.connect() as connection:
