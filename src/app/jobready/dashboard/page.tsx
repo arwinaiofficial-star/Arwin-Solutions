@@ -256,7 +256,9 @@ interface JobSearchPanelProps {
   user: {
     cvData?: {
       skills: string[];
+      experience: { title: string; company: string }[];
       personalInfo: { name: string; email: string; phone: string; location: string };
+      summary: string;
     } | null;
     name: string;
     email: string;
@@ -278,17 +280,49 @@ interface JobResult {
   relevanceScore: number;
 }
 
+interface PrepareData {
+  aiTips: string;
+  matchedSkills: string[];
+  missingSkills: string[];
+  matchScore: number;
+  coverLetterSnippet: string;
+}
+
 function JobSearchPanel({ user }: JobSearchPanelProps) {
   const [isSearching, setIsSearching] = useState(false);
   const [jobs, setJobs] = useState<JobResult[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [sourceCounts, setSourceCounts] = useState<Record<string, number>>({});
+  const [expandedJob, setExpandedJob] = useState<string | null>(null);
+  const [prepareData, setPrepareData] = useState<Record<string, PrepareData>>({});
+  const [preparingJob, setPreparingJob] = useState<string | null>(null);
 
   const userSkills = user.cvData?.skills?.join(", ") || "";
   const userLocation = user.cvData?.personalInfo?.location || "";
   const [skillsInput, setSkillsInput] = useState(userSkills);
   const [locationInput, setLocationInput] = useState(userLocation);
+
+  // Auto-search on mount if CV data exists
+  useEffect(() => {
+    if (userSkills && !hasSearched) {
+      handleSearch();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const getMatchScore = (job: JobResult): number => {
+    if (!user.cvData?.skills?.length) return 0;
+    const descLower = `${job.title} ${job.description} ${job.tags?.join(" ") || ""}`.toLowerCase();
+    const matched = user.cvData.skills.filter(s => descLower.includes(s.toLowerCase()));
+    return Math.round((matched.length / user.cvData.skills.length) * 100);
+  };
+
+  const getMatchedSkills = (job: JobResult): string[] => {
+    if (!user.cvData?.skills) return [];
+    const descLower = `${job.title} ${job.description} ${job.tags?.join(" ") || ""}`.toLowerCase();
+    return user.cvData.skills.filter(s => descLower.includes(s.toLowerCase()));
+  };
 
   const handleSearch = async () => {
     if (!skillsInput.trim()) return;
@@ -319,6 +353,74 @@ function JobSearchPanel({ user }: JobSearchPanelProps) {
     }
   };
 
+  const handlePrepareApply = async (job: JobResult) => {
+    if (prepareData[job.id]) {
+      setExpandedJob(expandedJob === job.id ? null : job.id);
+      return;
+    }
+
+    setPreparingJob(job.id);
+    setExpandedJob(job.id);
+
+    try {
+      const response = await fetch("/api/jobs/prepare", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(typeof window !== "undefined" && localStorage.getItem("jobready_access_token")
+            ? { Authorization: `Bearer ${localStorage.getItem("jobready_access_token")}` }
+            : {}),
+        },
+        body: JSON.stringify({
+          jobTitle: job.title,
+          jobDescription: job.description,
+          jobCompany: job.company,
+          jobLocation: job.location,
+          cvData: user.cvData,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPrepareData(prev => ({ ...prev, [job.id]: data }));
+      } else {
+        // Fallback local tips
+        const matchedSkills = getMatchedSkills(job);
+        const missingSkills = user.cvData?.skills?.filter(s =>
+          !`${job.title} ${job.description}`.toLowerCase().includes(s.toLowerCase())
+        ).slice(0, 3) || [];
+
+        setPrepareData(prev => ({
+          ...prev,
+          [job.id]: {
+            aiTips: `Focus on your experience with ${matchedSkills.slice(0, 3).join(", ") || "relevant technologies"}. Tailor your resume summary for this specific role.`,
+            matchedSkills,
+            missingSkills,
+            matchScore: getMatchScore(job),
+            coverLetterSnippet: `Dear Hiring Manager,\n\nI am excited to apply for the ${job.title} position at ${job.company}. With my expertise in ${matchedSkills.slice(0, 3).join(", ") || "relevant technologies"}, I am confident in my ability to contribute to your team.\n\nBest regards,\n${user.cvData?.personalInfo?.name || user.name}`,
+          },
+        }));
+      }
+    } catch {
+      setPrepareData(prev => ({
+        ...prev,
+        [job.id]: {
+          aiTips: "Tailor your resume for this role and highlight relevant experience.",
+          matchedSkills: getMatchedSkills(job),
+          missingSkills: [],
+          matchScore: getMatchScore(job),
+          coverLetterSnippet: "",
+        },
+      }));
+    } finally {
+      setPreparingJob(null);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).catch(() => {});
+  };
+
   return (
     <div>
       {/* Search Form */}
@@ -332,6 +434,7 @@ function JobSearchPanel({ user }: JobSearchPanelProps) {
               onChange={(e) => setSkillsInput(e.target.value)}
               placeholder="e.g. React, Node.js, Python"
               className="jr-input"
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             />
           </div>
           <div className="jr-search-field jr-search-field-small">
@@ -342,6 +445,7 @@ function JobSearchPanel({ user }: JobSearchPanelProps) {
               onChange={(e) => setLocationInput(e.target.value)}
               placeholder="e.g. Bangalore"
               className="jr-input"
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             />
           </div>
           <button
@@ -389,40 +493,130 @@ function JobSearchPanel({ user }: JobSearchPanelProps) {
           )}
 
           <div className="jr-job-list">
-            {jobs.map((job) => (
-              <div key={job.id} className="jr-job-card">
-                <div className="jr-job-header">
-                  <div>
-                    <h4 className="jr-job-title">{job.title}</h4>
-                    <p className="jr-job-company">{job.company}</p>
+            {jobs.map((job) => {
+              const matchScore = getMatchScore(job);
+              const matchedSkillsList = getMatchedSkills(job);
+              const isExpanded = expandedJob === job.id;
+              const jobPrepare = prepareData[job.id];
+
+              return (
+                <div key={job.id} className={`jr-job-card ${isExpanded ? "jr-job-card-expanded" : ""}`}>
+                  <div className="jr-job-header">
+                    <div>
+                      <h4 className="jr-job-title">{job.title}</h4>
+                      <p className="jr-job-company">{job.company}</p>
+                    </div>
+                    <div className="jr-job-header-right">
+                      {matchScore > 0 && (
+                        <span className={`jr-match-badge ${matchScore >= 60 ? "jr-match-high" : matchScore >= 30 ? "jr-match-med" : "jr-match-low"}`}>
+                          {matchScore}% match
+                        </span>
+                      )}
+                      <span className={`jr-source-badge jr-source-${job.source.toLowerCase()}`}>{job.source}</span>
+                    </div>
                   </div>
-                  <span className={`jr-source-badge jr-source-${job.source.toLowerCase()}`}>{job.source}</span>
-                </div>
 
-                <div className="jr-job-meta">
-                  <span><LocationIcon size={14} /> {job.location}</span>
-                  {job.salary && <span className="jr-job-salary">{job.salary}</span>}
-                  {job.postedAt && <span>{job.postedAt}</span>}
-                  {job.jobType && <span>{job.jobType}</span>}
-                </div>
-
-                <p className="jr-job-desc">{job.description}</p>
-
-                {job.tags && job.tags.length > 0 && (
-                  <div className="jr-tag-list">
-                    {job.tags.slice(0, 5).map((tag, idx) => (
-                      <span key={idx} className="jr-tag">{tag}</span>
-                    ))}
+                  <div className="jr-job-meta">
+                    <span><LocationIcon size={14} /> {job.location}</span>
+                    {job.salary && <span className="jr-job-salary">{job.salary}</span>}
+                    {job.postedAt && <span>{job.postedAt}</span>}
+                    {job.jobType && <span>{job.jobType}</span>}
                   </div>
-                )}
 
-                <div className="jr-job-actions">
-                  <a href={job.url} target="_blank" rel="noopener noreferrer" className="jr-btn jr-btn-primary">
-                    Apply Now <ExternalLinkIcon size={14} />
-                  </a>
+                  {/* Matched skills tags */}
+                  {matchedSkillsList.length > 0 && (
+                    <div className="jr-tag-list">
+                      {matchedSkillsList.slice(0, 5).map((skill, idx) => (
+                        <span key={idx} className="jr-tag jr-tag-matched">✓ {skill}</span>
+                      ))}
+                      {job.tags?.filter(t => !matchedSkillsList.map(s => s.toLowerCase()).includes(t.toLowerCase())).slice(0, 3).map((tag, idx) => (
+                        <span key={`t-${idx}`} className="jr-tag">{tag}</span>
+                      ))}
+                    </div>
+                  )}
+
+                  <p className="jr-job-desc">{job.description}</p>
+
+                  {/* Prepare to Apply Panel */}
+                  {isExpanded && jobPrepare && (
+                    <div className="jr-prepare-panel">
+                      <div className="jr-prepare-header">
+                        <h5>🎯 Application Preparation</h5>
+                        <span className={`jr-match-badge ${jobPrepare.matchScore >= 60 ? "jr-match-high" : "jr-match-med"}`}>
+                          {jobPrepare.matchScore}% skill match
+                        </span>
+                      </div>
+
+                      {jobPrepare.matchedSkills.length > 0 && (
+                        <div className="jr-prepare-section">
+                          <h6>✅ Your Matching Skills</h6>
+                          <div className="jr-tag-list">
+                            {jobPrepare.matchedSkills.map((s, i) => (
+                              <span key={i} className="jr-tag jr-tag-matched">{s}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {jobPrepare.missingSkills.length > 0 && (
+                        <div className="jr-prepare-section">
+                          <h6>💡 Skills to Highlight</h6>
+                          <div className="jr-tag-list">
+                            {jobPrepare.missingSkills.map((s, i) => (
+                              <span key={i} className="jr-tag jr-tag-suggest">{s}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {jobPrepare.aiTips && (
+                        <div className="jr-prepare-section">
+                          <h6>💬 AI Tips</h6>
+                          <p className="jr-prepare-tips">{jobPrepare.aiTips}</p>
+                        </div>
+                      )}
+
+                      {jobPrepare.coverLetterSnippet && (
+                        <div className="jr-prepare-section">
+                          <div className="jr-prepare-cover-header">
+                            <h6>📝 Cover Letter Snippet</h6>
+                            <button onClick={() => copyToClipboard(jobPrepare.coverLetterSnippet)} className="jr-copy-btn">
+                              Copy
+                            </button>
+                          </div>
+                          <pre className="jr-prepare-cover">{jobPrepare.coverLetterSnippet}</pre>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {isExpanded && preparingJob === job.id && (
+                    <div className="jr-prepare-loading">
+                      <span className="jr-spinner" /> Generating application tips...
+                    </div>
+                  )}
+
+                  <div className="jr-job-actions">
+                    <a href={job.url} target="_blank" rel="noopener noreferrer" className="jr-btn jr-btn-primary">
+                      Apply Now <ExternalLinkIcon size={14} />
+                    </a>
+                    <button
+                      onClick={() => handlePrepareApply(job)}
+                      className="jr-btn jr-btn-secondary"
+                      disabled={preparingJob === job.id}
+                    >
+                      {preparingJob === job.id ? (
+                        <><span className="jr-spinner" /> Preparing...</>
+                      ) : isExpanded ? (
+                        "Hide Tips"
+                      ) : (
+                        "🎯 Prepare to Apply"
+                      )}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -634,5 +828,58 @@ const dashboardStyles = `
     .jr-search-form { flex-direction: column; }
     .jr-search-field-small { flex: 1; }
     .jr-results-header { flex-direction: column; align-items: flex-start; }
+  }
+
+  /* Match Badge */
+  .jr-match-badge {
+    padding: 3px 10px; border-radius: 12px;
+    font-size: 0.6875rem; font-weight: 600; white-space: nowrap;
+  }
+  .jr-match-high { background: rgba(34, 197, 94, 0.1); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.2); }
+  .jr-match-med { background: rgba(234, 179, 8, 0.1); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.2); }
+  .jr-match-low { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }
+
+  .jr-job-header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+  .jr-tag-matched {
+    background: rgba(34, 197, 94, 0.1) !important; color: #22c55e !important;
+    border-color: rgba(34, 197, 94, 0.2) !important;
+  }
+  .jr-tag-suggest {
+    background: rgba(234, 179, 8, 0.1) !important; color: #eab308 !important;
+    border-color: rgba(234, 179, 8, 0.2) !important;
+  }
+
+  /* Prepare to Apply Panel */
+  .jr-job-card-expanded { border-color: #3b82f6; }
+  .jr-prepare-panel {
+    background: #0c0e14; border: 1px solid #1e293b; border-radius: 10px;
+    padding: 16px; margin: 12px 0;
+  }
+  .jr-prepare-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #1e293b;
+  }
+  .jr-prepare-header h5 { font-size: 0.9375rem; font-weight: 600; color: #f1f5f9; margin: 0; }
+  .jr-prepare-section { margin-bottom: 14px; }
+  .jr-prepare-section h6 { font-size: 0.75rem; font-weight: 600; color: #94a3b8; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .jr-prepare-tips { font-size: 0.8125rem; color: #cbd5e1; line-height: 1.6; margin: 0; white-space: pre-wrap; }
+  .jr-prepare-cover-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .jr-prepare-cover {
+    background: #111318; border: 1px solid #1e293b; border-radius: 8px;
+    padding: 14px; font-size: 0.8125rem; color: #cbd5e1;
+    line-height: 1.6; white-space: pre-wrap; font-family: inherit;
+    margin: 0; overflow-x: auto;
+  }
+  .jr-copy-btn {
+    padding: 4px 12px; border-radius: 6px;
+    background: #1e293b; border: 1px solid #2d3748; color: #94a3b8;
+    font-size: 0.6875rem; font-weight: 500; cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .jr-copy-btn:hover { background: #2d3748; color: #e2e8f0; }
+  .jr-prepare-loading {
+    display: flex; align-items: center; gap: 8px;
+    padding: 16px; color: #64748b; font-size: 0.8125rem;
   }
 `;

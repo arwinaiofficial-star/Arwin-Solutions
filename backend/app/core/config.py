@@ -1,5 +1,7 @@
 """Application configuration using pydantic-settings."""
 
+import json
+
 from pydantic_settings import BaseSettings
 from pydantic import field_validator
 
@@ -48,18 +50,32 @@ class Settings(BaseSettings):
     # JSearch (RapidAPI)
     JSEARCH_API_KEY: str = ""
 
+    # Social Auth (Google + LinkedIn OAuth)
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    LINKEDIN_CLIENT_ID: str = ""
+    LINKEDIN_CLIENT_SECRET: str = ""
+
     # Rate Limiting
     RATE_LIMIT_REQUESTS_PER_MINUTE: int = 60
 
     # File Upload
-    MAX_UPLOAD_SIZE_MB: int = 5
+    MAX_UPLOAD_SIZE_MB: int = 10
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, v: str | list[str]) -> list[str]:
-        if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",")]
-        return v
+        if isinstance(v, list):
+            return v
+        # Try JSON array first (e.g. '["http://localhost:3000"]')
+        try:
+            parsed = json.loads(v)
+            if isinstance(parsed, list):
+                return [str(o).strip() for o in parsed]
+        except (json.JSONDecodeError, TypeError):
+            pass
+        # Fall back to comma-separated (e.g. 'http://localhost:3000,https://arwinai.com')
+        return [origin.strip() for origin in v.split(",") if origin.strip()]
 
     model_config = {
         "env_file": ".env",

@@ -267,4 +267,162 @@ export const resumeApi = {
       return { error: "Network error. Please check your connection." };
     }
   },
+
+  async uploadCV(file: File): Promise<ApiResponse<{ rawText: string; extractedData: Record<string, unknown> | null; fileName: string }>> {
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("jobready_access_token")
+        : null;
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/resume/upload", {
+        method: "POST",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: formData,
+      });
+
+      const body = await response.json();
+
+      if (!response.ok) {
+        return { error: body.error || "Upload failed" };
+      }
+
+      return { data: body };
+    } catch {
+      return { error: "Network error. Please check your connection." };
+    }
+  },
 };
+
+// Chat Session API (auto-save / restore)
+export const chatSessionApi = {
+  async getSession(): Promise<ApiResponse<{ session: { id: string; messages: unknown[]; agent_state: Record<string, unknown>; collected_data: Record<string, unknown>; last_active_at: string } | null }>> {
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("jobready_access_token")
+        : null;
+
+    try {
+      const response = await fetch("/api/chat/session", {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      const body = await response.json();
+      return { data: body };
+    } catch {
+      return { data: { session: null } };
+    }
+  },
+
+  async saveSession(data: {
+    session_id?: string;
+    messages: unknown[];
+    agent_state: Record<string, unknown>;
+    collected_data: Record<string, unknown>;
+  }): Promise<ApiResponse<{ id: string }>> {
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("jobready_access_token")
+        : null;
+
+    try {
+      const response = await fetch("/api/chat/session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(data),
+      });
+
+      const body = await response.json();
+      return { data: body };
+    } catch {
+      return { error: "Failed to save session" };
+    }
+  },
+};
+
+// Social Auth
+export const socialAuthApi = {
+  async login(data: {
+    provider: string;
+    email: string;
+    name: string;
+    provider_id: string;
+    image?: string;
+  }): Promise<ApiResponse<{ user: UserData; tokens: AuthTokens }>> {
+    try {
+      const response = await fetch("/api/auth/social", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      const body = await response.json();
+
+      if (!response.ok) {
+        return { error: body.error || "Social login failed" };
+      }
+
+      if (body.tokens) {
+        storeTokens(body.tokens);
+      }
+
+      return { data: body };
+    } catch {
+      return { error: "Network error during social login" };
+    }
+  },
+};
+
+// Jobs Prepare to Apply
+export const jobPrepareApi = {
+  async prepare(data: {
+    jobTitle: string;
+    jobDescription?: string;
+    jobCompany?: string;
+    jobLocation?: string;
+    cvData: Record<string, unknown>;
+  }): Promise<ApiResponse<{
+    aiTips: string;
+    matchedSkills: string[];
+    missingSkills: string[];
+    matchScore: number;
+    coverLetterSnippet: string;
+  }>> {
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("jobready_access_token")
+        : null;
+
+    try {
+      const response = await fetch("/api/jobs/prepare", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(data),
+      });
+
+      const body = await response.json();
+
+      if (!response.ok) {
+        return { error: body.error || "Failed to prepare application tips" };
+      }
+
+      return { data: body };
+    } catch {
+      return { error: "Network error" };
+    }
+  },
+};
+
