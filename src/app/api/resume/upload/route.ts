@@ -53,9 +53,20 @@ export async function POST(request: NextRequest) {
           .trim();
       }
     } else {
-      // For DOCX, extract text content
-      const text = buffer.toString("utf-8");
-      rawText = text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+      // DOCX is a ZIP archive — use mammoth for proper extraction
+      try {
+        const mammoth = await import("mammoth");
+        const result = await mammoth.extractRawText({ buffer });
+        rawText = result.value;
+      } catch (docxError) {
+        console.error("mammoth DOCX extraction failed:", docxError);
+        // Fallback: strip non-printable chars
+        rawText = buffer
+          .toString("utf-8")
+          .replace(/[^\x20-\x7E\n\r\t]/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+      }
     }
 
     if (!rawText || rawText.trim().length < 20) {

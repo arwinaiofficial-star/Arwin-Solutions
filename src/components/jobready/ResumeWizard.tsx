@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
-import { useAuth, GeneratedCV, WorkExperience, Education } from "@/context/AuthContext";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { useAuth, GeneratedCV } from "@/context/AuthContext";
 import { resumeApi } from "@/lib/api/client";
 import {
   CheckIcon,
@@ -57,6 +57,7 @@ type ResumeTheme = "classic" | "modern" | "minimal";
 export interface ResumeWizardHandle {
   triggerUpload: () => void;
   setStep: (s: number) => void;
+  setField: (field: string, value: unknown) => void;
   enhanceExperience: () => void;
   generateSummary: () => void;
   runATS: () => void;
@@ -92,17 +93,15 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isEnhancing, setIsEnhancing] = useState<string | null>(null);
-  const [generatedCV, setGeneratedCV] = useState<GeneratedCV | null>(null);
   const [uploadFileName, setUploadFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Preview state
   const [theme, setTheme] = useState<ResumeTheme>("classic");
-  const [editingSection, setEditingSection] = useState<string | null>(null);
-  const [editBuffer, setEditBuffer] = useState("");
   const [atsScore, setAtsScore] = useState<number | null>(null);
   const [atsFeedback, setAtsFeedback] = useState<string[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showPreview, setShowPreview] = useState(true);
 
   // Wrapper for setStep that notifies parent
   const setStep = useCallback((s: number) => {
@@ -114,6 +113,9 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
   useEffect(() => {
     onDataChange?.(data);
   }, [data, onDataChange]);
+
+  // ── LIVE PREVIEW: Derive CV from data in real-time (no race condition) ──
+  const liveCV = useMemo<GeneratedCV>(() => buildCVFromData(data), [data]);
 
   // If user already has a CV, pre-populate
   useEffect(() => {
@@ -138,24 +140,7 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
           location: e.location || "", graduationYear: e.graduationYear, gpa: e.gpa || "",
         })),
       });
-      // If they have a complete CV, go to preview
       if (cv.skills && cv.skills.length > 0) {
-        const built = buildCVFromData({
-          fullName: cv.personalInfo?.name || "", email: cv.personalInfo?.email || "",
-          phone: cv.personalInfo?.phone || "", location: cv.personalInfo?.location || "",
-          linkedIn: cv.personalInfo?.linkedIn || "", portfolio: cv.personalInfo?.portfolio || "",
-          summary: cv.summary || "", skills: cv.skills || [],
-          experiences: (cv.experience || []).map(e => ({
-            id: uid(), title: e.title, company: e.company, location: e.location,
-            startDate: e.startDate, endDate: e.endDate, current: e.current,
-            highlights: e.highlights.length > 0 ? e.highlights : [""],
-          })),
-          education: (cv.education || []).map(e => ({
-            id: uid(), degree: e.degree, institution: e.institution,
-            location: e.location || "", graduationYear: e.graduationYear, gpa: e.gpa || "",
-          })),
-        });
-        setGeneratedCV(built);
         setStep(5);
       }
     }
@@ -165,6 +150,16 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
 
   const updateField = useCallback(<K extends keyof ResumeData>(field: K, value: ResumeData[K]) => {
     setData(prev => ({ ...prev, [field]: value }));
+  }, []);
+
+  // Generic field setter for copilot auto-fill
+  const setField = useCallback((field: string, value: unknown) => {
+    setData(prev => {
+      if (field in prev) {
+        return { ...prev, [field]: value };
+      }
+      return prev;
+    });
   }, []);
 
   const addExperience = () => {
@@ -266,12 +261,10 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
         const hasParseError = ext.parse_error === true;
 
         if (hasParseError && result.data.rawText) {
-          // LLM couldn't parse — use raw text as summary, let user fill rest
           setData(prev => ({ ...prev, summary: result.data!.rawText.slice(0, 500) }));
           setUploadError("Could not fully extract your CV. Raw text was loaded into the summary — please fill in the details manually.");
           setStep(1);
         } else {
-          // Successful extraction — populate all fields
           setData(prev => ({
             ...prev,
             fullName: (ext.fullName as string) || prev.fullName,
@@ -349,18 +342,17 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
     setIsEnhancing(null);
   };
 
-  // ─── Generate Final CV ──────────────────────────────────────────────────
+  // ─── Save & Finish ────────────────────────────────────────────────────
 
-  const buildCV = useCallback((): GeneratedCV => {
-    return buildCVFromData(data);
-  }, [data]);
-
-  const finishAndSave = () => {
-    const cv = buildCV();
-    setGeneratedCV(cv);
+  const saveCV = useCallback(() => {
+    const cv = liveCV;
     saveGeneratedCV(cv);
     updateProfile({ name: data.fullName, phone: data.phone, skills: data.skills });
     resumeApi.save(cv as unknown as Record<string, unknown>, "final").catch(() => {});
+  }, [liveCV, data, saveGeneratedCV, updateProfile]);
+
+  const finishAndSave = () => {
+    saveCV();
     setStep(5);
   };
 
@@ -375,11 +367,12 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
   // ─── Preview: ATS Analysis ─────────────────────────────────────────────
 
   const analyzeATS = async () => {
-    if (!generatedCV) return;
+    const cv = liveCV;
+    if (!cv.personalInfo.name) return;
     setIsAnalyzing(true);
     try {
       const result = await resumeApi.chat(
-        `Analyze this resume for ATS (Applicant Tracking System) compatibility. Rate it 0-100 and provide specific suggestions. Resume data: Name: ${generatedCV.personalInfo.name}, Skills: ${generatedCV.skills.join(", ")}, Summary: ${generatedCV.summary}, Experience count: ${generatedCV.experience.length}, Education count: ${generatedCV.education.length}. Highlights: ${generatedCV.experience.flatMap(e => e.highlights).join("; ")}. Return ONLY a JSON object: {"score": number, "feedback": ["suggestion1", "suggestion2", ...]}`,
+        `Analyze this resume for ATS (Applicant Tracking System) compatibility. Rate it 0-100 and provide specific suggestions. Resume data: Name: ${cv.personalInfo.name}, Skills: ${cv.skills.join(", ")}, Summary: ${cv.summary}, Experience count: ${cv.experience.length}, Education count: ${cv.education.length}. Highlights: ${cv.experience.flatMap(e => e.highlights).join("; ")}. Return ONLY a JSON object: {"score": number, "feedback": ["suggestion1", "suggestion2", ...]}`,
         "chat"
       );
       if (result.data?.reply) {
@@ -389,7 +382,6 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
           setAtsScore(parsed.score || null);
           setAtsFeedback(parsed.feedback || []);
         } catch {
-          // Try to extract a number from the response
           const match = result.data.reply.match(/(\d{1,3})/);
           setAtsScore(match ? parseInt(match[1]) : 70);
           setAtsFeedback([result.data.reply]);
@@ -399,54 +391,10 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
     setIsAnalyzing(false);
   };
 
-  // ─── Preview: Inline Editing ───────────────────────────────────────────
-
-  const startEditSection = (section: string, currentValue: string) => {
-    setEditingSection(section);
-    setEditBuffer(currentValue);
-  };
-
-  const saveEditSection = () => {
-    if (!generatedCV || !editingSection) return;
-
-    const updated = { ...generatedCV };
-    if (editingSection === "summary") {
-      updated.summary = editBuffer;
-      setData(prev => ({ ...prev, summary: editBuffer }));
-    } else if (editingSection === "skills") {
-      updated.skills = editBuffer.split(",").map(s => s.trim()).filter(Boolean);
-      setData(prev => ({ ...prev, skills: updated.skills }));
-    } else if (editingSection === "name") {
-      updated.personalInfo = { ...updated.personalInfo, name: editBuffer };
-      setData(prev => ({ ...prev, fullName: editBuffer }));
-    } else if (editingSection === "contact") {
-      // Parse contact line back
-      const parts = editBuffer.split("·").map(s => s.trim());
-      updated.personalInfo = {
-        ...updated.personalInfo,
-        email: parts[0] || updated.personalInfo.email,
-        phone: parts[1] || updated.personalInfo.phone,
-        location: parts[2] || updated.personalInfo.location,
-      };
-    }
-
-    setGeneratedCV(updated);
-    saveGeneratedCV(updated);
-    resumeApi.save(updated as unknown as Record<string, unknown>, "final").catch(() => {});
-    setEditingSection(null);
-    setEditBuffer("");
-  };
-
-  const cancelEdit = () => {
-    setEditingSection(null);
-    setEditBuffer("");
-  };
-
   // ─── PDF Download ─────────────────────────────────────────────────────
 
   const downloadPDF = () => {
-    const cv = generatedCV || buildCV();
-    const html = buildResumeHTML(cv, theme);
+    const html = buildResumeHTML(liveCV, theme);
     const w = window.open("", "_blank");
     if (!w) return;
     w.document.write(html);
@@ -460,6 +408,7 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
     handleRef?.({
       triggerUpload: () => fileInputRef.current?.click(),
       setStep,
+      setField,
       enhanceExperience: () => {
         if (data.experiences.length > 0) enhanceExperience(data.experiences[0].id);
       },
@@ -470,7 +419,7 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
       getData: () => data,
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, data, generatedCV, theme]);
+  }, [step, data, theme]);
 
   // ─── Validation ─────────────────────────────────────────────────────────
 
@@ -484,6 +433,9 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
     }
   };
 
+  // Check if there's enough data to show a meaningful preview
+  const hasPreviewData = data.fullName.trim().length > 0 || data.skills.length > 0 || data.experiences.length > 0;
+
   // ─── Render ─────────────────────────────────────────────────────────────
 
   return (
@@ -491,12 +443,12 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
       <style>{wizardStyles}</style>
       <div className="rw">
         {/* Stepper */}
-        {step > 0 && step < 5 && (
+        {step > 0 && (
           <div className="rw-stepper">
-            {STEP_LABELS.slice(1, 5).map((label, i) => {
+            {STEP_LABELS.slice(1).map((label, i) => {
               const stepNum = i + 1;
               return (
-                <button key={label} className={`rw-step ${step === stepNum ? "rw-step-active" : step > stepNum ? "rw-step-done" : ""}`} onClick={() => step > stepNum && goToStep(stepNum)}>
+                <button key={label} className={`rw-step ${step === stepNum ? "rw-step-active" : step > stepNum ? "rw-step-done" : ""}`} onClick={() => (step > stepNum || stepNum === 5) && goToStep(stepNum)}>
                   <span className="rw-step-num">{step > stepNum ? <CheckIcon size={12} /> : stepNum}</span>
                   <span className="rw-step-label">{label}</span>
                 </button>
@@ -506,9 +458,9 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
         )}
 
         {/* Upload error banner */}
-        {uploadError && step === 1 && (
+        {uploadError && (step === 0 || step === 1) && (
           <div className="rw-upload-error">
-            <span>⚠️</span>
+            <span>⚠</span>
             <p>{uploadError}</p>
             <button onClick={() => setUploadError(null)}><XIcon size={12} /></button>
           </div>
@@ -539,229 +491,266 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
                 <span>Fill in your details step by step — I&apos;ll help format everything</span>
               </button>
             </div>
-
-            {uploadError && step === 0 && (
-              <div className="rw-upload-error" style={{ marginTop: 20, maxWidth: 500, marginLeft: "auto", marginRight: "auto" }}>
-                <span>⚠️</span>
-                <p>{uploadError}</p>
-                <button onClick={() => setUploadError(null)}><XIcon size={12} /></button>
-              </div>
-            )}
           </div>
         )}
 
-        {/* ── Step 1: Personal Info ──────────────────────────────────── */}
-        {step === 1 && (
-          <div className="rw-section">
-            <h3 className="rw-section-title">Personal Information</h3>
-            <p className="rw-section-sub">Basic contact details for your resume header.</p>
+        {/* ── Split Pane: Form + Live Preview (Steps 1-4) ──────────── */}
+        {step >= 1 && step <= 4 && (
+          <div className="rw-split">
+            {/* Left: Form */}
+            <div className={`rw-form-pane ${showPreview ? "" : "rw-form-full"}`}>
 
-            <div className="rw-form-grid">
-              <div className="rw-field rw-field-half">
-                <label>Full Name *</label>
-                <input value={data.fullName} onChange={e => updateField("fullName", e.target.value)} placeholder="John Doe" />
-              </div>
-              <div className="rw-field rw-field-half">
-                <label>Email *</label>
-                <input type="email" value={data.email} onChange={e => updateField("email", e.target.value)} placeholder="john@example.com" />
-              </div>
-              <div className="rw-field rw-field-half">
-                <label>Phone</label>
-                <input value={data.phone} onChange={e => updateField("phone", e.target.value)} placeholder="+91 9876543210" />
-              </div>
-              <div className="rw-field rw-field-half">
-                <label>Location</label>
-                <input value={data.location} onChange={e => updateField("location", e.target.value)} placeholder="Bangalore, India" />
-              </div>
-              <div className="rw-field rw-field-half">
-                <label>LinkedIn</label>
-                <input value={data.linkedIn} onChange={e => updateField("linkedIn", e.target.value)} placeholder="linkedin.com/in/johndoe" />
-              </div>
-              <div className="rw-field rw-field-half">
-                <label>Portfolio / Website</label>
-                <input value={data.portfolio} onChange={e => updateField("portfolio", e.target.value)} placeholder="johndoe.dev" />
-              </div>
-            </div>
-          </div>
-        )}
+              {/* ── Step 1: Personal Info ──────────────────────────── */}
+              {step === 1 && (
+                <div className="rw-section">
+                  <h3 className="rw-section-title">Personal Information</h3>
+                  <p className="rw-section-sub">Basic contact details for your resume header.</p>
 
-        {/* ── Step 2: Experience ─────────────────────────────────────── */}
-        {step === 2 && (
-          <div className="rw-section">
-            <div className="rw-section-header">
-              <div>
-                <h3 className="rw-section-title">Work Experience</h3>
-                <p className="rw-section-sub">Add your work history. Most recent first.</p>
-              </div>
-              <button className="rw-btn-add" onClick={addExperience}><PlusIcon size={14} /> Add Role</button>
-            </div>
-
-            {data.experiences.length === 0 && (
-              <div className="rw-empty">
-                <BriefcaseIcon size={32} color="#475569" />
-                <p>No experience added yet</p>
-                <button className="rw-btn-add" onClick={addExperience}><PlusIcon size={14} /> Add Your First Role</button>
-              </div>
-            )}
-
-            {data.experiences.map(exp => (
-              <div key={exp.id} className="rw-card">
-                <div className="rw-card-header">
-                  <strong>{exp.title || "New Role"}</strong>
-                  <button className="rw-card-remove" onClick={() => removeExperience(exp.id)}><XIcon size={14} /></button>
-                </div>
-
-                <div className="rw-form-grid">
-                  <div className="rw-field rw-field-half">
-                    <label>Job Title</label>
-                    <input value={exp.title} onChange={e => updateExperience(exp.id, "title", e.target.value)} placeholder="Software Engineer" />
-                  </div>
-                  <div className="rw-field rw-field-half">
-                    <label>Company</label>
-                    <input value={exp.company} onChange={e => updateExperience(exp.id, "company", e.target.value)} placeholder="Google" />
-                  </div>
-                  <div className="rw-field rw-field-third">
-                    <label>Location</label>
-                    <input value={exp.location} onChange={e => updateExperience(exp.id, "location", e.target.value)} placeholder="Bangalore" />
-                  </div>
-                  <div className="rw-field rw-field-third">
-                    <label>Start Date</label>
-                    <input value={exp.startDate} onChange={e => updateExperience(exp.id, "startDate", e.target.value)} placeholder="Jan 2022" />
-                  </div>
-                  <div className="rw-field rw-field-third">
-                    <label>{exp.current ? "Current" : "End Date"}</label>
-                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                      <input value={exp.current ? "Present" : exp.endDate} onChange={e => updateExperience(exp.id, "endDate", e.target.value)} placeholder="Dec 2023" disabled={exp.current} style={{ flex: 1 }} />
-                      <label style={{ display: "flex", gap: 4, alignItems: "center", fontSize: "0.75rem", color: "#94a3b8", whiteSpace: "nowrap", cursor: "pointer" }}>
-                        <input type="checkbox" checked={exp.current} onChange={e => updateExperience(exp.id, "current", e.target.checked)} /> Current
-                      </label>
+                  <div className="rw-form-grid">
+                    <div className="rw-field rw-field-half">
+                      <label>Full Name *</label>
+                      <input value={data.fullName} onChange={e => updateField("fullName", e.target.value)} placeholder="John Doe" />
+                    </div>
+                    <div className="rw-field rw-field-half">
+                      <label>Email *</label>
+                      <input type="email" value={data.email} onChange={e => updateField("email", e.target.value)} placeholder="john@example.com" />
+                    </div>
+                    <div className="rw-field rw-field-half">
+                      <label>Phone</label>
+                      <input value={data.phone} onChange={e => updateField("phone", e.target.value)} placeholder="+91 9876543210" />
+                    </div>
+                    <div className="rw-field rw-field-half">
+                      <label>Location</label>
+                      <input value={data.location} onChange={e => updateField("location", e.target.value)} placeholder="Bangalore, India" />
+                    </div>
+                    <div className="rw-field rw-field-half">
+                      <label>LinkedIn</label>
+                      <input value={data.linkedIn} onChange={e => updateField("linkedIn", e.target.value)} placeholder="linkedin.com/in/johndoe" />
+                    </div>
+                    <div className="rw-field rw-field-half">
+                      <label>Portfolio / Website</label>
+                      <input value={data.portfolio} onChange={e => updateField("portfolio", e.target.value)} placeholder="johndoe.dev" />
                     </div>
                   </div>
                 </div>
+              )}
 
-                <div className="rw-highlights">
-                  <div className="rw-highlights-header">
-                    <label>Key Achievements / Responsibilities</label>
-                    <button className="rw-btn-ai" onClick={() => enhanceExperience(exp.id)} disabled={isEnhancing === exp.id}>
-                      {isEnhancing === exp.id ? <><span className="rw-spinner" /> Enhancing...</> : "✨ AI Enhance"}
-                    </button>
+              {/* ── Step 2: Experience ─────────────────────────────── */}
+              {step === 2 && (
+                <div className="rw-section">
+                  <div className="rw-section-header">
+                    <div>
+                      <h3 className="rw-section-title">Work Experience</h3>
+                      <p className="rw-section-sub">Add your work history. Most recent first.</p>
+                    </div>
+                    <button className="rw-btn-add" onClick={addExperience}><PlusIcon size={14} /> Add Role</button>
                   </div>
-                  {exp.highlights.map((h, i) => (
-                    <div key={i} className="rw-highlight-row">
-                      <span className="rw-bullet">•</span>
-                      <input value={h} onChange={e => updateHighlight(exp.id, i, e.target.value)} placeholder="Describe what you did and the impact..." />
-                      {exp.highlights.length > 1 && (
-                        <button className="rw-highlight-remove" onClick={() => removeHighlight(exp.id, i)}><XIcon size={12} /></button>
-                      )}
+
+                  {data.experiences.length === 0 && (
+                    <div className="rw-empty">
+                      <BriefcaseIcon size={32} color="#475569" />
+                      <p>No experience added yet</p>
+                      <button className="rw-btn-add" onClick={addExperience}><PlusIcon size={14} /> Add Your First Role</button>
+                    </div>
+                  )}
+
+                  {data.experiences.map(exp => (
+                    <div key={exp.id} className="rw-card">
+                      <div className="rw-card-header">
+                        <strong>{exp.title || "New Role"}</strong>
+                        <button className="rw-card-remove" onClick={() => removeExperience(exp.id)}><XIcon size={14} /></button>
+                      </div>
+
+                      <div className="rw-form-grid">
+                        <div className="rw-field rw-field-half">
+                          <label>Job Title</label>
+                          <input value={exp.title} onChange={e => updateExperience(exp.id, "title", e.target.value)} placeholder="Software Engineer" />
+                        </div>
+                        <div className="rw-field rw-field-half">
+                          <label>Company</label>
+                          <input value={exp.company} onChange={e => updateExperience(exp.id, "company", e.target.value)} placeholder="Google" />
+                        </div>
+                        <div className="rw-field rw-field-third">
+                          <label>Location</label>
+                          <input value={exp.location} onChange={e => updateExperience(exp.id, "location", e.target.value)} placeholder="Bangalore" />
+                        </div>
+                        <div className="rw-field rw-field-third">
+                          <label>Start Date</label>
+                          <input value={exp.startDate} onChange={e => updateExperience(exp.id, "startDate", e.target.value)} placeholder="Jan 2022" />
+                        </div>
+                        <div className="rw-field rw-field-third">
+                          <label>{exp.current ? "Current" : "End Date"}</label>
+                          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                            <input value={exp.current ? "Present" : exp.endDate} onChange={e => updateExperience(exp.id, "endDate", e.target.value)} placeholder="Dec 2023" disabled={exp.current} style={{ flex: 1 }} />
+                            <label style={{ display: "flex", gap: 4, alignItems: "center", fontSize: "0.75rem", color: "#94a3b8", whiteSpace: "nowrap", cursor: "pointer" }}>
+                              <input type="checkbox" checked={exp.current} onChange={e => updateExperience(exp.id, "current", e.target.checked)} /> Current
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rw-highlights">
+                        <div className="rw-highlights-header">
+                          <label>Key Achievements / Responsibilities</label>
+                          <button className="rw-btn-ai" onClick={() => enhanceExperience(exp.id)} disabled={isEnhancing === exp.id}>
+                            {isEnhancing === exp.id ? <><span className="rw-spinner" /> Enhancing...</> : "✨ AI Enhance"}
+                          </button>
+                        </div>
+                        {exp.highlights.map((h, i) => (
+                          <div key={i} className="rw-highlight-row">
+                            <span className="rw-bullet">•</span>
+                            <input value={h} onChange={e => updateHighlight(exp.id, i, e.target.value)} placeholder="Describe what you did and the impact..." />
+                            {exp.highlights.length > 1 && (
+                              <button className="rw-highlight-remove" onClick={() => removeHighlight(exp.id, i)}><XIcon size={12} /></button>
+                            )}
+                          </div>
+                        ))}
+                        <button className="rw-btn-text" onClick={() => addHighlight(exp.id)}><PlusIcon size={12} /> Add bullet</button>
+                      </div>
                     </div>
                   ))}
-                  <button className="rw-btn-text" onClick={() => addHighlight(exp.id)}><PlusIcon size={12} /> Add bullet</button>
+                </div>
+              )}
+
+              {/* ── Step 3: Education ──────────────────────────────── */}
+              {step === 3 && (
+                <div className="rw-section">
+                  <div className="rw-section-header">
+                    <div>
+                      <h3 className="rw-section-title">Education</h3>
+                      <p className="rw-section-sub">Add your degrees and certifications.</p>
+                    </div>
+                    <button className="rw-btn-add" onClick={addEducation}><PlusIcon size={14} /> Add Education</button>
+                  </div>
+
+                  {data.education.length === 0 && (
+                    <div className="rw-empty">
+                      <p>No education added yet</p>
+                      <button className="rw-btn-add" onClick={addEducation}><PlusIcon size={14} /> Add Education</button>
+                    </div>
+                  )}
+
+                  {data.education.map(edu => (
+                    <div key={edu.id} className="rw-card">
+                      <div className="rw-card-header">
+                        <strong>{edu.degree || "New Education"}</strong>
+                        <button className="rw-card-remove" onClick={() => removeEducation(edu.id)}><XIcon size={14} /></button>
+                      </div>
+                      <div className="rw-form-grid">
+                        <div className="rw-field rw-field-half">
+                          <label>Degree / Qualification</label>
+                          <input value={edu.degree} onChange={e => updateEducation(edu.id, "degree", e.target.value)} placeholder="B.Tech in Computer Science" />
+                        </div>
+                        <div className="rw-field rw-field-half">
+                          <label>Institution</label>
+                          <input value={edu.institution} onChange={e => updateEducation(edu.id, "institution", e.target.value)} placeholder="IIT Delhi" />
+                        </div>
+                        <div className="rw-field rw-field-third">
+                          <label>Location</label>
+                          <input value={edu.location} onChange={e => updateEducation(edu.id, "location", e.target.value)} placeholder="New Delhi" />
+                        </div>
+                        <div className="rw-field rw-field-third">
+                          <label>Graduation Year</label>
+                          <input value={edu.graduationYear} onChange={e => updateEducation(edu.id, "graduationYear", e.target.value)} placeholder="2022" />
+                        </div>
+                        <div className="rw-field rw-field-third">
+                          <label>GPA (optional)</label>
+                          <input value={edu.gpa} onChange={e => updateEducation(edu.id, "gpa", e.target.value)} placeholder="8.5/10" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── Step 4: Skills & Summary ───────────────────────── */}
+              {step === 4 && (
+                <div className="rw-section">
+                  <h3 className="rw-section-title">Skills & Professional Summary</h3>
+                  <p className="rw-section-sub">Add your technical skills and let AI generate your summary.</p>
+
+                  <div className="rw-field">
+                    <label>Skills *</label>
+                    <div className="rw-skills-input">
+                      {data.skills.map(skill => (
+                        <span key={skill} className="rw-skill-tag">
+                          {skill}
+                          <button onClick={() => removeSkill(skill)}><XIcon size={10} /></button>
+                        </span>
+                      ))}
+                      <input
+                        value={skillInput}
+                        onChange={e => setSkillInput(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addSkill(skillInput); } }}
+                        placeholder={data.skills.length === 0 ? "Type a skill and press Enter (e.g. React, Python, AWS)" : "Add more..."}
+                        className="rw-skills-text"
+                      />
+                    </div>
+                    <span className="rw-field-hint">Press Enter or comma to add each skill</span>
+                  </div>
+
+                  <div className="rw-field" style={{ marginTop: 24 }}>
+                    <div className="rw-highlights-header">
+                      <label>Professional Summary</label>
+                      <button className="rw-btn-ai" onClick={generateSummary} disabled={isEnhancing === "summary"}>
+                        {isEnhancing === "summary" ? <><span className="rw-spinner" /> Generating...</> : "✨ AI Generate"}
+                      </button>
+                    </div>
+                    <textarea value={data.summary} onChange={e => updateField("summary", e.target.value)} placeholder="A brief professional summary highlighting your experience, skills, and career goals. Click 'AI Generate' to create one automatically." rows={5} className="rw-textarea" />
+                  </div>
+                </div>
+              )}
+
+              {/* Navigation */}
+              <div className="rw-nav">
+                <button className="rw-btn rw-btn-ghost" onClick={() => goToStep(step - 1)}>
+                  ← {step === 1 ? "Start" : "Back"}
+                </button>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <button className="rw-btn-toggle-preview" onClick={() => setShowPreview(p => !p)}>
+                    {showPreview ? "Hide Preview" : "Show Preview"}
+                  </button>
+                  <button className="rw-btn rw-btn-primary" onClick={() => goToStep(step + 1)} disabled={!canProceed(step)}>
+                    {step === 4 ? "Generate Resume" : "Next →"}
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-
-        {/* ── Step 3: Education ──────────────────────────────────────── */}
-        {step === 3 && (
-          <div className="rw-section">
-            <div className="rw-section-header">
-              <div>
-                <h3 className="rw-section-title">Education</h3>
-                <p className="rw-section-sub">Add your degrees and certifications.</p>
-              </div>
-              <button className="rw-btn-add" onClick={addEducation}><PlusIcon size={14} /> Add Education</button>
             </div>
 
-            {data.education.length === 0 && (
-              <div className="rw-empty">
-                <p>No education added yet</p>
-                <button className="rw-btn-add" onClick={addEducation}><PlusIcon size={14} /> Add Education</button>
+            {/* Right: Live Preview */}
+            {showPreview && (
+              <div className="rw-preview-pane">
+                <div className="rw-preview-pane-header">
+                  <span>Live Preview</span>
+                  <div className="rw-theme-picker-sm">
+                    {(["classic", "modern", "minimal"] as ResumeTheme[]).map(t => (
+                      <button key={t} className={`rw-theme-btn-sm ${theme === t ? "rw-theme-active-sm" : ""}`} onClick={() => setTheme(t)}>{t}</button>
+                    ))}
+                  </div>
+                </div>
+                {hasPreviewData ? (
+                  <div className={`rw-live-preview rw-theme-${theme}`}>
+                    <LivePreviewContent cv={liveCV} theme={theme} />
+                  </div>
+                ) : (
+                  <div className="rw-preview-empty">
+                    <p>Start filling in your details to see a live preview here</p>
+                  </div>
+                )}
               </div>
             )}
-
-            {data.education.map(edu => (
-              <div key={edu.id} className="rw-card">
-                <div className="rw-card-header">
-                  <strong>{edu.degree || "New Education"}</strong>
-                  <button className="rw-card-remove" onClick={() => removeEducation(edu.id)}><XIcon size={14} /></button>
-                </div>
-                <div className="rw-form-grid">
-                  <div className="rw-field rw-field-half">
-                    <label>Degree / Qualification</label>
-                    <input value={edu.degree} onChange={e => updateEducation(edu.id, "degree", e.target.value)} placeholder="B.Tech in Computer Science" />
-                  </div>
-                  <div className="rw-field rw-field-half">
-                    <label>Institution</label>
-                    <input value={edu.institution} onChange={e => updateEducation(edu.id, "institution", e.target.value)} placeholder="IIT Delhi" />
-                  </div>
-                  <div className="rw-field rw-field-third">
-                    <label>Location</label>
-                    <input value={edu.location} onChange={e => updateEducation(edu.id, "location", e.target.value)} placeholder="New Delhi" />
-                  </div>
-                  <div className="rw-field rw-field-third">
-                    <label>Graduation Year</label>
-                    <input value={edu.graduationYear} onChange={e => updateEducation(edu.id, "graduationYear", e.target.value)} placeholder="2022" />
-                  </div>
-                  <div className="rw-field rw-field-third">
-                    <label>GPA (optional)</label>
-                    <input value={edu.gpa} onChange={e => updateEducation(edu.id, "gpa", e.target.value)} placeholder="8.5/10" />
-                  </div>
-                </div>
-              </div>
-            ))}
           </div>
         )}
 
-        {/* ── Step 4: Skills & Summary ───────────────────────────────── */}
-        {step === 4 && (
-          <div className="rw-section">
-            <h3 className="rw-section-title">Skills & Professional Summary</h3>
-            <p className="rw-section-sub">Add your technical skills and let AI generate your summary.</p>
-
-            <div className="rw-field">
-              <label>Skills *</label>
-              <div className="rw-skills-input">
-                {data.skills.map(skill => (
-                  <span key={skill} className="rw-skill-tag">
-                    {skill}
-                    <button onClick={() => removeSkill(skill)}><XIcon size={10} /></button>
-                  </span>
-                ))}
-                <input
-                  value={skillInput}
-                  onChange={e => setSkillInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addSkill(skillInput); } }}
-                  placeholder={data.skills.length === 0 ? "Type a skill and press Enter (e.g. React, Python, AWS)" : "Add more..."}
-                  className="rw-skills-text"
-                />
-              </div>
-              <span className="rw-field-hint">Press Enter or comma to add each skill</span>
-            </div>
-
-            <div className="rw-field" style={{ marginTop: 24 }}>
-              <div className="rw-highlights-header">
-                <label>Professional Summary</label>
-                <button className="rw-btn-ai" onClick={generateSummary} disabled={isEnhancing === "summary"}>
-                  {isEnhancing === "summary" ? <><span className="rw-spinner" /> Generating...</> : "✨ AI Generate"}
-                </button>
-              </div>
-              <textarea value={data.summary} onChange={e => updateField("summary", e.target.value)} placeholder="A brief professional summary highlighting your experience, skills, and career goals. Click 'AI Generate' to create one automatically." rows={5} className="rw-textarea" />
-            </div>
-          </div>
-        )}
-
-        {/* ── Step 5: Preview Playground ─────────────────────────────── */}
-        {step === 5 && generatedCV && (
+        {/* ── Step 5: Full Preview Playground ───────────────────────── */}
+        {step === 5 && (
           <div className="rw-section">
             {/* Toolbar */}
             <div className="rw-preview-toolbar">
               <div className="rw-preview-toolbar-left">
                 <span className="rw-preview-title">Resume Preview</span>
-                <span className="rw-preview-hint">Click any section to edit inline</span>
               </div>
               <div className="rw-preview-toolbar-right">
-                {/* Theme Selector */}
                 <div className="rw-theme-picker">
                   {(["classic", "modern", "minimal"] as ResumeTheme[]).map(t => (
                     <button key={t} className={`rw-theme-btn ${theme === t ? "rw-theme-active" : ""}`} onClick={() => setTheme(t)}>
@@ -801,135 +790,82 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
               <button className="rw-btn rw-btn-primary" onClick={() => onNavigateToSearch?.()}>
                 <SearchIcon size={14} /> Find Matching Jobs <ArrowRightIcon size={14} />
               </button>
-              <button className="rw-btn rw-btn-ghost" onClick={() => setStep(1)}>✏️ Full Edit</button>
-              <button className="rw-btn rw-btn-ghost" onClick={() => {
-                const cv = buildCV();
-                setGeneratedCV(cv);
-                saveGeneratedCV(cv);
-                resumeApi.save(cv as unknown as Record<string, unknown>, "final").catch(() => {});
-              }}>💾 Save</button>
+              <button className="rw-btn rw-btn-ghost" onClick={() => setStep(1)}>✏ Edit Resume</button>
+              <button className="rw-btn rw-btn-ghost" onClick={saveCV}>💾 Save</button>
             </div>
 
-            {/* Live Preview */}
+            {/* Full Preview */}
             <div className={`rw-preview rw-theme-${theme}`}>
-              {/* Name — clickable to edit */}
-              {editingSection === "name" ? (
-                <div className="rw-inline-edit">
-                  <input value={editBuffer} onChange={e => setEditBuffer(e.target.value)} className="rw-inline-input rw-inline-name" autoFocus />
-                  <div className="rw-inline-btns">
-                    <button onClick={saveEditSection}>✓</button>
-                    <button onClick={cancelEdit}>✕</button>
-                  </div>
-                </div>
-              ) : (
-                <h1 className="rw-cv-name rw-editable" onClick={() => startEditSection("name", generatedCV.personalInfo.name)} title="Click to edit">
-                  {generatedCV.personalInfo.name}
-                </h1>
-              )}
-
-              {/* Contact */}
-              <div className="rw-cv-contact" onClick={() => startEditSection("contact", [generatedCV.personalInfo.email, generatedCV.personalInfo.phone, generatedCV.personalInfo.location, generatedCV.personalInfo.linkedIn].filter(Boolean).join(" · "))} title="Click to edit">
-                {editingSection === "contact" ? (
-                  <div className="rw-inline-edit" onClick={e => e.stopPropagation()}>
-                    <input value={editBuffer} onChange={e => setEditBuffer(e.target.value)} className="rw-inline-input" autoFocus />
-                    <div className="rw-inline-btns">
-                      <button onClick={saveEditSection}>✓</button>
-                      <button onClick={cancelEdit}>✕</button>
-                    </div>
-                  </div>
-                ) : (
-                  <>{[generatedCV.personalInfo.email, generatedCV.personalInfo.phone, generatedCV.personalInfo.location, generatedCV.personalInfo.linkedIn].filter(Boolean).join(" · ")}</>
-                )}
-              </div>
-
-              {/* Summary — editable */}
-              {generatedCV.summary && (
-                <>
-                  <div className="rw-cv-heading">Professional Summary</div>
-                  {editingSection === "summary" ? (
-                    <div className="rw-inline-edit">
-                      <textarea value={editBuffer} onChange={e => setEditBuffer(e.target.value)} className="rw-inline-textarea" rows={4} autoFocus />
-                      <div className="rw-inline-btns">
-                        <button onClick={saveEditSection}>✓ Save</button>
-                        <button onClick={cancelEdit}>✕ Cancel</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="rw-cv-text rw-editable" onClick={() => startEditSection("summary", generatedCV.summary)} title="Click to edit">
-                      {generatedCV.summary}
-                    </p>
-                  )}
-                </>
-              )}
-
-              {/* Skills — editable */}
-              {generatedCV.skills.length > 0 && (
-                <>
-                  <div className="rw-cv-heading">Technical Skills</div>
-                  {editingSection === "skills" ? (
-                    <div className="rw-inline-edit">
-                      <input value={editBuffer} onChange={e => setEditBuffer(e.target.value)} className="rw-inline-input" autoFocus />
-                      <span className="rw-inline-hint">Comma-separated</span>
-                      <div className="rw-inline-btns">
-                        <button onClick={saveEditSection}>✓ Save</button>
-                        <button onClick={cancelEdit}>✕ Cancel</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="rw-cv-text rw-editable" onClick={() => startEditSection("skills", generatedCV.skills.join(", "))} title="Click to edit">
-                      {generatedCV.skills.join(" · ")}
-                    </p>
-                  )}
-                </>
-              )}
-
-              {/* Experience — click goes to full edit */}
-              {generatedCV.experience.length > 0 && (
-                <>
-                  <div className="rw-cv-heading">Work Experience</div>
-                  {generatedCV.experience.map((exp, i) => (
-                    <div key={i} className="rw-cv-exp rw-editable" onClick={() => { setStep(2); setEditingSection(null); }} title="Click to edit in wizard">
-                      <div className="rw-cv-exp-row">
-                        <strong>{exp.title}</strong>
-                        <span>{exp.startDate} – {exp.endDate}</span>
-                      </div>
-                      <div className="rw-cv-exp-company">{exp.company}{exp.location ? ` · ${exp.location}` : ""}</div>
-                      {exp.highlights.length > 0 && (
-                        <ul className="rw-cv-list">{exp.highlights.map((h, j) => <li key={j}>{h}</li>)}</ul>
-                      )}
-                    </div>
-                  ))}
-                </>
-              )}
-
-              {/* Education — click goes to full edit */}
-              {generatedCV.education.length > 0 && (
-                <>
-                  <div className="rw-cv-heading">Education</div>
-                  {generatedCV.education.map((edu, i) => (
-                    <div key={i} className="rw-cv-edu rw-editable" onClick={() => { setStep(3); setEditingSection(null); }} title="Click to edit in wizard">
-                      <strong>{edu.degree}</strong> — {edu.institution}{edu.graduationYear ? `, ${edu.graduationYear}` : ""}
-                      {edu.gpa && <span className="rw-cv-gpa"> (GPA: {edu.gpa})</span>}
-                    </div>
-                  ))}
-                </>
-              )}
+              <LivePreviewContent cv={liveCV} theme={theme} />
             </div>
-          </div>
-        )}
-
-        {/* ── Navigation ────────────────────────────────────────────── */}
-        {step > 0 && step < 5 && (
-          <div className="rw-nav">
-            <button className="rw-btn rw-btn-ghost" onClick={() => goToStep(step - 1)}>
-              ← {step === 1 ? "Start" : "Back"}
-            </button>
-            <button className="rw-btn rw-btn-primary" onClick={() => goToStep(step + 1)} disabled={!canProceed(step)}>
-              {step === 4 ? "Generate Resume" : "Next →"}
-            </button>
           </div>
         )}
       </div>
+    </>
+  );
+}
+
+// ─── Live Preview Component (shared between split-pane and full view) ────
+
+function LivePreviewContent({ cv, theme }: { cv: GeneratedCV; theme: ResumeTheme }) {
+  if (!cv.personalInfo?.name && cv.skills.length === 0 && cv.experience.length === 0) {
+    return <p style={{ color: "#94a3b8", textAlign: "center", padding: 20 }}>Fill in your details to see preview</p>;
+  }
+
+  return (
+    <>
+      {cv.personalInfo?.name && (
+        <h1 className="rw-cv-name">{cv.personalInfo.name}</h1>
+      )}
+      {[cv.personalInfo?.email, cv.personalInfo?.phone, cv.personalInfo?.location, cv.personalInfo?.linkedIn].filter(Boolean).length > 0 && (
+        <div className="rw-cv-contact">
+          {[cv.personalInfo.email, cv.personalInfo.phone, cv.personalInfo.location, cv.personalInfo.linkedIn].filter(Boolean).join(" · ")}
+        </div>
+      )}
+      {cv.summary && (
+        <>
+          <div className="rw-cv-heading">Professional Summary</div>
+          <p className="rw-cv-text">{cv.summary}</p>
+        </>
+      )}
+      {cv.skills.length > 0 && (
+        <>
+          <div className="rw-cv-heading">Technical Skills</div>
+          <p className="rw-cv-text">{cv.skills.join(" · ")}</p>
+        </>
+      )}
+      {cv.experience.length > 0 && (
+        <>
+          <div className="rw-cv-heading">Work Experience</div>
+          {cv.experience.map((exp, i) => (
+            <div key={i} className="rw-cv-exp">
+              <div className="rw-cv-exp-row">
+                <strong>{exp.title || "Untitled Role"}</strong>
+                {(exp.startDate || exp.endDate) && <span>{exp.startDate} – {exp.endDate}</span>}
+              </div>
+              {(exp.company || exp.location) && (
+                <div className="rw-cv-exp-company">{exp.company}{exp.location ? ` · ${exp.location}` : ""}</div>
+              )}
+              {exp.highlights.length > 0 && (
+                <ul className="rw-cv-list">{exp.highlights.map((h, j) => <li key={j}>{h}</li>)}</ul>
+              )}
+            </div>
+          ))}
+        </>
+      )}
+      {cv.education.length > 0 && (
+        <>
+          <div className="rw-cv-heading">Education</div>
+          {cv.education.map((edu, i) => (
+            <div key={i} className="rw-cv-edu">
+              <strong>{edu.degree || "Degree"}</strong>
+              {edu.institution && <> — {edu.institution}</>}
+              {edu.graduationYear && <>, {edu.graduationYear}</>}
+              {edu.gpa && <span className="rw-cv-gpa"> (GPA: {edu.gpa})</span>}
+            </div>
+          ))}
+        </>
+      )}
     </>
   );
 }
@@ -947,19 +883,19 @@ function buildCVFromData(data: {
   education: { degree: string; institution: string; location: string; graduationYear: string; gpa: string }[];
 }): GeneratedCV {
   let summary = data.summary;
-  if (!summary) {
+  if (!summary && data.skills.length > 0) {
     const topSkills = data.skills.slice(0, 3).join(", ");
-    summary = `Results-driven professional specializing in ${topSkills || "technology"}. Committed to delivering impactful solutions.`;
+    summary = `Results-driven professional specializing in ${topSkills}. Committed to delivering impactful solutions.`;
   }
 
   return {
-    id: `cv_${crypto.randomUUID()}`,
+    id: `cv_${Date.now()}`,
     personalInfo: {
       name: data.fullName, email: data.email, phone: data.phone,
       location: data.location, linkedIn: data.linkedIn || undefined,
       portfolio: data.portfolio || undefined,
     },
-    summary,
+    summary: summary || "",
     skills: data.skills,
     experience: data.experiences.map(e => ({
       title: e.title, company: e.company, location: e.location,
@@ -1009,7 +945,7 @@ ${cv.education.length > 0 ? `<div class="heading">Education</div>${edu}` : ""}
 // ─── Styles ─────────────────────────────────────────────────────────────────
 
 const wizardStyles = `
-  .rw { max-width: 720px; margin: 0 auto; }
+  .rw { height: 100%; display: flex; flex-direction: column; }
 
   /* Upload Error Banner */
   .rw-upload-error {
@@ -1025,7 +961,7 @@ const wizardStyles = `
   @keyframes rw-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
 
   /* Stepper */
-  .rw-stepper { display: flex; gap: 4px; margin-bottom: 28px; }
+  .rw-stepper { display: flex; gap: 4px; margin-bottom: 20px; flex-shrink: 0; }
   .rw-step {
     flex: 1; display: flex; align-items: center; gap: 8px;
     padding: 10px 14px; border-radius: 8px;
@@ -1064,6 +1000,58 @@ const wizardStyles = `
   .rw-option strong { color: #f1f5f9; font-size: 0.9375rem; }
   .rw-option span { font-size: 0.75rem; line-height: 1.4; }
   .rw-option-file { font-size: 0.6875rem; color: #3b82f6; margin-top: 4px; }
+
+  /* Split Pane */
+  .rw-split { display: flex; gap: 20px; flex: 1; min-height: 0; overflow: hidden; }
+  .rw-form-pane { flex: 1; overflow-y: auto; min-width: 0; display: flex; flex-direction: column; }
+  .rw-form-full { max-width: 720px; }
+  .rw-preview-pane {
+    width: 340px; flex-shrink: 0; display: flex; flex-direction: column;
+    border: 1px solid #1e293b; border-radius: 10px; overflow: hidden;
+    background: #0a0c12;
+  }
+  .rw-preview-pane-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; border-bottom: 1px solid #1e293b;
+    font-size: 0.75rem; font-weight: 600; color: #94a3b8;
+  }
+  .rw-theme-picker-sm { display: flex; gap: 2px; }
+  .rw-theme-btn-sm {
+    padding: 2px 8px; border-radius: 4px; font-size: 0.625rem;
+    background: transparent; border: 1px solid transparent;
+    color: #475569; cursor: pointer; text-transform: capitalize;
+  }
+  .rw-theme-btn-sm:hover { color: #94a3b8; }
+  .rw-theme-active-sm { border-color: #3b82f6; color: #3b82f6; }
+  .rw-live-preview {
+    flex: 1; overflow-y: auto; padding: 20px;
+    background: #fafafa; color: #1a1a2e;
+    font-size: 0.6875rem; line-height: 1.5;
+  }
+  .rw-live-preview .rw-cv-name { font-size: 1rem; margin-bottom: 2px; }
+  .rw-live-preview .rw-cv-contact { font-size: 0.625rem; margin-bottom: 12px; }
+  .rw-live-preview .rw-cv-heading { font-size: 0.625rem; margin: 12px 0 6px; }
+  .rw-live-preview .rw-cv-text { font-size: 0.6875rem; }
+  .rw-live-preview .rw-cv-exp { margin-bottom: 8px; }
+  .rw-live-preview .rw-cv-exp-row strong { font-size: 0.6875rem; }
+  .rw-live-preview .rw-cv-exp-row span { font-size: 0.5625rem; }
+  .rw-live-preview .rw-cv-exp-company { font-size: 0.625rem; }
+  .rw-live-preview .rw-cv-list { font-size: 0.625rem; padding-left: 14px; }
+  .rw-live-preview .rw-cv-edu { font-size: 0.6875rem; margin-bottom: 4px; }
+  .rw-preview-empty {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    padding: 20px; text-align: center;
+  }
+  .rw-preview-empty p { color: #475569; font-size: 0.75rem; line-height: 1.5; }
+
+  /* Toggle Preview Button */
+  .rw-btn-toggle-preview {
+    padding: 8px 14px; border-radius: 8px;
+    background: transparent; border: 1px solid #2d3748;
+    color: #64748b; font-size: 0.75rem; font-weight: 600;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .rw-btn-toggle-preview:hover { color: #94a3b8; border-color: #475569; }
 
   /* Sections */
   .rw-section { animation: rw-in 0.2s ease; }
@@ -1188,6 +1176,7 @@ const wizardStyles = `
   .rw-nav {
     display: flex; justify-content: space-between; align-items: center;
     margin-top: 28px; padding-top: 20px; border-top: 1px solid #1e293b;
+    flex-shrink: 0;
   }
 
   /* Preview Toolbar */
@@ -1198,7 +1187,6 @@ const wizardStyles = `
   .rw-preview-toolbar-left { display: flex; align-items: baseline; gap: 12px; }
   .rw-preview-toolbar-right { display: flex; align-items: center; gap: 8px; }
   .rw-preview-title { font-size: 1.125rem; font-weight: 700; color: #f1f5f9; }
-  .rw-preview-hint { font-size: 0.6875rem; color: #475569; }
 
   /* Theme Picker */
   .rw-theme-picker { display: flex; gap: 4px; }
@@ -1236,36 +1224,6 @@ const wizardStyles = `
   /* Preview */
   .rw-preview-actions { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
 
-  /* Editable hint */
-  .rw-editable {
-    cursor: pointer; transition: background 0.15s, outline 0.15s; border-radius: 4px; padding: 2px 4px; margin: -2px -4px;
-  }
-  .rw-editable:hover { background: rgba(59,130,246,0.08); outline: 1px dashed rgba(59,130,246,0.3); }
-
-  /* Inline editing */
-  .rw-inline-edit { margin: 4px 0; }
-  .rw-inline-input {
-    width: 100%; padding: 8px 12px; border-radius: 6px;
-    background: white; border: 2px solid #3b82f6;
-    color: #1a1a2e; font-size: 0.8125rem; outline: none; font-family: inherit;
-  }
-  .rw-inline-name { font-size: 1.25rem; font-weight: 700; }
-  .rw-inline-textarea {
-    width: 100%; padding: 8px 12px; border-radius: 6px;
-    background: white; border: 2px solid #3b82f6;
-    color: #1a1a2e; font-size: 0.8125rem; outline: none; font-family: inherit;
-    resize: vertical; line-height: 1.5;
-  }
-  .rw-inline-hint { font-size: 0.625rem; color: #64748b; display: block; margin-top: 2px; }
-  .rw-inline-btns { display: flex; gap: 6px; margin-top: 6px; }
-  .rw-inline-btns button {
-    padding: 4px 12px; border-radius: 4px; font-size: 0.6875rem; font-weight: 600;
-    cursor: pointer; border: none; transition: all 0.15s;
-  }
-  .rw-inline-btns button:first-child { background: #3b82f6; color: white; }
-  .rw-inline-btns button:last-child { background: #e2e8f0; color: #475569; }
-
-  /* Theme variants for preview */
   .rw-preview {
     background: #fafafa; color: #1a1a2e; padding: 32px;
     border-radius: 10px; font-size: 0.8125rem; line-height: 1.6;
@@ -1282,7 +1240,7 @@ const wizardStyles = `
     border-bottom: 1px solid #d1d5db; padding-bottom: 2px;
     text-transform: none; letter-spacing: normal; font-size: 0.875rem;
   }
-  .rw-theme-minimal .rw-preview { font-family: Georgia, 'Times New Roman', serif; }
+  .rw-theme-minimal .rw-preview, .rw-theme-minimal .rw-live-preview { font-family: Georgia, 'Times New Roman', serif; }
 
   .rw-cv-name { font-size: 1.375rem; font-weight: 700; color: #0f172a; margin: 0 0 4px; }
   .rw-cv-contact { font-size: 0.75rem; color: #64748b; margin-bottom: 18px; }
@@ -1311,7 +1269,9 @@ const wizardStyles = `
   @keyframes rw-spin { to { transform: rotate(360deg); } }
 
   /* Mobile */
-  @media (max-width: 640px) {
+  @media (max-width: 768px) {
+    .rw-split { flex-direction: column; }
+    .rw-preview-pane { width: 100%; max-height: 300px; }
     .rw-stepper { flex-wrap: wrap; }
     .rw-step-label { display: none; }
     .rw-start-options { flex-direction: column; }

@@ -281,51 +281,109 @@ export default function AICopilot({
   useEffect(() => { if (isOpen) inputRef.current?.focus(); }, [isOpen]);
 
   // ── Parse AI response for embedded actions ──
-  const parseAIActions = (reply: string): { text: string; actions: CopilotAction[] } => {
+  const parseAIActions = (reply: string, userQuery: string): { text: string; actions: CopilotAction[] } => {
     const actions: CopilotAction[] = [];
+    const lower = reply.toLowerCase();
+    const queryLower = userQuery.toLowerCase();
 
-    // Check for action patterns in the reply
-    if (reply.toLowerCase().includes("upload") && reply.toLowerCase().includes("cv")) {
+    // If user asked for a summary and we're on resume, offer to apply it
+    if ((queryLower.includes("summary") || queryLower.includes("professional summary")) && context === "resume") {
+      actions.push({ type: "fill_field", label: "Apply as Summary", payload: { field: "summary", value: reply } });
+    }
+
+    // If reply contains skills list, offer to add them
+    if ((queryLower.includes("skill") || queryLower.includes("add")) && context === "resume") {
+      const skillMatches = reply.match(/(?:^|\n)\s*[-•*]\s*(.+)/gm);
+      if (skillMatches && skillMatches.length >= 3) {
+        const parsed = skillMatches.map(s => s.replace(/^[\s\-•*]+/, "").trim()).filter(s => s.length < 40);
+        if (parsed.length > 0) {
+          actions.push({ type: "fill_field", label: `Add ${parsed.length} skills`, payload: { field: "skills", value: parsed } });
+        }
+      }
+    }
+
+    // Context-based navigation suggestions
+    if (lower.includes("upload") && lower.includes("cv")) {
       actions.push({ type: "enhance", label: "Upload CV now", payload: { trigger: "upload" } });
     }
-    if (reply.toLowerCase().includes("ats") && (reply.toLowerCase().includes("score") || reply.toLowerCase().includes("check"))) {
+    if (lower.includes("ats") && (lower.includes("score") || lower.includes("check"))) {
       actions.push({ type: "analyze", label: "Run ATS Check", payload: { analyze: "ats" } });
     }
-    if (reply.toLowerCase().includes("cover letter") && context !== "coverletter") {
+    if (lower.includes("cover letter") && context !== "coverletter") {
       actions.push({ type: "navigate", label: "Open Cover Letter", payload: { view: "coverletter" } });
     }
-    if (reply.toLowerCase().includes("job search") || reply.toLowerCase().includes("find jobs")) {
+    if (lower.includes("job search") || lower.includes("find jobs")) {
       actions.push({ type: "navigate", label: "Search Jobs", payload: { view: "jobs" } });
     }
 
     return { text: reply, actions: actions.length > 0 ? actions : [] };
   };
 
+  // ── Detect intent and route to appropriate action or LLM ──
+  const detectIntent = (text: string): { action: string; prompt: string } | null => {
+    const lower = text.toLowerCase();
+
+    // Direct summary generation
+    if (context === "resume" && (lower.includes("generate") || lower.includes("write") || lower.includes("create")) && lower.includes("summary")) {
+      return { action: "generate_summary", prompt: text };
+    }
+
+    // Direct enhancement
+    if (context === "resume" && (lower.includes("enhance") || lower.includes("improve")) && lower.includes("bullet")) {
+      return { action: "enhance_experience", prompt: text };
+    }
+
+    return null;
+  };
+
   // ── Send message ──
   const sendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
-    addMessage("user", text.trim());
+    const trimmed = text.trim();
+    addMessage("user", trimmed);
     setInput("");
     setIsLoading(true);
 
     try {
-      const enrichedContext = {
-        ...(cvData || {}),
-        ...(resumeData || {}),
-        current_view: context,
-        view_label: contextLabels[context] || context,
-        resume_step: resumeStep,
-        task: `copilot_${context}`,
-      };
+      // Check for direct action intents
+      const intent = detectIntent(trimmed);
 
-      const result = await resumeApi.chat(
-        `[User is on ${contextLabels[context] || context}${resumeStep !== undefined ? `, step ${resumeStep}` : ""}] ${text}`,
-        "chat",
-        enrichedContext,
-      );
-      const reply = result.data?.reply || "I couldn't process that right now. Please try again.";
-      const { text: cleanText, actions } = parseAIActions(reply);
-      addMessage("ai", cleanText, actions.length > 0 ? actions : undefined);
+      if (intent?.action === "generate_summary") {
+        // Generate summary directly and offer to apply
+        const result = await resumeApi.chat("", "generate_summary", {
+          ...(resumeData || {}),
+          ...(cvData || {}),
+        });
+        if (result.data?.reply) {
+          addMessage("ai", result.data.reply, [
+            { type: "fill_field", label: "Apply as Summary", payload: { field: "summary", value: result.data.reply } },
+          ]);
+        } else {
+          addMessage("ai", "I couldn't generate a summary right now. Please try again.");
+        }
+      } else if (intent?.action === "enhance_experience") {
+        onTriggerAction?.("enhanceExperience", {});
+        addMessage("action", "Enhancing your experience bullet points...");
+      } else {
+        // General chat with enriched context
+        const enrichedContext = {
+          ...(cvData || {}),
+          ...(resumeData || {}),
+          current_view: context,
+          view_label: contextLabels[context] || context,
+          resume_step: resumeStep,
+          task: `copilot_${context}`,
+        };
+
+        const result = await resumeApi.chat(
+          `[User is on ${contextLabels[context] || context}${resumeStep !== undefined ? `, step ${resumeStep}` : ""}] ${trimmed}`,
+          "chat",
+          enrichedContext,
+        );
+        const reply = result.data?.reply || "I couldn't process that right now. Please try again.";
+        const { text: cleanText, actions } = parseAIActions(reply, trimmed);
+        addMessage("ai", cleanText, actions.length > 0 ? actions : undefined);
+      }
     } catch {
       addMessage("ai", "Sorry, I'm having trouble connecting. Please try again.");
     }

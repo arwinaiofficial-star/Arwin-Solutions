@@ -140,9 +140,12 @@ export default function DashboardPage() {
   }, []);
 
   const handleCopilotUpdateField = useCallback((field: string, value: unknown) => {
-    // For now, field updates go through the wizard handle
-    console.log("Copilot update field:", field, value);
-  }, []);
+    const handle = wizardHandleRef.current;
+    if (handle) {
+      handle.setField(field, value);
+      addToast(`Updated ${field.replace(/([A-Z])/g, " $1").toLowerCase()}`, "success");
+    }
+  }, [addToast]);
 
   const handleCopilotAction = useCallback((action: string, payload?: Record<string, unknown>) => {
     const handle = wizardHandleRef.current;
@@ -362,9 +365,15 @@ function PrepareModal({
   onOpenCoverLetter: (job: JobResult, text: string) => void;
   addToast: (msg: string, type: Toast["type"]) => void;
 }) {
+  const { saveGeneratedCV } = useAuth();
   const [data, setData] = useState<PrepareData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"tips" | "cover" | "skills">("tips");
+  const [activeTab, setActiveTab] = useState<"tips" | "cover" | "skills" | "tailor" | "ats">("tips");
+  const [tailoredSummary, setTailoredSummary] = useState<string | null>(null);
+  const [tailoredSkills, setTailoredSkills] = useState<string[] | null>(null);
+  const [isTailoring, setIsTailoring] = useState(false);
+  const [atsKeywords, setAtsKeywords] = useState<{ matched: string[]; missing: string[]; score: number; suggestions: string[] } | null>(null);
+  const [isAnalyzingAts, setIsAnalyzingAts] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -380,7 +389,6 @@ function PrepareModal({
         if (result.data) {
           setData(result.data);
         } else {
-          // Fallback local analysis
           const skills = cvData?.skills || [];
           const desc = `${job.title} ${job.description}`.toLowerCase();
           const matched = skills.filter(s => desc.includes(s.toLowerCase()));
@@ -400,6 +408,86 @@ function PrepareModal({
     };
     load();
   }, [job, cvData]);
+
+  // ── Per-Job Resume Tailoring ──
+  const tailorResume = async () => {
+    if (!cvData) return;
+    setIsTailoring(true);
+    try {
+      const result = await resumeApi.chat(
+        `Tailor this resume for the following job. Return a JSON object with two keys: "summary" (a 2-3 sentence professional summary tailored for this role) and "skills" (an array of skills reordered/augmented to match this job).
+
+Job: ${job.title} at ${job.company}
+Job Description: ${job.description?.slice(0, 2000) || "Not provided"}
+
+Current Resume:
+Name: ${cvData.personalInfo?.name}
+Summary: ${cvData.summary}
+Skills: ${cvData.skills?.join(", ")}
+Experience: ${cvData.experience?.map(e => `${e.title} at ${e.company}: ${e.highlights?.join("; ")}`).join(" | ")}
+
+Return ONLY valid JSON: {"summary": "...", "skills": ["skill1", "skill2", ...]}`,
+        "chat",
+      );
+      if (result.data?.reply) {
+        try {
+          const cleaned = result.data.reply.replace(/^```(?:json)?\s*/m, "").replace(/\s*```\s*$/m, "").trim();
+          const parsed = JSON.parse(cleaned);
+          setTailoredSummary(parsed.summary || null);
+          setTailoredSkills(Array.isArray(parsed.skills) ? parsed.skills : null);
+        } catch {
+          setTailoredSummary(result.data.reply);
+        }
+      }
+    } catch { /* silent */ }
+    setIsTailoring(false);
+  };
+
+  const applyTailoredResume = () => {
+    if (!cvData) return;
+    const updated = { ...cvData };
+    if (tailoredSummary) updated.summary = tailoredSummary;
+    if (tailoredSkills) updated.skills = tailoredSkills;
+    saveGeneratedCV(updated);
+    resumeApi.save(updated as unknown as Record<string, unknown>, "tailored").catch(() => {});
+    addToast(`Resume tailored for ${job.title} at ${job.company}`, "success");
+  };
+
+  // ── ATS Keyword Gap Analysis ──
+  const analyzeAtsKeywords = async () => {
+    if (!cvData) return;
+    setIsAnalyzingAts(true);
+    try {
+      const result = await resumeApi.chat(
+        `Analyze ATS keyword match between this resume and job posting. Return a JSON object with: "matched" (array of keywords found in both), "missing" (array of important keywords from job NOT in resume), "score" (0-100 ATS compatibility score), "suggestions" (array of 3-5 specific rewrite suggestions to improve ATS score).
+
+Job: ${job.title} at ${job.company}
+Job Description: ${job.description?.slice(0, 2000) || "Not provided"}
+
+Resume Skills: ${cvData.skills?.join(", ")}
+Resume Summary: ${cvData.summary}
+Resume Experience: ${cvData.experience?.map(e => `${e.title}: ${e.highlights?.join("; ")}`).join(" | ")}
+
+Return ONLY valid JSON: {"matched": [...], "missing": [...], "score": number, "suggestions": [...]}`,
+        "chat",
+      );
+      if (result.data?.reply) {
+        try {
+          const cleaned = result.data.reply.replace(/^```(?:json)?\s*/m, "").replace(/\s*```\s*$/m, "").trim();
+          const parsed = JSON.parse(cleaned);
+          setAtsKeywords({
+            matched: parsed.matched || [],
+            missing: parsed.missing || [],
+            score: parsed.score || 0,
+            suggestions: parsed.suggestions || [],
+          });
+        } catch {
+          setAtsKeywords({ matched: [], missing: [], score: 0, suggestions: [result.data.reply] });
+        }
+      }
+    } catch { /* silent */ }
+    setIsAnalyzingAts(false);
+  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -433,9 +521,11 @@ function PrepareModal({
 
             {/* Tabs */}
             <div className="prep-tabs">
-              <button className={activeTab === "tips" ? "prep-tab-active" : ""} onClick={() => setActiveTab("tips")}>💡 AI Tips</button>
-              <button className={activeTab === "skills" ? "prep-tab-active" : ""} onClick={() => setActiveTab("skills")}>🎯 Skill Analysis</button>
-              <button className={activeTab === "cover" ? "prep-tab-active" : ""} onClick={() => setActiveTab("cover")}>✉️ Cover Letter</button>
+              <button className={activeTab === "tips" ? "prep-tab-active" : ""} onClick={() => setActiveTab("tips")}>💡 Tips</button>
+              <button className={activeTab === "skills" ? "prep-tab-active" : ""} onClick={() => setActiveTab("skills")}>🎯 Skills</button>
+              <button className={activeTab === "tailor" ? "prep-tab-active" : ""} onClick={() => { setActiveTab("tailor"); if (!tailoredSummary && !isTailoring) tailorResume(); }}>📝 Tailor Resume</button>
+              <button className={activeTab === "ats" ? "prep-tab-active" : ""} onClick={() => { setActiveTab("ats"); if (!atsKeywords && !isAnalyzingAts) analyzeAtsKeywords(); }}>📊 ATS Keywords</button>
+              <button className={activeTab === "cover" ? "prep-tab-active" : ""} onClick={() => setActiveTab("cover")}>✉ Cover Letter</button>
             </div>
 
             <div className="prep-content">
@@ -454,7 +544,7 @@ function PrepareModal({
                 <div className="prep-skills">
                   {data.matchedSkills.length > 0 && (
                     <div className="prep-skill-group">
-                      <h4>✅ Matched Skills</h4>
+                      <h4>Matched Skills</h4>
                       <div className="prep-skill-tags">
                         {data.matchedSkills.map(s => <span key={s} className="prep-skill-tag prep-skill-matched">{s}</span>)}
                       </div>
@@ -462,11 +552,100 @@ function PrepareModal({
                   )}
                   {data.missingSkills.length > 0 && (
                     <div className="prep-skill-group">
-                      <h4>⚠️ Skills to Highlight</h4>
+                      <h4>Skills to Highlight</h4>
                       <div className="prep-skill-tags">
                         {data.missingSkills.map(s => <span key={s} className="prep-skill-tag prep-skill-missing">{s}</span>)}
                       </div>
-                      <p className="prep-skill-note">These skills from your resume weren&apos;t found in the job description. Consider if they&apos;re transferable.</p>
+                      <p className="prep-skill-note">These skills weren&apos;t found in the job description.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === "tailor" && (
+                <div className="prep-tailor">
+                  {isTailoring ? (
+                    <div className="prep-tailor-loading">
+                      <div className="co-spinner" />
+                      <p>AI is tailoring your resume for this role...</p>
+                      <style>{`.co-spinner{width:24px;height:24px;border:3px solid #1e293b;border-top-color:#3b82f6;border-radius:50%;animation:cospin .7s linear infinite;margin:0 auto}@keyframes cospin{to{transform:rotate(360deg)}}`}</style>
+                    </div>
+                  ) : tailoredSummary ? (
+                    <>
+                      <div className="prep-tailor-section">
+                        <h4>Tailored Summary</h4>
+                        <div className="prep-tailor-text">{tailoredSummary}</div>
+                      </div>
+                      {tailoredSkills && (
+                        <div className="prep-tailor-section">
+                          <h4>Optimized Skills Order</h4>
+                          <div className="prep-skill-tags">
+                            {tailoredSkills.map(s => <span key={s} className="prep-skill-tag prep-skill-matched">{s}</span>)}
+                          </div>
+                        </div>
+                      )}
+                      <div className="prep-tailor-actions">
+                        <button className="prep-btn-primary" onClick={applyTailoredResume}>
+                          ✓ Apply to My Resume
+                        </button>
+                        <button className="prep-btn-secondary" onClick={tailorResume}>
+                          ↻ Regenerate
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="prep-tailor-empty">
+                      <p>Click to generate a tailored version of your resume for this specific job.</p>
+                      <button className="prep-btn-primary" onClick={tailorResume}>📝 Tailor My Resume</button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === "ats" && (
+                <div className="prep-ats">
+                  {isAnalyzingAts ? (
+                    <div className="prep-tailor-loading">
+                      <div className="co-spinner" />
+                      <p>Analyzing ATS keyword compatibility...</p>
+                      <style>{`.co-spinner{width:24px;height:24px;border:3px solid #1e293b;border-top-color:#3b82f6;border-radius:50%;animation:cospin .7s linear infinite;margin:0 auto}@keyframes cospin{to{transform:rotate(360deg)}}`}</style>
+                    </div>
+                  ) : atsKeywords ? (
+                    <>
+                      <div className={`prep-ats-score ${atsKeywords.score >= 70 ? "prep-ats-good" : atsKeywords.score >= 40 ? "prep-ats-ok" : "prep-ats-low"}`}>
+                        <strong>{atsKeywords.score}%</strong>
+                        <span>ATS Compatibility Score</span>
+                      </div>
+                      {atsKeywords.matched.length > 0 && (
+                        <div className="prep-skill-group">
+                          <h4>Matched Keywords</h4>
+                          <div className="prep-skill-tags">
+                            {atsKeywords.matched.map(k => <span key={k} className="prep-skill-tag prep-skill-matched">{k}</span>)}
+                          </div>
+                        </div>
+                      )}
+                      {atsKeywords.missing.length > 0 && (
+                        <div className="prep-skill-group">
+                          <h4>Missing Keywords</h4>
+                          <div className="prep-skill-tags">
+                            {atsKeywords.missing.map(k => <span key={k} className="prep-skill-tag prep-skill-missing">{k}</span>)}
+                          </div>
+                        </div>
+                      )}
+                      {atsKeywords.suggestions.length > 0 && (
+                        <div className="prep-skill-group">
+                          <h4>Rewrite Suggestions</h4>
+                          {atsKeywords.suggestions.map((s, i) => (
+                            <div key={i} className="prep-tip-item"><span className="prep-tip-bullet">→</span><p>{s}</p></div>
+                          ))}
+                        </div>
+                      )}
+                      <button className="prep-btn-secondary" style={{ marginTop: 12 }} onClick={analyzeAtsKeywords}>↻ Re-analyze</button>
+                    </>
+                  ) : (
+                    <div className="prep-tailor-empty">
+                      <p>Analyze how well your resume keywords match this job for ATS systems.</p>
+                      <button className="prep-btn-primary" onClick={analyzeAtsKeywords}>📊 Analyze Keywords</button>
                     </div>
                   )}
                 </div>
@@ -477,7 +656,7 @@ function PrepareModal({
                   <div className="prep-cover-text">{data.coverLetterSnippet}</div>
                   <div className="prep-cover-actions">
                     <button className="prep-btn-primary" onClick={() => { onOpenCoverLetter(job, data.coverLetterSnippet); onClose(); }}>
-                      ✏️ Edit in Cover Letter Builder
+                      ✏ Edit in Cover Letter Builder
                     </button>
                     <button className="prep-btn-secondary" onClick={() => { navigator.clipboard.writeText(data.coverLetterSnippet); addToast("Cover letter copied!", "success"); }}>
                       📋 Copy
@@ -1159,6 +1338,35 @@ const workspaceCSS = `
   .prep-btn-apply:hover { background:#16a34a; }
   .prep-btn-save { padding:10px 20px; border-radius:8px; background:transparent; border:1px solid #1e293b; color:#94a3b8; font-size:0.8125rem; cursor:pointer; }
   .prep-btn-save:hover { border-color:#3b82f6; color:#60a5fa; }
+
+  /* Tailor Resume tab */
+  .prep-tailor { display:flex; flex-direction:column; gap:16px; }
+  .prep-tailor-loading { display:flex; align-items:center; gap:10px; padding:24px; color:#94a3b8; font-size:0.8125rem; }
+  .prep-tailor-loading::before { content:""; width:18px; height:18px; border:2px solid #3b82f640; border-top-color:#3b82f6; border-radius:50%; animation:spin 0.8s linear infinite; }
+  .prep-tailor-section { margin-bottom:8px; }
+  .prep-tailor-section h4 { margin:0 0 8px; font-size:0.8125rem; color:#e2e8f0; font-weight:600; }
+  .prep-tailor-text { white-space:pre-wrap; font-size:0.8125rem; color:#cbd5e1; line-height:1.6; background:#080a10; border:1px solid #1e293b; border-radius:8px; padding:14px; }
+  .prep-tailor-actions { display:flex; gap:8px; margin-top:8px; }
+  .prep-tailor-empty { text-align:center; padding:32px; color:#475569; font-size:0.8125rem; }
+
+  /* ATS Keywords tab */
+  .prep-ats { display:flex; flex-direction:column; gap:16px; }
+  .prep-ats-score { display:flex; align-items:center; gap:14px; padding:16px; border-radius:10px; }
+  .prep-ats-good { background:rgba(34,197,94,0.08); border:1px solid #22c55e30; }
+  .prep-ats-ok { background:rgba(234,179,8,0.08); border:1px solid #eab30830; }
+  .prep-ats-low { background:rgba(239,68,68,0.08); border:1px solid #ef444430; }
+  .prep-ats-score strong { font-size:1.5rem; }
+  .prep-ats-good strong { color:#22c55e; }
+  .prep-ats-ok strong { color:#eab308; }
+  .prep-ats-low strong { color:#ef4444; }
+  .prep-ats-score span { font-size:0.8125rem; color:#94a3b8; }
+  .prep-ats-section { margin-bottom:4px; }
+  .prep-ats-section h4 { margin:0 0 8px; font-size:0.8125rem; color:#e2e8f0; }
+  .prep-ats-tags { display:flex; flex-wrap:wrap; gap:6px; }
+  .prep-ats-tag-match { padding:4px 12px; border-radius:6px; font-size:0.75rem; background:rgba(34,197,94,0.1); border:1px solid #22c55e40; color:#22c55e; }
+  .prep-ats-tag-miss { padding:4px 12px; border-radius:6px; font-size:0.75rem; background:rgba(239,68,68,0.1); border:1px solid #ef444440; color:#ef4444; }
+  .prep-ats-suggestions { display:flex; flex-direction:column; gap:8px; }
+  .prep-ats-suggestion { font-size:0.8125rem; color:#cbd5e1; line-height:1.5; padding:10px 14px; background:#080a10; border:1px solid #1e293b; border-radius:8px; }
 
   /* Job Board */
   .jb { max-width:800px; }
