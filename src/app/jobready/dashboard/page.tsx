@@ -1,885 +1,475 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import ResumeWizard from "@/components/jobready/ResumeWizard";
+import AICopilot from "@/components/jobready/AICopilot";
+import CommandPalette from "@/components/jobready/CommandPalette";
 import {
-  UserIcon,
-  LogoutIcon,
-  SearchIcon,
-  DocumentIcon,
-  LocationIcon,
-  CheckIcon,
-  ExternalLinkIcon,
-  DownloadIcon,
-  BriefcaseIcon,
+  UserIcon, LogoutIcon, SearchIcon, DocumentIcon,
+  LocationIcon, CheckIcon, ExternalLinkIcon, BriefcaseIcon,
+  SettingsIcon, DownloadIcon,
 } from "@/components/icons/Icons";
 
-type TabType = "resume" | "jobs" | "profile";
+type ViewType = "resume" | "jobs" | "tracker" | "settings";
+
+interface JobResult {
+  id: string; title: string; company: string; location: string;
+  description: string; url: string; source: string; salary?: string;
+  jobType?: string; postedAt?: string; tags?: string[]; relevanceScore: number;
+}
+
+interface TrackedJob {
+  id: string; title: string; company: string; url: string;
+  status: "saved" | "applied" | "interview" | "offer";
+  addedAt: string;
+}
+
+// ─── Main Page ──────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<TabType>("resume");
   const router = useRouter();
+  const [activeView, setActiveView] = useState<ViewType>("resume");
+  const [copilotOpen, setCopilotOpen] = useState(true);
+  const [cmdOpen, setCmdOpen] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push("/jobready/login");
-    }
+    if (!isLoading && !isAuthenticated) router.push("/jobready/login");
   }, [isLoading, isAuthenticated, router]);
+
+  // ⌘K listener
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); setCmdOpen(p => !p); }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   if (isLoading) {
     return (
-      <div className="jr-loading-screen">
-        <div className="jr-loading-spinner" />
-        <p>Loading your workspace...</p>
-        <style>{`
-          .jr-loading-screen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0a0a0f; color: #94a3b8; }
-          .jr-loading-spinner { width: 40px; height: 40px; border: 3px solid #1e293b; border-top-color: #3b82f6; border-radius: 50%; animation: jr-spin 0.8s linear infinite; margin-bottom: 16px; }
-          @keyframes jr-spin { to { transform: rotate(360deg); } }
-        `}</style>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#06080d", color: "#64748b" }}>
+        <div style={{ textAlign: "center" }}>
+          <div className="co-spinner" /><p style={{ marginTop: 12 }}>Loading workspace...</p>
+          <style>{`.co-spinner{width:32px;height:32px;border:3px solid #1e293b;border-top-color:#3b82f6;border-radius:50%;animation:cospin .7s linear infinite;margin:0 auto}@keyframes cospin{to{transform:rotate(360deg)}}`}</style>
+        </div>
       </div>
     );
   }
-
   if (!user) return null;
 
-  const handleLogout = () => {
-    logout();
-    router.push("/jobready");
-  };
+  const completionPct = user.cvGenerated ? 100 : user.cvData ? 60 : 0;
 
-  const tabs = [
-    { id: "resume" as TabType, label: "Resume Builder", icon: DocumentIcon, description: "Create ATS-optimized resume" },
-    { id: "jobs" as TabType, label: "Job Search", icon: SearchIcon, description: "Find jobs across India" },
-    { id: "profile" as TabType, label: "Profile", icon: UserIcon, description: "Your account" },
+  const cmdActions = [
+    { id: "resume", label: "Go to Resume Builder", icon: "📄", action: () => setActiveView("resume") },
+    { id: "jobs", label: "Search for Jobs", icon: "💼", action: () => setActiveView("jobs") },
+    { id: "tracker", label: "Application Tracker", icon: "📊", action: () => setActiveView("tracker") },
+    { id: "copilot", label: copilotOpen ? "Hide AI Copilot" : "Show AI Copilot", icon: "🤖", action: () => setCopilotOpen(p => !p) },
+    { id: "logout", label: "Sign Out", icon: "🚪", action: () => { logout(); router.push("/jobready"); } },
+  ];
+
+  const sidebarItems: { id: ViewType; icon: React.ReactNode; label: string }[] = [
+    { id: "resume", icon: <DocumentIcon size={20} />, label: "Resume" },
+    { id: "jobs", icon: <BriefcaseIcon size={20} />, label: "Jobs" },
+    { id: "tracker", icon: <SearchIcon size={20} />, label: "Tracker" },
+    { id: "settings", icon: <SettingsIcon size={20} />, label: "Settings" },
   ];
 
   return (
     <>
-      <style>{dashboardStyles}</style>
-      <div className="jr-dashboard">
-        {/* Top Navigation Bar */}
-        <header className="jr-topbar">
-          <div className="jr-topbar-left">
-            <div className="jr-brand">
-              <BriefcaseIcon size={22} color="#3b82f6" />
-              <span>JobReady<span className="jr-brand-ai">.ai</span></span>
-            </div>
-            <nav className="jr-tabs">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`jr-tab ${activeTab === tab.id ? "jr-tab-active" : ""}`}
-                >
-                  <tab.icon size={16} />
-                  <span>{tab.label}</span>
-                </button>
-              ))}
-            </nav>
-          </div>
-          <div className="jr-topbar-right">
-            <div className="jr-user-pill">
-              <div className="jr-avatar">{user.name.charAt(0).toUpperCase()}</div>
-              <span className="jr-user-name">{user.name.split(" ")[0]}</span>
-            </div>
-            <button onClick={handleLogout} className="jr-btn-icon" title="Sign out">
-              <LogoutIcon size={18} />
+      <style>{workspaceCSS}</style>
+      <div className="ws">
+        {/* ── Sidebar ──────────────────────────────────────────── */}
+        <aside className="ws-sidebar">
+          <div className="ws-logo" title="JobReady.ai">⚡</div>
+          {sidebarItems.map(item => (
+            <button key={item.id} className={`ws-side-btn ${activeView === item.id ? "ws-side-active" : ""}`}
+              onClick={() => setActiveView(item.id)} title={item.label}>
+              {item.icon}
             </button>
+          ))}
+          <div style={{ flex: 1 }} />
+          <button className={`ws-side-btn ${copilotOpen ? "ws-side-active" : ""}`}
+            onClick={() => setCopilotOpen(p => !p)} title="AI Copilot">
+            <span style={{ fontSize: 18 }}>🤖</span>
+          </button>
+          <button className="ws-side-btn" onClick={() => { logout(); router.push("/jobready"); }} title="Sign out">
+            <LogoutIcon size={18} />
+          </button>
+        </aside>
+
+        {/* ── Main Area ────────────────────────────────────────── */}
+        <div className="ws-main">
+          {/* Tab Bar */}
+          <div className="ws-tabbar">
+            <div className="ws-tabs">
+              {sidebarItems.filter(i => i.id === activeView).map(i => (
+                <div key={i.id} className="ws-tab ws-tab-active">
+                  {i.icon}<span>{i.label}</span>
+                </div>
+              ))}
+            </div>
+            <div className="ws-tabbar-right">
+              <button className="ws-cmd-btn" onClick={() => setCmdOpen(true)} title="Command Palette (⌘K)">
+                <span>⌘K</span>
+              </button>
+              <div className="ws-user-pill">
+                <div className="ws-avatar">{user.name.charAt(0).toUpperCase()}</div>
+                <span>{user.name.split(" ")[0]}</span>
+              </div>
+            </div>
           </div>
-        </header>
 
-        {/* Main Content */}
-        <main className="jr-main">
-          {activeTab === "resume" && (
-            <div className="jr-content">
-              <div className="jr-page-header">
-                <div>
-                  <h1>Resume Builder</h1>
-                  <p>Create an ATS-friendly resume powered by AI</p>
-                </div>
-                {user.cvGenerated && (
-                  <div className="jr-status-badge jr-status-success">
-                    <CheckIcon size={14} /> Resume Ready
-                  </div>
-                )}
-              </div>
-              <ResumeWizard onNavigateToSearch={() => setActiveTab("jobs")} />
+          {/* Content */}
+          <div className="ws-content">
+            <div className="ws-panel">
+              {activeView === "resume" && <ResumeWizard onNavigateToSearch={() => setActiveView("jobs")} />}
+              {activeView === "jobs" && <JobBoard user={user} />}
+              {activeView === "tracker" && <Tracker />}
+              {activeView === "settings" && <SettingsPanel user={user} onEditResume={() => setActiveView("resume")} />}
             </div>
-          )}
 
-          {activeTab === "jobs" && (
-            <div className="jr-content">
-              <div className="jr-page-header">
-                <div>
-                  <h1>Job Search</h1>
-                  <p>Real jobs from Adzuna, LinkedIn, Indeed, Glassdoor &amp; more</p>
-                </div>
+            {/* AI Copilot */}
+            {copilotOpen && (
+              <div className="ws-copilot">
+                <AICopilot context={activeView} cvData={user.cvData as Record<string, unknown> | null} isOpen={copilotOpen} onClose={() => setCopilotOpen(false)} />
               </div>
-              {!user.cvGenerated ? (
-                <div className="jr-empty-state">
-                  <DocumentIcon size={48} color="#475569" />
-                  <h3>Create Your Resume First</h3>
-                  <p>Build your ATS-optimized resume, then search for matching jobs across India.</p>
-                  <button onClick={() => setActiveTab("resume")} className="jr-btn jr-btn-primary">
-                    <DocumentIcon size={16} />
-                    Create Resume
-                  </button>
-                </div>
-              ) : (
-                <JobSearchPanel user={user} />
-              )}
-            </div>
-          )}
+            )}
+          </div>
 
-          {activeTab === "profile" && (
-            <div className="jr-content">
-              <div className="jr-page-header">
-                <div>
-                  <h1>Profile</h1>
-                  <p>Your account and resume details</p>
-                </div>
-              </div>
-              <ProfilePanel user={user} onEditResume={() => setActiveTab("resume")} onFindJobs={() => setActiveTab("jobs")} />
+          {/* Status Bar */}
+          <div className="ws-statusbar">
+            <div className="ws-status-left">
+              <span className={`ws-status-dot ${completionPct === 100 ? "ws-dot-green" : "ws-dot-blue"}`} />
+              <span>Resume: {completionPct}%</span>
+              <span className="ws-status-sep">│</span>
+              <span>View: {activeView}</span>
             </div>
-          )}
-        </main>
+            <div className="ws-status-right">
+              <span>AI: {copilotOpen ? "Active" : "Idle"}</span>
+              <span className="ws-status-sep">│</span>
+              <span>{user.name}</span>
+              <span className="ws-status-sep">│</span>
+              <span>JobReady.ai v2.0</span>
+            </div>
+          </div>
+        </div>
       </div>
+
+      <CommandPalette isOpen={cmdOpen} onClose={() => setCmdOpen(false)} actions={cmdActions} />
     </>
   );
 }
 
-// ─── Profile Panel ────────────────────────────────────────────────────────
+// ─── Job Board ──────────────────────────────────────────────────────────────
 
-interface ProfilePanelProps {
-  user: {
-    name: string;
-    email: string;
-    phone?: string;
-    location?: string;
-    cvGenerated?: boolean;
-    cvData?: {
-      skills: string[];
-      experience: { title: string; company: string }[];
-      education: { degree: string; institution: string }[];
-      personalInfo: { name: string; email: string; phone: string; location: string };
-      summary: string;
-    } | null;
-    createdAt: string;
-  };
-  onEditResume: () => void;
-  onFindJobs: () => void;
-}
-
-function ProfilePanel({ user, onEditResume, onFindJobs }: ProfilePanelProps) {
-  return (
-    <div className="jr-profile-grid">
-      <div className="jr-card">
-        <h3 className="jr-card-title">Account Information</h3>
-        <div className="jr-info-grid">
-          <div className="jr-info-item">
-            <span className="jr-info-label">Full Name</span>
-            <span className="jr-info-value">{user.name}</span>
-          </div>
-          <div className="jr-info-item">
-            <span className="jr-info-label">Email</span>
-            <span className="jr-info-value">{user.email}</span>
-          </div>
-          {user.phone && (
-            <div className="jr-info-item">
-              <span className="jr-info-label">Phone</span>
-              <span className="jr-info-value">{user.phone}</span>
-            </div>
-          )}
-          {user.location && (
-            <div className="jr-info-item">
-              <span className="jr-info-label">Location</span>
-              <span className="jr-info-value">{user.location}</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {user.cvGenerated && user.cvData ? (
-        <div className="jr-card">
-          <div className="jr-card-header-row">
-            <h3 className="jr-card-title">Resume</h3>
-            <div className="jr-status-badge jr-status-success"><CheckIcon size={12} /> Active</div>
-          </div>
-          <div className="jr-info-grid">
-            <div className="jr-info-item">
-              <span className="jr-info-label">Skills</span>
-              <div className="jr-tag-list">
-                {user.cvData.skills.slice(0, 8).map((skill, i) => (
-                  <span key={i} className="jr-tag">{skill}</span>
-                ))}
-                {user.cvData.skills.length > 8 && (
-                  <span className="jr-tag jr-tag-more">+{user.cvData.skills.length - 8}</span>
-                )}
-              </div>
-            </div>
-            <div className="jr-info-item">
-              <span className="jr-info-label">Experience</span>
-              <span className="jr-info-value">{user.cvData.experience.length} role{user.cvData.experience.length !== 1 ? "s" : ""}</span>
-            </div>
-            <div className="jr-info-item">
-              <span className="jr-info-label">Education</span>
-              <span className="jr-info-value">
-                {user.cvData.education[0]?.degree || "Not specified"}
-              </span>
-            </div>
-          </div>
-          <div className="jr-card-actions">
-            <button onClick={onEditResume} className="jr-btn jr-btn-secondary">Update Resume</button>
-            <button onClick={onFindJobs} className="jr-btn jr-btn-primary">Find Jobs</button>
-          </div>
-        </div>
-      ) : (
-        <div className="jr-empty-state">
-          <DocumentIcon size={40} color="#475569" />
-          <h3>No Resume Yet</h3>
-          <p>Create your ATS-optimized resume to get started.</p>
-          <button onClick={onEditResume} className="jr-btn jr-btn-primary">
-            <DocumentIcon size={16} /> Create Resume
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Job Search Panel ────────────────────────────────────────────────────
-
-interface JobSearchPanelProps {
-  user: {
-    cvData?: {
-      skills: string[];
-      experience: { title: string; company: string }[];
-      personalInfo: { name: string; email: string; phone: string; location: string };
-      summary: string;
-    } | null;
-    name: string;
-    email: string;
-  };
-}
-
-interface JobResult {
-  id: string;
-  title: string;
-  company: string;
-  location: string;
-  description: string;
-  url: string;
-  source: string;
-  salary?: string;
-  jobType?: string;
-  postedAt?: string;
-  tags?: string[];
-  relevanceScore: number;
-}
-
-interface PrepareData {
-  aiTips: string;
-  matchedSkills: string[];
-  missingSkills: string[];
-  matchScore: number;
-  coverLetterSnippet: string;
-}
-
-function JobSearchPanel({ user }: JobSearchPanelProps) {
-  const [isSearching, setIsSearching] = useState(false);
+function JobBoard({ user }: { user: { cvData?: { skills: string[]; personalInfo: { name: string; location: string } } | null; name: string; email: string } }) {
   const [jobs, setJobs] = useState<JobResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
-  const [sourceCounts, setSourceCounts] = useState<Record<string, number>>({});
   const [expandedJob, setExpandedJob] = useState<string | null>(null);
-  const [prepareData, setPrepareData] = useState<Record<string, PrepareData>>({});
-  const [preparingJob, setPreparingJob] = useState<string | null>(null);
+  const skills = user.cvData?.skills?.join(", ") || "";
+  const loc = user.cvData?.personalInfo?.location || "";
+  const [skillsInput, setSkillsInput] = useState(skills);
+  const [locationInput, setLocationInput] = useState(loc);
 
-  const userSkills = user.cvData?.skills?.join(", ") || "";
-  const userLocation = user.cvData?.personalInfo?.location || "";
-  const [skillsInput, setSkillsInput] = useState(userSkills);
-  const [locationInput, setLocationInput] = useState(userLocation);
-
-  // Auto-search on mount if CV data exists
-  useEffect(() => {
-    if (userSkills && !hasSearched) {
-      handleSearch();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const getMatchScore = (job: JobResult): number => {
-    if (!user.cvData?.skills?.length) return 0;
-    const descLower = `${job.title} ${job.description} ${job.tags?.join(" ") || ""}`.toLowerCase();
-    const matched = user.cvData.skills.filter(s => descLower.includes(s.toLowerCase()));
-    return Math.round((matched.length / user.cvData.skills.length) * 100);
-  };
-
-  const getMatchedSkills = (job: JobResult): string[] => {
-    if (!user.cvData?.skills) return [];
-    const descLower = `${job.title} ${job.description} ${job.tags?.join(" ") || ""}`.toLowerCase();
-    return user.cvData.skills.filter(s => descLower.includes(s.toLowerCase()));
-  };
+  useEffect(() => { if (skills && !hasSearched) handleSearch(); }, []); // eslint-disable-line
 
   const handleSearch = async () => {
     if (!skillsInput.trim()) return;
     setIsSearching(true);
-    setSearchError(null);
-
     try {
-      const response = await fetch("/api/jobs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          skills: skillsInput,
-          location: locationInput,
-          preferences: locationInput,
-        }),
-      });
-
-      if (!response.ok) throw new Error("Failed to search jobs");
-
-      const data = await response.json();
-      setJobs(data.jobs || []);
-      setSourceCounts(data.sources || {});
-      setHasSearched(true);
-    } catch (error) {
-      setSearchError(error instanceof Error ? error.message : "Failed to search jobs");
-    } finally {
-      setIsSearching(false);
-    }
+      const r = await fetch("/api/jobs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ skills: skillsInput, location: locationInput, preferences: locationInput }) });
+      if (r.ok) { const d = await r.json(); setJobs(d.jobs || []); }
+    } catch { /* */ }
+    setHasSearched(true); setIsSearching(false);
   };
 
-  const handlePrepareApply = async (job: JobResult) => {
-    if (prepareData[job.id]) {
-      setExpandedJob(expandedJob === job.id ? null : job.id);
-      return;
-    }
-
-    setPreparingJob(job.id);
-    setExpandedJob(job.id);
-
-    try {
-      const response = await fetch("/api/jobs/prepare", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(typeof window !== "undefined" && localStorage.getItem("jobready_access_token")
-            ? { Authorization: `Bearer ${localStorage.getItem("jobready_access_token")}` }
-            : {}),
-        },
-        body: JSON.stringify({
-          jobTitle: job.title,
-          jobDescription: job.description,
-          jobCompany: job.company,
-          jobLocation: job.location,
-          cvData: user.cvData,
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setPrepareData(prev => ({ ...prev, [job.id]: data }));
-      } else {
-        // Fallback local tips
-        const matchedSkills = getMatchedSkills(job);
-        const missingSkills = user.cvData?.skills?.filter(s =>
-          !`${job.title} ${job.description}`.toLowerCase().includes(s.toLowerCase())
-        ).slice(0, 3) || [];
-
-        setPrepareData(prev => ({
-          ...prev,
-          [job.id]: {
-            aiTips: `Focus on your experience with ${matchedSkills.slice(0, 3).join(", ") || "relevant technologies"}. Tailor your resume summary for this specific role.`,
-            matchedSkills,
-            missingSkills,
-            matchScore: getMatchScore(job),
-            coverLetterSnippet: `Dear Hiring Manager,\n\nI am excited to apply for the ${job.title} position at ${job.company}. With my expertise in ${matchedSkills.slice(0, 3).join(", ") || "relevant technologies"}, I am confident in my ability to contribute to your team.\n\nBest regards,\n${user.cvData?.personalInfo?.name || user.name}`,
-          },
-        }));
-      }
-    } catch {
-      setPrepareData(prev => ({
-        ...prev,
-        [job.id]: {
-          aiTips: "Tailor your resume for this role and highlight relevant experience.",
-          matchedSkills: getMatchedSkills(job),
-          missingSkills: [],
-          matchScore: getMatchScore(job),
-          coverLetterSnippet: "",
-        },
-      }));
-    } finally {
-      setPreparingJob(null);
-    }
+  const getMatchScore = (job: JobResult) => {
+    if (!user.cvData?.skills?.length) return 0;
+    const desc = `${job.title} ${job.description} ${job.tags?.join(" ") || ""}`.toLowerCase();
+    return Math.round((user.cvData.skills.filter(s => desc.includes(s.toLowerCase())).length / user.cvData.skills.length) * 100);
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text).catch(() => {});
+  const saveToTracker = (job: JobResult) => {
+    const tracked: TrackedJob[] = JSON.parse(localStorage.getItem("jr_tracked") || "[]");
+    if (!tracked.find(t => t.id === job.id)) {
+      tracked.push({ id: job.id, title: job.title, company: job.company, url: job.url, status: "saved", addedAt: new Date().toISOString() });
+      localStorage.setItem("jr_tracked", JSON.stringify(tracked));
+    }
   };
 
   return (
-    <div>
-      {/* Search Form */}
-      <div className="jr-card jr-search-card">
-        <div className="jr-search-form">
-          <div className="jr-search-field">
-            <label>Skills &amp; Keywords</label>
-            <input
-              type="text"
-              value={skillsInput}
-              onChange={(e) => setSkillsInput(e.target.value)}
-              placeholder="e.g. React, Node.js, Python"
-              className="jr-input"
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            />
-          </div>
-          <div className="jr-search-field jr-search-field-small">
-            <label>Location</label>
-            <input
-              type="text"
-              value={locationInput}
-              onChange={(e) => setLocationInput(e.target.value)}
-              placeholder="e.g. Bangalore"
-              className="jr-input"
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            />
-          </div>
-          <button
-            onClick={handleSearch}
-            disabled={isSearching || !skillsInput.trim()}
-            className="jr-btn jr-btn-primary jr-search-btn"
-          >
-            {isSearching ? (
-              <><span className="jr-spinner" /> Searching...</>
-            ) : (
-              <><SearchIcon size={16} /> Search Jobs</>
-            )}
-          </button>
+    <div className="jb">
+      <h2 className="jb-title">💼 Job Search</h2>
+      <p className="jb-sub">Find jobs matched to your skills across top platforms.</p>
+      <div className="jb-search">
+        <div className="jb-field">
+          <label>Skills & Keywords</label>
+          <input value={skillsInput} onChange={e => setSkillsInput(e.target.value)} placeholder="React, Python, AWS..." onKeyDown={e => e.key === "Enter" && handleSearch()} />
         </div>
-        <p className="jr-search-hint">
-          Searching across Adzuna, LinkedIn, Indeed, Glassdoor &amp; remote boards
-        </p>
+        <div className="jb-field jb-field-sm">
+          <label>Location</label>
+          <input value={locationInput} onChange={e => setLocationInput(e.target.value)} placeholder="India" onKeyDown={e => e.key === "Enter" && handleSearch()} />
+        </div>
+        <button className="jb-search-btn" onClick={handleSearch} disabled={isSearching}>
+          {isSearching ? "Searching..." : "Search"}
+        </button>
       </div>
 
-      {/* Error */}
-      {searchError && (
-        <div className="jr-alert jr-alert-error">{searchError}</div>
+      {!hasSearched && !skills && (
+        <div className="jb-empty"><BriefcaseIcon size={40} color="#475569" /><p>Build your resume first, then your skills auto-search for matching jobs.</p></div>
       )}
+      {hasSearched && jobs.length === 0 && <div className="jb-empty"><p>No jobs found. Try different keywords.</p></div>}
 
-      {/* Results */}
-      {hasSearched && (
-        <div>
-          <div className="jr-results-header">
-            <h3>{jobs.length > 0 ? `${jobs.length} jobs found` : "No jobs found"}</h3>
-            {Object.keys(sourceCounts).length > 0 && (
-              <div className="jr-source-pills">
-                {Object.entries(sourceCounts).map(([source, count]) => (
-                  count > 0 && <span key={source} className="jr-source-pill">{source}: {count}</span>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {jobs.length === 0 && (
-            <div className="jr-empty-state">
-              <SearchIcon size={40} color="#475569" />
-              <h3>No matching jobs</h3>
-              <p>Try broadening your skills or changing location.</p>
-            </div>
-          )}
-
-          <div className="jr-job-list">
-            {jobs.map((job) => {
-              const matchScore = getMatchScore(job);
-              const matchedSkillsList = getMatchedSkills(job);
-              const isExpanded = expandedJob === job.id;
-              const jobPrepare = prepareData[job.id];
-
-              return (
-                <div key={job.id} className={`jr-job-card ${isExpanded ? "jr-job-card-expanded" : ""}`}>
-                  <div className="jr-job-header">
-                    <div>
-                      <h4 className="jr-job-title">{job.title}</h4>
-                      <p className="jr-job-company">{job.company}</p>
-                    </div>
-                    <div className="jr-job-header-right">
-                      {matchScore > 0 && (
-                        <span className={`jr-match-badge ${matchScore >= 60 ? "jr-match-high" : matchScore >= 30 ? "jr-match-med" : "jr-match-low"}`}>
-                          {matchScore}% match
-                        </span>
-                      )}
-                      <span className={`jr-source-badge jr-source-${job.source.toLowerCase()}`}>{job.source}</span>
-                    </div>
-                  </div>
-
-                  <div className="jr-job-meta">
-                    <span><LocationIcon size={14} /> {job.location}</span>
-                    {job.salary && <span className="jr-job-salary">{job.salary}</span>}
-                    {job.postedAt && <span>{job.postedAt}</span>}
-                    {job.jobType && <span>{job.jobType}</span>}
-                  </div>
-
-                  {/* Matched skills tags */}
-                  {matchedSkillsList.length > 0 && (
-                    <div className="jr-tag-list">
-                      {matchedSkillsList.slice(0, 5).map((skill, idx) => (
-                        <span key={idx} className="jr-tag jr-tag-matched">✓ {skill}</span>
-                      ))}
-                      {job.tags?.filter(t => !matchedSkillsList.map(s => s.toLowerCase()).includes(t.toLowerCase())).slice(0, 3).map((tag, idx) => (
-                        <span key={`t-${idx}`} className="jr-tag">{tag}</span>
-                      ))}
-                    </div>
-                  )}
-
-                  <p className="jr-job-desc">{job.description}</p>
-
-                  {/* Prepare to Apply Panel */}
-                  {isExpanded && jobPrepare && (
-                    <div className="jr-prepare-panel">
-                      <div className="jr-prepare-header">
-                        <h5>🎯 Application Preparation</h5>
-                        <span className={`jr-match-badge ${jobPrepare.matchScore >= 60 ? "jr-match-high" : "jr-match-med"}`}>
-                          {jobPrepare.matchScore}% skill match
-                        </span>
-                      </div>
-
-                      {jobPrepare.matchedSkills.length > 0 && (
-                        <div className="jr-prepare-section">
-                          <h6>✅ Your Matching Skills</h6>
-                          <div className="jr-tag-list">
-                            {jobPrepare.matchedSkills.map((s, i) => (
-                              <span key={i} className="jr-tag jr-tag-matched">{s}</span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {jobPrepare.missingSkills.length > 0 && (
-                        <div className="jr-prepare-section">
-                          <h6>💡 Skills to Highlight</h6>
-                          <div className="jr-tag-list">
-                            {jobPrepare.missingSkills.map((s, i) => (
-                              <span key={i} className="jr-tag jr-tag-suggest">{s}</span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {jobPrepare.aiTips && (
-                        <div className="jr-prepare-section">
-                          <h6>💬 AI Tips</h6>
-                          <p className="jr-prepare-tips">{jobPrepare.aiTips}</p>
-                        </div>
-                      )}
-
-                      {jobPrepare.coverLetterSnippet && (
-                        <div className="jr-prepare-section">
-                          <div className="jr-prepare-cover-header">
-                            <h6>📝 Cover Letter Snippet</h6>
-                            <button onClick={() => copyToClipboard(jobPrepare.coverLetterSnippet)} className="jr-copy-btn">
-                              Copy
-                            </button>
-                          </div>
-                          <pre className="jr-prepare-cover">{jobPrepare.coverLetterSnippet}</pre>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {isExpanded && preparingJob === job.id && (
-                    <div className="jr-prepare-loading">
-                      <span className="jr-spinner" /> Generating application tips...
-                    </div>
-                  )}
-
-                  <div className="jr-job-actions">
-                    <a href={job.url} target="_blank" rel="noopener noreferrer" className="jr-btn jr-btn-primary">
-                      Apply Now <ExternalLinkIcon size={14} />
-                    </a>
-                    <button
-                      onClick={() => handlePrepareApply(job)}
-                      className="jr-btn jr-btn-secondary"
-                      disabled={preparingJob === job.id}
-                    >
-                      {preparingJob === job.id ? (
-                        <><span className="jr-spinner" /> Preparing...</>
-                      ) : isExpanded ? (
-                        "Hide Tips"
-                      ) : (
-                        "🎯 Prepare to Apply"
-                      )}
-                    </button>
+      <div className="jb-results">
+        {jobs.map(job => {
+          const score = getMatchScore(job);
+          const isExpanded = expandedJob === job.id;
+          return (
+            <div key={job.id} className={`jb-card ${isExpanded ? "jb-card-exp" : ""}`}>
+              <div className="jb-card-top">
+                <div className="jb-card-info">
+                  <h4>{job.title}</h4>
+                  <span className="jb-company">{job.company}</span>
+                  <div className="jb-meta">
+                    <span><LocationIcon size={12} /> {job.location}</span>
+                    {job.salary && <span>💰 {job.salary}</span>}
+                    <span className="jb-source">{job.source}</span>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+                <div className="jb-card-right">
+                  {score > 0 && <span className={`jb-score ${score >= 60 ? "jb-score-hi" : score >= 30 ? "jb-score-md" : "jb-score-lo"}`}>{score}% match</span>}
+                </div>
+              </div>
+              <p className="jb-desc">{job.description?.slice(0, 200)}...</p>
+              {job.tags?.length ? <div className="jb-tags">{job.tags.slice(0, 6).map(t => <span key={t} className="jb-tag">{t}</span>)}</div> : null}
+              <div className="jb-actions">
+                <a href={job.url} target="_blank" rel="noopener noreferrer" className="jb-apply-btn">Apply <ExternalLinkIcon size={12} /></a>
+                <button className="jb-save-btn" onClick={() => saveToTracker(job)}>Save to Tracker</button>
+                <button className="jb-detail-btn" onClick={() => setExpandedJob(isExpanded ? null : job.id)}>
+                  {isExpanded ? "Less" : "Details"}
+                </button>
+              </div>
+              {isExpanded && <div className="jb-full-desc"><p>{job.description}</p></div>}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-// ─── Styles ─────────────────────────────────────────────────────────────────
+// ─── Application Tracker (Kanban) ───────────────────────────────────────────
 
-const dashboardStyles = `
-  /* Reset for dashboard */
-  .jr-dashboard { background: #0a0a0f; min-height: 100vh; color: #e2e8f0; }
-  .jr-dashboard *, .jr-dashboard *::before, .jr-dashboard *::after { box-sizing: border-box; }
+function Tracker() {
+  const [tracked, setTracked] = useState<TrackedJob[]>([]);
 
-  /* Top Bar */
-  .jr-topbar {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 0 24px; height: 56px;
-    background: #0f1117; border-bottom: 1px solid #1e293b;
-    position: sticky; top: 0; z-index: 50;
-  }
-  .jr-topbar-left { display: flex; align-items: center; gap: 32px; }
-  .jr-topbar-right { display: flex; align-items: center; gap: 12px; }
+  useEffect(() => {
+    setTracked(JSON.parse(localStorage.getItem("jr_tracked") || "[]"));
+  }, []);
 
-  .jr-brand { display: flex; align-items: center; gap: 8px; font-size: 1.125rem; font-weight: 700; color: #f1f5f9; letter-spacing: -0.02em; }
-  .jr-brand-ai { color: #3b82f6; }
+  const moveJob = (id: string, status: TrackedJob["status"]) => {
+    const updated = tracked.map(j => j.id === id ? { ...j, status } : j);
+    setTracked(updated);
+    localStorage.setItem("jr_tracked", JSON.stringify(updated));
+  };
 
-  /* Tabs */
-  .jr-tabs { display: flex; gap: 4px; }
-  .jr-tab {
-    display: flex; align-items: center; gap: 6px;
-    padding: 8px 14px; border-radius: 8px;
-    font-size: 0.8125rem; font-weight: 500;
-    color: #94a3b8; background: transparent; border: none;
-    cursor: pointer; transition: all 0.15s ease;
-  }
-  .jr-tab:hover { color: #e2e8f0; background: #1e293b; }
-  .jr-tab-active { color: #fff; background: #1e293b; }
+  const removeJob = (id: string) => {
+    const updated = tracked.filter(j => j.id !== id);
+    setTracked(updated);
+    localStorage.setItem("jr_tracked", JSON.stringify(updated));
+  };
 
-  /* User */
-  .jr-user-pill {
-    display: flex; align-items: center; gap: 8px;
-    padding: 4px 12px 4px 4px; border-radius: 20px;
-    background: #1e293b;
-  }
-  .jr-avatar {
-    width: 28px; height: 28px; border-radius: 50%;
-    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 0.75rem; font-weight: 700; color: white;
-  }
-  .jr-user-name { font-size: 0.8125rem; color: #cbd5e1; font-weight: 500; }
-  .jr-btn-icon {
-    width: 36px; height: 36px; border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    background: transparent; border: none; color: #64748b;
-    cursor: pointer; transition: all 0.15s ease;
-  }
-  .jr-btn-icon:hover { background: #1e293b; color: #ef4444; }
+  const columns: { status: TrackedJob["status"]; label: string; color: string }[] = [
+    { status: "saved", label: "📌 Saved", color: "#3b82f6" },
+    { status: "applied", label: "📨 Applied", color: "#8b5cf6" },
+    { status: "interview", label: "🎤 Interview", color: "#f59e0b" },
+    { status: "offer", label: "🎉 Offer", color: "#22c55e" },
+  ];
 
-  /* Main Content */
-  .jr-main { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
-  .jr-content { animation: jr-fadeIn 0.2s ease; }
-  @keyframes jr-fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  return (
+    <div className="tk">
+      <h2 className="tk-title">📊 Application Tracker</h2>
+      <p className="tk-sub">Track your job applications through each stage.</p>
+      <div className="tk-board">
+        {columns.map(col => (
+          <div key={col.status} className="tk-col">
+            <div className="tk-col-header" style={{ borderColor: col.color }}>
+              <span>{col.label}</span>
+              <span className="tk-count">{tracked.filter(j => j.status === col.status).length}</span>
+            </div>
+            <div className="tk-col-body">
+              {tracked.filter(j => j.status === col.status).map(job => (
+                <div key={job.id} className="tk-card">
+                  <strong>{job.title}</strong>
+                  <span className="tk-card-co">{job.company}</span>
+                  <div className="tk-card-actions">
+                    {col.status !== "offer" && (
+                      <button onClick={() => moveJob(job.id, columns[columns.findIndex(c => c.status === col.status) + 1]?.status || "offer")}>Move →</button>
+                    )}
+                    <button onClick={() => removeJob(job.id)} className="tk-remove">✕</button>
+                  </div>
+                </div>
+              ))}
+              {tracked.filter(j => j.status === col.status).length === 0 && (
+                <div className="tk-empty">No items</div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-  /* Page Header */
-  .jr-page-header {
-    display: flex; align-items: flex-start; justify-content: space-between;
-    margin-bottom: 24px;
-  }
-  .jr-page-header h1 { font-size: 1.5rem; font-weight: 700; color: #f1f5f9; margin: 0 0 4px 0; letter-spacing: -0.02em; }
-  .jr-page-header p { font-size: 0.875rem; color: #64748b; margin: 0; }
+// ─── Settings Panel ─────────────────────────────────────────────────────────
 
-  /* Status Badge */
-  .jr-status-badge {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 6px 12px; border-radius: 20px;
-    font-size: 0.75rem; font-weight: 600;
-  }
-  .jr-status-success { background: rgba(34, 197, 94, 0.1); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.2); }
+function SettingsPanel({ user, onEditResume }: { user: { name: string; email: string; phone?: string; location?: string; cvGenerated?: boolean; createdAt: string }; onEditResume: () => void }) {
+  return (
+    <div className="sp">
+      <h2 className="sp-title">⚙ Settings</h2>
+      <div className="sp-card">
+        <h3>Account</h3>
+        <div className="sp-grid">
+          <div className="sp-item"><span className="sp-label">Name</span><span>{user.name}</span></div>
+          <div className="sp-item"><span className="sp-label">Email</span><span>{user.email}</span></div>
+          {user.phone && <div className="sp-item"><span className="sp-label">Phone</span><span>{user.phone}</span></div>}
+        </div>
+      </div>
+      <div className="sp-card">
+        <h3>Resume</h3>
+        <p className="sp-status">{user.cvGenerated ? "✅ Resume created" : "⚠️ No resume yet"}</p>
+        <button className="sp-btn" onClick={onEditResume}>{user.cvGenerated ? "Edit Resume" : "Create Resume"}</button>
+      </div>
+    </div>
+  );
+}
 
-  /* Cards */
-  .jr-card {
-    background: #111318; border: 1px solid #1e293b; border-radius: 12px;
-    padding: 24px; margin-bottom: 16px;
-  }
-  .jr-card-title { font-size: 0.9375rem; font-weight: 600; color: #f1f5f9; margin: 0 0 16px 0; }
-  .jr-card-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-  .jr-card-header-row .jr-card-title { margin: 0; }
-  .jr-card-actions { display: flex; gap: 8px; margin-top: 20px; padding-top: 16px; border-top: 1px solid #1e293b; }
+// ─── CSS ────────────────────────────────────────────────────────────────────
 
-  /* Info Grid */
-  .jr-info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
-  .jr-info-item { display: flex; flex-direction: column; gap: 4px; }
-  .jr-info-label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; }
-  .jr-info-value { font-size: 0.875rem; color: #e2e8f0; font-weight: 500; }
+const workspaceCSS = `
+  * { box-sizing: border-box; }
+  .ws { display:flex; height:100vh; background:#06080d; color:#e2e8f0; font-family:'Inter','SF Pro',system-ui,sans-serif; overflow:hidden; }
 
-  /* Profile Grid */
-  .jr-profile-grid { display: flex; flex-direction: column; gap: 16px; }
+  /* Sidebar */
+  .ws-sidebar { width:56px; background:#0a0c12; border-right:1px solid #1a1f2e; display:flex; flex-direction:column; align-items:center; padding:12px 0; gap:4px; flex-shrink:0; z-index:10; }
+  .ws-logo { font-size:1.25rem; margin-bottom:12px; cursor:default; }
+  .ws-side-btn { width:40px; height:40px; border:none; border-radius:8px; background:transparent; color:#64748b; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.15s; position:relative; }
+  .ws-side-btn:hover { color:#e2e8f0; background:#111827; }
+  .ws-side-active { color:#3b82f6 !important; background:#131a2b !important; }
+  .ws-side-active::before { content:''; position:absolute; left:0; top:8px; bottom:8px; width:3px; border-radius:0 3px 3px 0; background:#3b82f6; }
 
-  /* Tags */
-  .jr-tag-list { display: flex; flex-wrap: wrap; gap: 6px; }
-  .jr-tag {
-    padding: 3px 10px; border-radius: 6px;
-    font-size: 0.6875rem; font-weight: 500;
-    background: #1e293b; color: #94a3b8;
-    border: 1px solid #2d3748;
-  }
-  .jr-tag-more { color: #64748b; }
+  /* Main Area */
+  .ws-main { flex:1; display:flex; flex-direction:column; min-width:0; }
 
-  /* Buttons */
-  .jr-btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 10px 18px; border-radius: 8px;
-    font-size: 0.8125rem; font-weight: 600;
-    border: none; cursor: pointer; transition: all 0.15s ease;
-    text-decoration: none;
-  }
-  .jr-btn-primary { background: #3b82f6; color: white; }
-  .jr-btn-primary:hover { background: #2563eb; }
-  .jr-btn-primary:disabled { background: #1e3a5f; color: #64748b; cursor: not-allowed; }
-  .jr-btn-secondary { background: #1e293b; color: #cbd5e1; border: 1px solid #2d3748; }
-  .jr-btn-secondary:hover { background: #2d3748; }
+  /* Tab Bar */
+  .ws-tabbar { display:flex; align-items:center; justify-content:space-between; background:#0a0c12; border-bottom:1px solid #1a1f2e; padding:0 16px; height:40px; flex-shrink:0; }
+  .ws-tabs { display:flex; gap:2px; }
+  .ws-tab { display:flex; align-items:center; gap:6px; padding:8px 16px; font-size:0.75rem; color:#94a3b8; border-bottom:2px solid transparent; }
+  .ws-tab-active { color:#e2e8f0; border-bottom-color:#3b82f6; }
+  .ws-tabbar-right { display:flex; align-items:center; gap:10px; }
+  .ws-cmd-btn { padding:4px 10px; border-radius:6px; background:#111827; border:1px solid #1e293b; color:#64748b; font-size:0.6875rem; font-family:monospace; font-weight:600; cursor:pointer; transition:all 0.15s; }
+  .ws-cmd-btn:hover { border-color:#3b82f6; color:#60a5fa; }
+  .ws-user-pill { display:flex; align-items:center; gap:6px; padding:4px 10px 4px 4px; border-radius:6px; background:#111827; }
+  .ws-avatar { width:24px; height:24px; border-radius:6px; background:linear-gradient(135deg,#3b82f6,#8b5cf6); color:#fff; font-size:0.625rem; font-weight:700; display:flex; align-items:center; justify-content:center; }
+  .ws-user-pill span { font-size:0.75rem; color:#94a3b8; }
 
-  /* Empty State */
-  .jr-empty-state {
-    text-align: center; padding: 48px 24px;
-    background: #111318; border: 1px dashed #1e293b; border-radius: 12px;
-  }
-  .jr-empty-state h3 { font-size: 1.125rem; color: #f1f5f9; margin: 16px 0 8px; }
-  .jr-empty-state p { color: #64748b; margin: 0 0 20px; font-size: 0.875rem; }
+  /* Content */
+  .ws-content { flex:1; display:flex; overflow:hidden; }
+  .ws-panel { flex:1; overflow-y:auto; padding:24px 32px; min-width:0; }
+  .ws-copilot { width:320px; flex-shrink:0; }
 
-  /* Search Card */
-  .jr-search-card { margin-bottom: 24px; }
-  .jr-search-form { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
-  .jr-search-field { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 200px; }
-  .jr-search-field-small { flex: 0 1 180px; min-width: 140px; }
-  .jr-search-field label { font-size: 0.75rem; color: #94a3b8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
-  .jr-input {
-    padding: 10px 14px; border-radius: 8px;
-    background: #0a0a0f; border: 1px solid #2d3748;
-    color: #e2e8f0; font-size: 0.875rem;
-    transition: border-color 0.15s ease;
-  }
-  .jr-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
-  .jr-input::placeholder { color: #475569; }
-  .jr-search-btn { white-space: nowrap; height: 42px; }
-  .jr-search-hint { font-size: 0.75rem; color: #475569; margin: 12px 0 0; }
+  /* Status Bar */
+  .ws-statusbar { display:flex; justify-content:space-between; padding:0 16px; height:28px; align-items:center; background:#0a0c12; border-top:1px solid #1a1f2e; font-size:0.6875rem; font-family:'JetBrains Mono','Fira Code',monospace; color:#475569; flex-shrink:0; }
+  .ws-status-left, .ws-status-right { display:flex; align-items:center; gap:8px; }
+  .ws-status-sep { color:#1e293b; }
+  .ws-status-dot { width:8px; height:8px; border-radius:50%; }
+  .ws-dot-green { background:#22c55e; box-shadow:0 0 6px rgba(34,197,94,0.4); }
+  .ws-dot-blue { background:#3b82f6; box-shadow:0 0 6px rgba(59,130,246,0.4); }
 
-  /* Spinner */
-  .jr-spinner {
-    width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3);
-    border-top-color: white; border-radius: 50%;
-    animation: jr-spin 0.6s linear infinite; display: inline-block;
-  }
+  /* Job Board */
+  .jb { max-width:800px; }
+  .jb-title { font-size:1.25rem; font-weight:700; margin:0 0 4px; }
+  .jb-sub { color:#64748b; font-size:0.8125rem; margin:0 0 20px; }
+  .jb-search { display:flex; gap:10px; margin-bottom:20px; align-items:flex-end; flex-wrap:wrap; }
+  .jb-field { display:flex; flex-direction:column; gap:4px; flex:1; min-width:180px; }
+  .jb-field-sm { flex:0.4; min-width:120px; }
+  .jb-field label { font-size:0.6875rem; color:#64748b; font-weight:600; text-transform:uppercase; letter-spacing:0.04em; }
+  .jb-field input { padding:9px 12px; border-radius:8px; background:#0a0a0f; border:1px solid #1e293b; color:#e2e8f0; font-size:0.8125rem; }
+  .jb-field input:focus { outline:none; border-color:#3b82f6; }
+  .jb-search-btn { padding:9px 20px; border-radius:8px; background:#3b82f6; border:none; color:#fff; font-size:0.8125rem; font-weight:600; cursor:pointer; white-space:nowrap; }
+  .jb-search-btn:hover { background:#2563eb; }
+  .jb-search-btn:disabled { opacity:0.6; cursor:not-allowed; }
+  .jb-empty { text-align:center; padding:48px 20px; color:#475569; }
+  .jb-empty p { margin:12px 0 0; font-size:0.875rem; }
+  .jb-results { display:flex; flex-direction:column; gap:10px; }
+  .jb-card { background:#0c0e14; border:1px solid #1a1f2e; border-radius:10px; padding:16px; transition:border-color 0.2s; }
+  .jb-card:hover { border-color:#2d3748; }
+  .jb-card-exp { border-color:#3b82f6; }
+  .jb-card-top { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+  .jb-card-info h4 { margin:0 0 2px; font-size:0.9375rem; color:#f1f5f9; }
+  .jb-company { font-size:0.8125rem; color:#3b82f6; }
+  .jb-meta { display:flex; gap:12px; margin-top:6px; font-size:0.6875rem; color:#64748b; }
+  .jb-meta span { display:flex; align-items:center; gap:3px; }
+  .jb-source { background:#111827; padding:1px 8px; border-radius:4px; }
+  .jb-score { padding:3px 10px; border-radius:12px; font-size:0.6875rem; font-weight:600; }
+  .jb-score-hi { background:rgba(34,197,94,0.1); color:#22c55e; }
+  .jb-score-md { background:rgba(234,179,8,0.1); color:#eab308; }
+  .jb-score-lo { background:rgba(239,68,68,0.1); color:#f87171; }
+  .jb-desc { font-size:0.8125rem; color:#94a3b8; margin:10px 0; line-height:1.5; }
+  .jb-tags { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px; }
+  .jb-tag { padding:2px 10px; border-radius:6px; background:#111827; border:1px solid #1e293b; font-size:0.6875rem; color:#94a3b8; }
+  .jb-actions { display:flex; gap:8px; }
+  .jb-apply-btn { display:inline-flex; align-items:center; gap:4px; padding:7px 16px; border-radius:8px; background:#3b82f6; color:#fff; font-size:0.75rem; font-weight:600; text-decoration:none; transition:all 0.15s; }
+  .jb-apply-btn:hover { background:#2563eb; }
+  .jb-save-btn, .jb-detail-btn { padding:7px 14px; border-radius:8px; background:transparent; border:1px solid #1e293b; color:#94a3b8; font-size:0.75rem; cursor:pointer; transition:all 0.15s; }
+  .jb-save-btn:hover, .jb-detail-btn:hover { border-color:#3b82f6; color:#60a5fa; }
+  .jb-full-desc { margin-top:12px; padding-top:12px; border-top:1px solid #1a1f2e; }
+  .jb-full-desc p { font-size:0.8125rem; color:#cbd5e1; line-height:1.6; white-space:pre-wrap; margin:0; }
 
-  /* Results */
-  .jr-results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
-  .jr-results-header h3 { font-size: 1rem; font-weight: 600; color: #f1f5f9; margin: 0; }
-  .jr-source-pills { display: flex; gap: 6px; }
-  .jr-source-pill {
-    padding: 4px 10px; border-radius: 20px;
-    font-size: 0.6875rem; font-weight: 500;
-    background: #1e293b; color: #94a3b8;
-  }
+  /* Tracker Kanban */
+  .tk { }
+  .tk-title { font-size:1.25rem; font-weight:700; margin:0 0 4px; }
+  .tk-sub { color:#64748b; font-size:0.8125rem; margin:0 0 20px; }
+  .tk-board { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+  .tk-col { background:#0a0c12; border:1px solid #1a1f2e; border-radius:10px; min-height:300px; }
+  .tk-col-header { padding:12px 14px; font-size:0.8125rem; font-weight:600; border-bottom:2px solid; display:flex; justify-content:space-between; align-items:center; }
+  .tk-count { background:#111827; padding:2px 8px; border-radius:10px; font-size:0.6875rem; color:#64748b; }
+  .tk-col-body { padding:8px; display:flex; flex-direction:column; gap:6px; }
+  .tk-card { background:#111827; border:1px solid #1e293b; border-radius:8px; padding:10px 12px; }
+  .tk-card strong { font-size:0.8125rem; color:#e2e8f0; display:block; margin-bottom:2px; }
+  .tk-card-co { font-size:0.6875rem; color:#64748b; }
+  .tk-card-actions { display:flex; gap:4px; margin-top:8px; }
+  .tk-card-actions button { padding:3px 10px; border-radius:6px; border:1px solid #1e293b; background:transparent; color:#94a3b8; font-size:0.625rem; cursor:pointer; }
+  .tk-card-actions button:hover { border-color:#3b82f6; color:#60a5fa; }
+  .tk-remove { color:#ef4444 !important; border-color:#3b1a1a !important; }
+  .tk-remove:hover { background:rgba(239,68,68,0.1) !important; }
+  .tk-empty { text-align:center; padding:20px; color:#2d3748; font-size:0.75rem; }
 
-  /* Alert */
-  .jr-alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 0.875rem; }
-  .jr-alert-error { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }
-
-  /* Job Cards */
-  .jr-job-list { display: flex; flex-direction: column; gap: 12px; }
-  .jr-job-card {
-    background: #111318; border: 1px solid #1e293b; border-radius: 12px;
-    padding: 20px; transition: border-color 0.15s ease;
-  }
-  .jr-job-card:hover { border-color: #2d3748; }
-  .jr-job-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
-  .jr-job-title { font-size: 1rem; font-weight: 600; color: #f1f5f9; margin: 0 0 2px; }
-  .jr-job-company { font-size: 0.875rem; color: #3b82f6; font-weight: 500; margin: 0; }
-  .jr-source-badge {
-    padding: 3px 10px; border-radius: 6px;
-    font-size: 0.6875rem; font-weight: 600;
-    white-space: nowrap; flex-shrink: 0;
-  }
-  .jr-source-adzuna { background: rgba(59, 130, 246, 0.1); color: #60a5fa; }
-  .jr-source-jsearch { background: rgba(139, 92, 246, 0.1); color: #a78bfa; }
-  .jr-source-remotive { background: rgba(34, 197, 94, 0.1); color: #4ade80; }
-  .jr-job-meta {
-    display: flex; flex-wrap: wrap; gap: 12px;
-    font-size: 0.8125rem; color: #64748b; margin-bottom: 12px;
-  }
-  .jr-job-meta span { display: flex; align-items: center; gap: 4px; }
-  .jr-job-salary { color: #22c55e; font-weight: 600; }
-  .jr-job-desc { font-size: 0.8125rem; color: #94a3b8; line-height: 1.5; margin: 0 0 12px; }
-  .jr-job-actions { display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #1e293b; }
-  .jr-job-actions .jr-btn { font-size: 0.8125rem; padding: 8px 16px; }
+  /* Settings */
+  .sp { max-width:600px; }
+  .sp-title { font-size:1.25rem; font-weight:700; margin:0 0 20px; }
+  .sp-card { background:#0c0e14; border:1px solid #1a1f2e; border-radius:10px; padding:20px; margin-bottom:12px; }
+  .sp-card h3 { font-size:0.9375rem; margin:0 0 12px; color:#e2e8f0; }
+  .sp-grid { display:flex; flex-direction:column; gap:10px; }
+  .sp-item { display:flex; justify-content:space-between; font-size:0.8125rem; }
+  .sp-label { color:#64748b; }
+  .sp-status { font-size:0.8125rem; color:#94a3b8; margin:0 0 12px; }
+  .sp-btn { padding:8px 18px; border-radius:8px; background:#3b82f6; border:none; color:#fff; font-size:0.8125rem; font-weight:600; cursor:pointer; }
+  .sp-btn:hover { background:#2563eb; }
 
   /* Mobile */
   @media (max-width: 768px) {
-    .jr-topbar { padding: 0 16px; }
-    .jr-topbar-left { gap: 16px; }
-    .jr-tabs { gap: 2px; }
-    .jr-tab { padding: 6px 10px; font-size: 0.75rem; }
-    .jr-tab span { display: none; }
-    .jr-user-name { display: none; }
-    .jr-main { padding: 20px 16px; }
-    .jr-page-header { flex-direction: column; gap: 8px; }
-    .jr-search-form { flex-direction: column; }
-    .jr-search-field-small { flex: 1; }
-    .jr-results-header { flex-direction: column; align-items: flex-start; }
-  }
-
-  /* Match Badge */
-  .jr-match-badge {
-    padding: 3px 10px; border-radius: 12px;
-    font-size: 0.6875rem; font-weight: 600; white-space: nowrap;
-  }
-  .jr-match-high { background: rgba(34, 197, 94, 0.1); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.2); }
-  .jr-match-med { background: rgba(234, 179, 8, 0.1); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.2); }
-  .jr-match-low { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }
-
-  .jr-job-header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-
-  .jr-tag-matched {
-    background: rgba(34, 197, 94, 0.1) !important; color: #22c55e !important;
-    border-color: rgba(34, 197, 94, 0.2) !important;
-  }
-  .jr-tag-suggest {
-    background: rgba(234, 179, 8, 0.1) !important; color: #eab308 !important;
-    border-color: rgba(234, 179, 8, 0.2) !important;
-  }
-
-  /* Prepare to Apply Panel */
-  .jr-job-card-expanded { border-color: #3b82f6; }
-  .jr-prepare-panel {
-    background: #0c0e14; border: 1px solid #1e293b; border-radius: 10px;
-    padding: 16px; margin: 12px 0;
-  }
-  .jr-prepare-header {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #1e293b;
-  }
-  .jr-prepare-header h5 { font-size: 0.9375rem; font-weight: 600; color: #f1f5f9; margin: 0; }
-  .jr-prepare-section { margin-bottom: 14px; }
-  .jr-prepare-section h6 { font-size: 0.75rem; font-weight: 600; color: #94a3b8; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.03em; }
-  .jr-prepare-tips { font-size: 0.8125rem; color: #cbd5e1; line-height: 1.6; margin: 0; white-space: pre-wrap; }
-  .jr-prepare-cover-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-  .jr-prepare-cover {
-    background: #111318; border: 1px solid #1e293b; border-radius: 8px;
-    padding: 14px; font-size: 0.8125rem; color: #cbd5e1;
-    line-height: 1.6; white-space: pre-wrap; font-family: inherit;
-    margin: 0; overflow-x: auto;
-  }
-  .jr-copy-btn {
-    padding: 4px 12px; border-radius: 6px;
-    background: #1e293b; border: 1px solid #2d3748; color: #94a3b8;
-    font-size: 0.6875rem; font-weight: 500; cursor: pointer;
-    transition: all 0.15s ease;
-  }
-  .jr-copy-btn:hover { background: #2d3748; color: #e2e8f0; }
-  .jr-prepare-loading {
-    display: flex; align-items: center; gap: 8px;
-    padding: 16px; color: #64748b; font-size: 0.8125rem;
+    .ws-sidebar { width:100%; height:52px; flex-direction:row; border-right:none; border-top:1px solid #1a1f2e; order:2; justify-content:space-around; padding:0; position:fixed; bottom:0; left:0; z-index:20; }
+    .ws-logo { display:none; }
+    .ws-side-active::before { display:none; }
+    .ws-main { order:1; height:calc(100vh - 52px); }
+    .ws-copilot { display:none; }
+    .ws-panel { padding:16px; }
+    .tk-board { grid-template-columns:1fr 1fr; }
+    .ws-user-pill span { display:none; }
   }
 `;
