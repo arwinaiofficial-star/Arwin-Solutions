@@ -26,6 +26,8 @@ _sync_url = _db_url.replace("postgresql+asyncpg://", "postgresql://")
 _async_url = _db_url.replace("postgresql://", "postgresql+asyncpg://")
 if not _async_url.startswith("postgresql+asyncpg://"):
     _async_url = _db_url  # leave as-is if already correct
+# asyncpg doesn't support sslmode param — convert to ssl
+_async_url = _async_url.replace("sslmode=", "ssl=")
 
 config.set_main_option("sqlalchemy.url", _sync_url)
 
