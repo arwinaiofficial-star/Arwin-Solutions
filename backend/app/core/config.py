@@ -1,9 +1,6 @@
 """Application configuration using pydantic-settings."""
 
-import json
-
 from pydantic_settings import BaseSettings
-from pydantic import field_validator
 
 
 class Settings(BaseSettings):
@@ -26,13 +23,14 @@ class Settings(BaseSettings):
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
-    # CORS
-    CORS_ORIGINS: list[str] = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "https://arwinai.com",
-        "https://www.arwinai.com",
-    ]
+    # CORS — stored as comma-separated string to avoid pydantic-settings
+    # trying to JSON-parse it (which fails on Render/production env vars)
+    CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000,https://arwinai.com,https://www.arwinai.com"
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """Parse CORS_ORIGINS string into a list."""
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
 
     # OpenRouter LLM
     OPENROUTER_API_KEY: str = ""
@@ -62,21 +60,6 @@ class Settings(BaseSettings):
     # File Upload
     MAX_UPLOAD_SIZE_MB: int = 10
 
-    @field_validator("CORS_ORIGINS", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, v: str | list[str]) -> list[str]:
-        if isinstance(v, list):
-            return v
-        # Try JSON array first (e.g. '["http://localhost:3000"]')
-        try:
-            parsed = json.loads(v)
-            if isinstance(parsed, list):
-                return [str(o).strip() for o in parsed]
-        except (json.JSONDecodeError, TypeError):
-            pass
-        # Fall back to comma-separated (e.g. 'http://localhost:3000,https://arwinai.com')
-        return [origin.strip() for origin in v.split(",") if origin.strip()]
-
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",
@@ -85,3 +68,4 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
