@@ -123,7 +123,7 @@ export const homeContent = {
         "One-stop platform for job seekers in India. AI agents build your CV, match you with top companies, and auto-apply \u2014 so you focus on preparing, not searching.",
       url: "/jobready",
       external: false,
-      status: "Phase 1 & 2 Live",
+      status: "Live",
     },
     {
       name: "Maya Design System",
@@ -452,7 +452,7 @@ export const timeline = [
     year: "2025",
     title: "Products Go Live",
     description:
-      "JobReady.ai Phase 1 & 2 launched. Delivered Bhatrajula Kalyana Vedika and Vidya Bharati Vignana Kendra. Maya Design System v2.0 released.",
+      "JobReady.ai launched. Delivered Bhatrajula Kalyana Vedika and Vidya Bharati Vignana Kendra. Maya Design System v2.0 released.",
     milestone: true,
   },
   {
@@ -582,11 +582,11 @@ export const jobreadyContent = {
     title: "JobReady",
     tagline: "AI-Powered Career Platform for India",
     description:
-      "Fill out a form once, and let AI find relevant job opportunities across India\u2019s top platforms. Both Phase 1 (Job Search) and Phase 2 (Auto-Apply) are now live!",
+      "Build an ATS-friendly resume with AI, then search real jobs across India\u2019s top platforms. Resume builder and job search are live!",
   },
 
   currentPhase: {
-    phase: "Phase 1 & 2",
+    phase: "Current",
     status: "Live",
     features: [
       "Simple profile form submission",
@@ -601,7 +601,7 @@ export const jobreadyContent = {
   },
 
   futurePhase: {
-    phase: "Phase 3",
+    phase: "Roadmap",
     status: "Coming Soon",
     features: [
       "Advanced agentic AI implementation",

@@ -2,9 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
 import logger from "@/lib/logger";
 
-// API input validation constants
 const MAX_SKILL_LENGTH = 50;
 const MAX_SKILLS_COUNT = 20;
+const API_TIMEOUT_MS = 10000;
+
+// Adzuna API credentials
+const ADZUNA_APP_ID = process.env.ADZUNA_APP_ID || "";
+const ADZUNA_APP_KEY = process.env.ADZUNA_APP_KEY || "";
+
+// JSearch API credentials
+const JSEARCH_API_KEY = process.env.JSEARCH_API_KEY || "";
 
 interface Job {
   id: string;
@@ -20,6 +27,189 @@ interface Job {
   tags?: string[];
 }
 
+// ─── Adzuna API (India endpoint) ────────────────────────────────────────────
+
+interface AdzunaJob {
+  id: string;
+  title: string;
+  description: string;
+  redirect_url: string;
+  company: { display_name: string };
+  location: { display_name: string; area?: string[] };
+  salary_min?: number;
+  salary_max?: number;
+  contract_time?: string;
+  contract_type?: string;
+  created: string;
+  category?: { label: string; tag: string };
+}
+
+async function fetchAdzunaJobs(skills: string[], location: string): Promise<Job[]> {
+  if (!ADZUNA_APP_ID || !ADZUNA_APP_KEY) return [];
+
+  try {
+    const query = skills.slice(0, 5).join(" ");
+    const locationParam = location && location !== "Remote" ? `&where=${encodeURIComponent(location)}` : "";
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+
+    const url = `https://api.adzuna.com/v1/api/jobs/in/search/1?app_id=${ADZUNA_APP_ID}&app_key=${ADZUNA_APP_KEY}&results_per_page=50&what=${encodeURIComponent(query)}${locationParam}&content-type=application/json`;
+
+    const response = await fetch(url, {
+      headers: { Accept: "application/json" },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      logger.error("Adzuna API error", { status: response.status });
+      return [];
+    }
+
+    const data = await response.json();
+    const results: AdzunaJob[] = data.results || [];
+
+    return results.map((job) => {
+      let salary: string | undefined;
+      if (job.salary_min && job.salary_max) {
+        const minLPA = (job.salary_min / 100000).toFixed(1);
+        const maxLPA = (job.salary_max / 100000).toFixed(1);
+        salary = `₹${minLPA}L - ₹${maxLPA}L per annum`;
+      } else if (job.salary_min) {
+        salary = `₹${(job.salary_min / 100000).toFixed(1)}L+ per annum`;
+      }
+
+      const tags: string[] = [];
+      if (job.category?.label) tags.push(job.category.label);
+      if (job.contract_type) tags.push(job.contract_type);
+      for (const skill of skills) {
+        if (job.title.toLowerCase().includes(skill.toLowerCase()) || job.description.toLowerCase().includes(skill.toLowerCase())) {
+          if (!tags.includes(skill)) tags.push(skill);
+        }
+        if (tags.length >= 5) break;
+      }
+
+      return {
+        id: `adzuna-${job.id}`,
+        title: job.title,
+        company: job.company?.display_name || "Company",
+        location: job.location?.display_name || "India",
+        description: stripHtml(job.description).slice(0, 300),
+        url: job.redirect_url,
+        source: "Adzuna",
+        salary,
+        jobType: job.contract_time === "full_time" ? "Full-time" : job.contract_time === "part_time" ? "Part-time" : job.contract_type || undefined,
+        postedAt: formatDate(job.created),
+        tags: tags.slice(0, 5),
+      };
+    });
+  } catch (error) {
+    logger.error("Error fetching Adzuna jobs", { error: error instanceof Error ? error.message : "Unknown" });
+    return [];
+  }
+}
+
+// ─── JSearch API (RapidAPI - LinkedIn, Indeed, Glassdoor aggregator) ─────────
+
+interface JSearchJob {
+  job_id: string;
+  job_title: string;
+  employer_name: string;
+  job_city: string;
+  job_state: string;
+  job_country: string;
+  job_description: string;
+  job_apply_link: string;
+  job_employment_type: string;
+  job_min_salary: number | null;
+  job_max_salary: number | null;
+  job_salary_currency: string | null;
+  job_salary_period: string | null;
+  job_posted_at_datetime_utc: string;
+  job_is_remote: boolean;
+  employer_logo: string | null;
+  job_highlights?: {
+    Qualifications?: string[];
+    Responsibilities?: string[];
+  };
+}
+
+async function fetchJSearchJobs(skills: string[], location: string): Promise<Job[]> {
+  if (!JSEARCH_API_KEY) return [];
+
+  try {
+    const query = `${skills.slice(0, 3).join(", ")} in India`;
+    const locationParam = location && location !== "Remote" ? ` ${location}` : "";
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+
+    const url = `https://jsearch.p.rapidapi.com/search?query=${encodeURIComponent(query + locationParam)}&page=1&num_pages=2&country=in&date_posted=month`;
+
+    const response = await fetch(url, {
+      headers: {
+        "X-RapidAPI-Key": JSEARCH_API_KEY,
+        "X-RapidAPI-Host": "jsearch.p.rapidapi.com",
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      logger.error("JSearch API error", { status: response.status });
+      return [];
+    }
+
+    const data = await response.json();
+    const results: JSearchJob[] = data.data || [];
+
+    return results.map((job) => {
+      let salary: string | undefined;
+      if (job.job_min_salary && job.job_max_salary) {
+        const currency = job.job_salary_currency === "INR" ? "₹" : "$";
+        const period = job.job_salary_period === "YEAR" ? "per annum" : job.job_salary_period?.toLowerCase() || "";
+        if (currency === "₹") {
+          salary = `₹${(job.job_min_salary / 100000).toFixed(1)}L - ₹${(job.job_max_salary / 100000).toFixed(1)}L ${period}`;
+        } else {
+          salary = `${currency}${job.job_min_salary.toLocaleString()} - ${currency}${job.job_max_salary.toLocaleString()} ${period}`;
+        }
+      }
+
+      const locationStr = job.job_is_remote
+        ? "Remote"
+        : [job.job_city, job.job_state].filter(Boolean).join(", ") || "India";
+
+      const tags: string[] = [];
+      if (job.job_employment_type) tags.push(job.job_employment_type.replace("_", " "));
+      if (job.job_is_remote) tags.push("Remote");
+      for (const skill of skills) {
+        if (job.job_title.toLowerCase().includes(skill.toLowerCase())) {
+          if (!tags.includes(skill)) tags.push(skill);
+        }
+        if (tags.length >= 5) break;
+      }
+
+      return {
+        id: `jsearch-${job.job_id}`,
+        title: job.job_title,
+        company: job.employer_name || "Company",
+        location: locationStr,
+        description: stripHtml(job.job_description).slice(0, 300),
+        url: job.job_apply_link,
+        source: "JSearch",
+        salary,
+        jobType: job.job_employment_type?.replace("_", " ") || undefined,
+        postedAt: formatDate(job.job_posted_at_datetime_utc),
+        tags: tags.slice(0, 5),
+      };
+    });
+  } catch (error) {
+    logger.error("Error fetching JSearch jobs", { error: error instanceof Error ? error.message : "Unknown" });
+    return [];
+  }
+}
+
+// ─── Remotive API (Remote jobs) ─────────────────────────────────────────────
+
 interface RemotiveJob {
   id: number;
   url: string;
@@ -34,251 +224,22 @@ interface RemotiveJob {
   description: string;
 }
 
-interface ArbeitnowJob {
-  slug: string;
-  company_name: string;
-  title: string;
-  description: string;
-  remote: boolean;
-  url: string;
-  tags: string[];
-  job_types: string[];
-  location: string;
-  created_at: number;
-}
-
-// Demo jobs for Indian market - used when external APIs are unavailable
-function getDemoJobs(skills: string[]): Job[] {
-  const skillsLower = skills.map(s => s.toLowerCase());
-  const allDemoJobs: Job[] = [
-    {
-      id: "demo-1",
-      title: "Senior React Developer",
-      company: "Infosys",
-      location: "Bangalore, Karnataka",
-      description: "We are looking for a Senior React Developer to join our growing team at our Bangalore office. You will be responsible for building and maintaining web applications using React, TypeScript, and modern frontend technologies. Experience with state management, testing, and CI/CD is a plus.",
-      url: "https://www.naukri.com",
-      source: "JobReady India",
-      salary: "₹18L - ₹28L per annum",
-      jobType: "Full-time",
-      postedAt: "2 days ago",
-      tags: ["React", "TypeScript", "Frontend", "Bangalore"],
-    },
-    {
-      id: "demo-2",
-      title: "Full Stack JavaScript Engineer",
-      company: "Flipkart",
-      location: "Bangalore, Karnataka",
-      description: "Join Flipkart as a Full Stack Engineer! Work with Node.js, React, and PostgreSQL to build scalable e-commerce products. We offer competitive salary, ESOPs, and excellent work-life balance at India's leading e-commerce company.",
-      url: "https://www.naukri.com",
-      source: "JobReady India",
-      salary: "₹20L - ₹35L per annum",
-      jobType: "Full-time",
-      postedAt: "1 week ago",
-      tags: ["JavaScript", "Node.js", "React", "E-commerce"],
-    },
-    {
-      id: "demo-3",
-      title: "Python Backend Developer",
-      company: "Tata Consultancy Services",
-      location: "Hyderabad, Telangana",
-      description: "Looking for an experienced Python developer to work on our data processing pipelines at TCS Hyderabad. You will work with Django, FastAPI, and various AWS services. Experience with machine learning frameworks is a bonus.",
-      url: "https://www.naukri.com",
-      source: "JobReady India",
-      salary: "₹12L - ₹22L per annum",
-      jobType: "Full-time",
-      postedAt: "3 days ago",
-      tags: ["Python", "Django", "FastAPI", "AWS"],
-    },
-    {
-      id: "demo-4",
-      title: "DevOps Engineer",
-      company: "Wipro",
-      location: "Pune, Maharashtra",
-      description: "We need a DevOps Engineer to manage our cloud infrastructure at Wipro Pune. Experience with AWS, Kubernetes, Terraform, and CI/CD pipelines required. Join a team that values automation and infrastructure as code.",
-      url: "https://www.linkedin.com/jobs",
-      source: "JobReady India",
-      salary: "₹15L - ₹25L per annum",
-      jobType: "Full-time",
-      postedAt: "5 days ago",
-      tags: ["DevOps", "AWS", "Kubernetes", "Terraform"],
-    },
-    {
-      id: "demo-5",
-      title: "Mobile Developer (React Native)",
-      company: "Paytm",
-      location: "Noida, Uttar Pradesh",
-      description: "Build beautiful mobile applications using React Native at Paytm. We are looking for someone passionate about mobile UX and performance optimization. Knowledge of iOS and Android native development is a plus.",
-      url: "https://www.naukri.com",
-      source: "JobReady India",
-      salary: "₹14L - ₹24L per annum",
-      jobType: "Full-time",
-      postedAt: "1 day ago",
-      tags: ["React Native", "Mobile", "iOS", "Android"],
-    },
-    {
-      id: "demo-6",
-      title: "AI/ML Engineer",
-      company: "Razorpay",
-      location: "Bangalore, Karnataka",
-      description: "Join our AI team at Razorpay to develop and deploy machine learning models for fraud detection and payment optimization. Experience with TensorFlow, PyTorch, and large language models preferred.",
-      url: "https://www.linkedin.com/jobs",
-      source: "JobReady India",
-      salary: "₹25L - ₹45L per annum",
-      jobType: "Full-time",
-      postedAt: "4 days ago",
-      tags: ["AI", "Machine Learning", "Python", "TensorFlow"],
-    },
-    {
-      id: "demo-7",
-      title: "Frontend Developer (Vue.js)",
-      company: "Freshworks",
-      location: "Chennai, Tamil Nadu",
-      description: "We are seeking a talented Vue.js developer to join our creative team at Freshworks Chennai. You will build responsive web applications and collaborate with designers to create exceptional user experiences.",
-      url: "https://www.naukri.com",
-      source: "JobReady India",
-      salary: "₹10L - ₹18L per annum",
-      jobType: "Full-time",
-      postedAt: "6 days ago",
-      tags: ["Vue.js", "JavaScript", "CSS", "Frontend"],
-    },
-    {
-      id: "demo-8",
-      title: "Java Backend Developer",
-      company: "HCL Technologies",
-      location: "Noida, Uttar Pradesh",
-      description: "Looking for an experienced Java developer to work on enterprise applications at HCL. Spring Boot, microservices architecture, and cloud deployment experience required. Competitive benefits package included.",
-      url: "https://www.linkedin.com/jobs",
-      source: "JobReady India",
-      salary: "₹12L - ₹20L per annum",
-      jobType: "Full-time",
-      postedAt: "2 weeks ago",
-      tags: ["Java", "Spring Boot", "Microservices", "Backend"],
-    },
-    {
-      id: "demo-9",
-      title: "Data Engineer",
-      company: "Myntra",
-      location: "Bangalore, Karnataka",
-      description: "Design and build data pipelines at Myntra using modern tools like Apache Spark, Kafka, and Airflow. Work with petabytes of fashion e-commerce data to enable analytics and machine learning.",
-      url: "https://www.naukri.com",
-      source: "JobReady India",
-      salary: "₹18L - ₹32L per annum",
-      jobType: "Full-time",
-      postedAt: "1 week ago",
-      tags: ["Data Engineering", "Spark", "Kafka", "Python"],
-    },
-    {
-      id: "demo-10",
-      title: "Product Manager - Technical",
-      company: "PhonePe",
-      location: "Bangalore, Karnataka",
-      description: "Lead product development for PhonePe's payment platform. Strong technical background required, along with experience in agile methodologies. Work closely with engineering and design teams on India's leading UPI app.",
-      url: "https://www.linkedin.com/jobs",
-      source: "JobReady India",
-      salary: "₹30L - ₹50L per annum",
-      jobType: "Full-time",
-      postedAt: "3 days ago",
-      tags: ["Product Management", "Technical", "Agile", "Fintech"],
-    },
-    {
-      id: "demo-11",
-      title: "Software Engineer",
-      company: "Google India",
-      location: "Hyderabad, Telangana",
-      description: "Join Google's Hyderabad office as a Software Engineer. Work on large-scale distributed systems and cutting-edge products used by billions of users worldwide. Strong problem-solving skills required.",
-      url: "https://www.linkedin.com/jobs",
-      source: "JobReady India",
-      salary: "₹35L - ₹60L per annum",
-      jobType: "Full-time",
-      postedAt: "1 day ago",
-      tags: ["Software Engineering", "Distributed Systems", "C++", "Python"],
-    },
-    {
-      id: "demo-12",
-      title: "Backend Developer (Node.js)",
-      company: "Swiggy",
-      location: "Bangalore, Karnataka",
-      description: "Build scalable backend services for India's largest food delivery platform. Experience with Node.js, MongoDB, and microservices architecture required. Work on systems handling millions of daily orders.",
-      url: "https://www.naukri.com",
-      source: "JobReady India",
-      salary: "₹16L - ₹28L per annum",
-      jobType: "Full-time",
-      postedAt: "5 days ago",
-      tags: ["Node.js", "MongoDB", "Microservices", "Food-tech"],
-    },
-    {
-      id: "demo-13",
-      title: "QA Engineer",
-      company: "Zoho",
-      location: "Chennai, Tamil Nadu",
-      description: "Join Zoho's QA team to ensure quality of our enterprise software products. Experience with test automation, Selenium, and API testing required. Great opportunity to work on products used globally.",
-      url: "https://www.naukri.com",
-      source: "JobReady India",
-      salary: "₹8L - ₹15L per annum",
-      jobType: "Full-time",
-      postedAt: "4 days ago",
-      tags: ["QA", "Selenium", "Test Automation", "API Testing"],
-    },
-    {
-      id: "demo-14",
-      title: "Cloud Solutions Architect",
-      company: "Amazon India",
-      location: "Mumbai, Maharashtra",
-      description: "Design and implement cloud solutions for enterprise customers as an AWS Solutions Architect. Help organizations migrate to cloud and optimize their infrastructure. AWS certification preferred.",
-      url: "https://www.linkedin.com/jobs",
-      source: "JobReady India",
-      salary: "₹40L - ₹70L per annum",
-      jobType: "Full-time",
-      postedAt: "2 days ago",
-      tags: ["AWS", "Cloud Architecture", "Solutions Architect", "Enterprise"],
-    },
-    {
-      id: "demo-15",
-      title: "Angular Developer",
-      company: "Tech Mahindra",
-      location: "Hyderabad, Telangana",
-      description: "Looking for an Angular developer to work on enterprise web applications at Tech Mahindra Hyderabad. Experience with Angular 14+, TypeScript, and RxJS required. Good communication skills needed.",
-      url: "https://www.naukri.com",
-      source: "JobReady India",
-      salary: "₹10L - ₹18L per annum",
-      jobType: "Full-time",
-      postedAt: "1 week ago",
-      tags: ["Angular", "TypeScript", "RxJS", "Frontend"],
-    },
-  ];
-
-  // Filter and score demo jobs based on skills
-  return allDemoJobs.filter(job => {
-    const jobText = `${job.title} ${job.description} ${job.tags?.join(" ") || ""}`.toLowerCase();
-    return skillsLower.some(skill => jobText.includes(skill));
-  });
-}
-
 async function fetchRemotiveJobs(skills: string[]): Promise<Job[]> {
   try {
-    // Use first 3 skills for search to avoid overly specific queries that return few results
     const searchTerm = skills.slice(0, 3).join(",").toLowerCase();
     const controller = new AbortController();
-    // 10 second timeout to prevent hanging requests
-    const API_TIMEOUT_MS = 10000;
     const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
-    
+
     const response = await fetch(
-      `https://remotive.com/api/remote-jobs?search=${encodeURIComponent(searchTerm)}&limit=10`,
+      `https://remotive.com/api/remote-jobs?search=${encodeURIComponent(searchTerm)}&limit=30`,
       {
         headers: { Accept: "application/json" },
         signal: controller.signal,
-        next: { revalidate: 300 },
       }
     );
-    
     clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      console.error("Remotive API error:", response.status);
-      return [];
-    }
+    if (!response.ok) return [];
 
     const data = await response.json();
     const jobs: RemotiveJob[] = data.jobs || [];
@@ -288,7 +249,7 @@ async function fetchRemotiveJobs(skills: string[]): Promise<Job[]> {
       title: job.title,
       company: job.company_name,
       location: job.candidate_required_location || "Remote",
-      description: stripHtml(job.description).slice(0, 300) + "...",
+      description: stripHtml(job.description).slice(0, 300),
       url: job.url,
       source: "Remotive",
       salary: job.salary || undefined,
@@ -297,70 +258,22 @@ async function fetchRemotiveJobs(skills: string[]): Promise<Job[]> {
       tags: job.tags?.slice(0, 5) || [],
     }));
   } catch (error) {
-    console.error("Error fetching Remotive jobs:", error);
+    logger.error("Error fetching Remotive jobs", { error: error instanceof Error ? error.message : "Unknown" });
     return [];
   }
 }
 
-async function fetchArbeitnowJobs(skills: string[]): Promise<Job[]> {
-  try {
-    const searchTerm = skills[0]?.toLowerCase() || "developer";
-    const controller = new AbortController();
-    // 10 second timeout to prevent hanging requests
-    const API_TIMEOUT_MS = 10000;
-    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
-    
-    const response = await fetch(
-      `https://www.arbeitnow.com/api/job-board-api?search=${encodeURIComponent(searchTerm)}`,
-      {
-        headers: { Accept: "application/json" },
-        signal: controller.signal,
-        next: { revalidate: 300 },
-      }
-    );
-    
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      console.error("Arbeitnow API error:", response.status);
-      return [];
-    }
-
-    const data = await response.json();
-    const jobs: ArbeitnowJob[] = data.data || [];
-
-    return jobs.slice(0, 10).map((job) => ({
-      id: `arbeitnow-${job.slug}`,
-      title: job.title,
-      company: job.company_name,
-      location: job.remote ? "Remote" : job.location || "Not specified",
-      description: stripHtml(job.description).slice(0, 300) + "...",
-      url: job.url,
-      source: "Arbeitnow",
-      jobType: job.job_types?.[0] || undefined,
-      tags: job.tags?.slice(0, 5) || [],
-    }));
-  } catch (error) {
-    console.error("Error fetching Arbeitnow jobs:", error);
-    return [];
-  }
-}
+// ─── Utilities ──────────────────────────────────────────────────────────────
 
 function stripHtml(html: string): string {
-  // First remove HTML tags and replace with spaces
   let text = html.replace(/<[^>]*>/g, " ");
-  
-  // Then decode HTML entities (order matters to prevent double-unescaping)
-  // Replace named entities with their literal values
   text = text
     .replace(/&nbsp;/g, " ")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&apos;/g, "'")
-    .replace(/&amp;/g, "&"); // Must be last to prevent double-unescaping
-  
-  // Normalize whitespace
+    .replace(/&amp;/g, "&");
   return text.replace(/\s+/g, " ").trim();
 }
 
@@ -368,19 +281,13 @@ function formatDate(dateStr: string): string {
   try {
     const date = new Date(dateStr);
     const now = new Date();
-    const diffDays = Math.floor(
-      (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
-    );
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
 
     if (diffDays === 0) return "Today";
     if (diffDays === 1) return "Yesterday";
     if (diffDays < 7) return `${diffDays} days ago`;
     if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
+    return date.toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" });
   } catch {
     return "";
   }
@@ -391,46 +298,44 @@ function scoreJob(job: Job, skills: string[], preferences: string): number {
   const jobText = `${job.title} ${job.description} ${job.tags?.join(" ") || ""}`.toLowerCase();
   const prefLower = preferences.toLowerCase();
 
-  // Score based on skill matches
   for (const skill of skills) {
-    const skillLower = skill.toLowerCase().trim();
-    if (jobText.includes(skillLower)) {
+    if (jobText.includes(skill.toLowerCase().trim())) {
       score += 10;
     }
   }
 
-  // Score based on preferences - filter out short words (<=3 chars) like "a", "the", "for"
-  // to focus on meaningful preference keywords
-  const MIN_WORD_LENGTH = 3;
-  const prefWords = prefLower.split(/\s+/).filter((w) => w.length > MIN_WORD_LENGTH);
+  const prefWords = prefLower.split(/\s+/).filter((w) => w.length > 3);
   for (const word of prefWords) {
-    if (jobText.includes(word)) {
-      score += 5;
-    }
+    if (jobText.includes(word)) score += 5;
   }
 
-  // Bonus for remote if mentioned in preferences
-  if (
-    prefLower.includes("remote") &&
-    job.location.toLowerCase().includes("remote")
-  ) {
+  if (prefLower.includes("remote") && job.location.toLowerCase().includes("remote")) {
     score += 15;
+  }
+
+  // Boost jobs with salary info
+  if (job.salary) score += 5;
+
+  // Boost jobs with apply links
+  if (job.url && !job.url.includes("naukri.com") && !job.url.includes("linkedin.com/jobs")) {
+    score += 3; // direct apply links get a small boost
   }
 
   return score;
 }
 
+// ─── Route Handler ──────────────────────────────────────────────────────────
+
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   const clientIP = getClientIP(request.headers);
-  
-  // Rate limiting check
+
   const rateLimitResult = checkRateLimit(clientIP);
   if (!rateLimitResult.allowed) {
     logger.warn("Rate limit exceeded", { ip: clientIP });
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },
-      { 
+      {
         status: 429,
         headers: {
           "Retry-After": String(Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000)),
@@ -442,17 +347,12 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { skills, experience, preferences } = body;
+    const { skills, preferences, location } = body;
 
-    // Input validation
     if (!skills || typeof skills !== "string") {
-      return NextResponse.json(
-        { error: "Skills are required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Skills are required" }, { status: 400 });
     }
 
-    // Sanitize and validate skills input
     const skillArray = skills
       .split(",")
       .map((s: string) => s.trim())
@@ -460,28 +360,21 @@ export async function POST(request: NextRequest) {
       .slice(0, MAX_SKILLS_COUNT);
 
     if (skillArray.length === 0) {
-      return NextResponse.json(
-        { error: "At least one skill is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "At least one skill is required" }, { status: 400 });
     }
 
-    // Fetch jobs from multiple sources concurrently
-    const [remotiveJobs, arbeitnowJobs] = await Promise.all([
+    const locationStr = location || preferences || "";
+
+    // Fetch from all three sources concurrently
+    const [adzunaJobs, jsearchJobs, remotiveJobs] = await Promise.all([
+      fetchAdzunaJobs(skillArray, locationStr),
+      fetchJSearchJobs(skillArray, locationStr),
       fetchRemotiveJobs(skillArray),
-      fetchArbeitnowJobs(skillArray),
     ]);
 
-    // Combine jobs from external APIs
-    let allJobs = [...remotiveJobs, ...arbeitnowJobs];
-    
-    // If no external jobs found, use demo jobs to demonstrate functionality
-    if (allJobs.length === 0) {
-      const demoJobs = getDemoJobs(skillArray);
-      allJobs = demoJobs;
-    }
+    const allJobs = [...adzunaJobs, ...jsearchJobs, ...remotiveJobs];
 
-    // Score and sort jobs based on relevance
+    // Score and sort
     const scoredJobs = allJobs.map((job) => ({
       ...job,
       relevanceScore: scoreJob(job, skillArray, preferences || ""),
@@ -489,10 +382,10 @@ export async function POST(request: NextRequest) {
 
     scoredJobs.sort((a, b) => b.relevanceScore - a.relevanceScore);
 
-    // Remove duplicates by title and company
+    // Deduplicate by title+company
     const uniqueJobs = scoredJobs.reduce(
       (acc, job) => {
-        const key = `${job.title.toLowerCase()}-${job.company.toLowerCase()}`;
+        const key = `${job.title.toLowerCase().replace(/\s+/g, "")}-${job.company.toLowerCase().replace(/\s+/g, "")}`;
         if (!acc.seen.has(key)) {
           acc.seen.add(key);
           acc.jobs.push(job);
@@ -502,45 +395,47 @@ export async function POST(request: NextRequest) {
       { seen: new Set<string>(), jobs: [] as typeof scoredJobs }
     ).jobs;
 
-    // Log successful job search
     const duration = Date.now() - startTime;
-    const sources = [...new Set(uniqueJobs.map(j => j.source))];
+    const sources = [...new Set(uniqueJobs.map((j) => j.source))];
     logger.jobSearch(skillArray, uniqueJobs.length, sources);
     logger.apiRequest("POST", "/api/jobs", duration, 200);
 
     return NextResponse.json({
       success: true,
       totalJobs: uniqueJobs.length,
-      jobs: uniqueJobs.slice(0, 20),
+      jobs: uniqueJobs,
+      sources: {
+        adzuna: adzunaJobs.length,
+        jsearch: jsearchJobs.length,
+        remotive: remotiveJobs.length,
+      },
       searchCriteria: {
         skills: skillArray,
-        experience: experience || "Not specified",
+        location: locationStr || "India",
         preferences: preferences || "Not specified",
       },
     });
   } catch (error) {
     const duration = Date.now() - startTime;
-    logger.error("Job search error", { 
+    logger.error("Job search error", {
       error: error instanceof Error ? error.message : "Unknown error",
       duration: `${duration}ms`,
     });
-    return NextResponse.json(
-      { error: "Failed to search for jobs. Please try again." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to search for jobs. Please try again." }, { status: 500 });
   }
 }
 
 export async function GET() {
   return NextResponse.json({
     message: "JobReady.ai API - Use POST to search for jobs",
-    version: "1.0.0",
+    version: "2.0.0",
+    sources: ["Adzuna (India)", "JSearch (LinkedIn/Indeed/Glassdoor)", "Remotive (Remote)"],
     endpoints: {
       search: {
         method: "POST",
         body: {
           skills: "string (comma-separated, required)",
-          experience: "number (optional)",
+          location: "string (optional, e.g. 'Bangalore')",
           preferences: "string (optional)",
         },
       },

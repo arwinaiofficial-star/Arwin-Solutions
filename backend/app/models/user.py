@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import String, DateTime, Boolean, Text
+from sqlalchemy import String, DateTime, Boolean, Text, Integer
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -130,4 +130,42 @@ class JobCache(Base):
     )
     expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
+    )
+
+
+class JobApplication(Base):
+    __tablename__ = "job_applications"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        default=lambda: str(uuid.uuid4()),
+    )
+    user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), nullable=False, index=True
+    )
+    job_title: Mapped[str] = mapped_column(String(500), nullable=False)
+    company: Mapped[str] = mapped_column(String(255), nullable=False)
+    location: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    job_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    salary: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    source: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(30), default="pending", nullable=False
+    )  # pending, submitted, viewed, shortlisted, rejected, interview
+    resume_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False), nullable=True
+    )
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    applied_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
     )

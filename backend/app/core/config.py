@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
 
     # JWT
-    JWT_SECRET: str = "change-this-to-a-secure-secret-in-production"
+    JWT_SECRET: str  # Required — must be set in .env
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
@@ -37,9 +37,11 @@ class Settings(BaseSettings):
     GROQ_BASE_URL: str = "https://api.groq.com/openai/v1"
     GROQ_DEFAULT_MODEL: str = "llama-3.1-8b-instant"
 
-    # Job APIs
-    SERPAPI_KEY: str = ""
-    RAPIDAPI_KEY: str = ""
+    # Job APIs - Adzuna (India)
+    ADZUNA_APP_ID: str = ""
+    ADZUNA_APP_KEY: str = ""
+    # JSearch (RapidAPI)
+    JSEARCH_API_KEY: str = ""
 
     # Rate Limiting
     RATE_LIMIT_REQUESTS_PER_MINUTE: int = 60

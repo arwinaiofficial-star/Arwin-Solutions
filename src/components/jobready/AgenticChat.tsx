@@ -2,145 +2,63 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth, GeneratedCV, WorkExperience, Education } from "@/context/AuthContext";
-import { SendIcon, BotIcon, UserIcon, CheckIcon, EyeIcon, SearchIcon, ArrowRightIcon } from "@/components/icons/Icons";
+import { resumeApi } from "@/lib/api/client";
+import {
+  SendIcon,
+  BotIcon,
+  UserIcon,
+  CheckIcon,
+  SearchIcon,
+  ArrowRightIcon,
+  DownloadIcon,
+  DocumentIcon,
+} from "@/components/icons/Icons";
 
 interface Message {
   id: string;
   role: "bot" | "user";
   content: string;
   options?: string[];
-  inputType?: "text" | "textarea" | "select" | "multiselect";
+  inputType?: "text" | "textarea" | "select";
   selectOptions?: string[];
-  stepIndex?: number; // Track which step this message belongs to for editing
-  field?: string; // Field name for edit functionality
-  isEditable?: boolean; // Whether this response can be edited
+  field?: string;
 }
 
 interface CVFormData {
   hasExistingCV: boolean | null;
-  // Personal Info
   fullName: string;
   email: string;
   phone: string;
   location: string;
   linkedIn: string;
   portfolio: string;
-  // Professional Summary
   summary: string;
   yearsOfExperience: string;
-  // Skills
   skills: string[];
-  // Work Experience
   experiences: WorkExperience[];
-  // Education
   education: Education[];
-  // Education form fields
   education_degree: string;
   education_institution: string;
   education_year: string;
-  // Additional
   certifications: string[];
   languages: string[];
 }
 
-const QUESTIONNAIRE_STEPS = [
-  {
-    id: "welcome",
-    question: "Welcome to JobReady.ai! I'm your AI assistant. I'll help you create an ATS-friendly CV and find the perfect job. Do you have an existing CV you'd like to upload, or would you like to create a new one?",
-    options: ["I have a CV to upload", "Create a new CV for me"],
-    field: "hasExistingCV",
-  },
-  {
-    id: "fullName",
-    question: "Let's start with your full name as it should appear on your CV.",
-    inputType: "text",
-    field: "fullName",
-    placeholder: "e.g., Rahul Sharma",
-  },
-  {
-    id: "email",
-    question: "What's your professional email address?",
-    inputType: "text",
-    field: "email",
-    placeholder: "e.g., rahul.sharma@email.com",
-  },
-  {
-    id: "phone",
-    question: "Your contact phone number?",
-    inputType: "text",
-    field: "phone",
-    placeholder: "e.g., +91 98765 43210",
-  },
-  {
-    id: "location",
-    question: "Where are you currently located?",
-    inputType: "select",
-    field: "location",
-    selectOptions: ["Bangalore", "Hyderabad", "Mumbai", "Pune", "Chennai", "Delhi NCR", "Noida", "Gurgaon", "Remote", "Other"],
-  },
-  {
-    id: "linkedIn",
-    question: "Do you have a LinkedIn profile? (Optional - press Enter to skip)",
-    inputType: "text",
-    field: "linkedIn",
-    placeholder: "e.g., linkedin.com/in/yourprofile",
-    optional: true,
-  },
-  {
-    id: "yearsOfExperience",
-    question: "How many years of work experience do you have?",
-    inputType: "select",
-    field: "yearsOfExperience",
-    selectOptions: ["Fresher (0-1 years)", "1-3 years", "3-5 years", "5-8 years", "8-12 years", "12+ years"],
-  },
-  {
-    id: "skills",
-    question: "List your key technical skills (comma-separated). These will be highlighted in your CV for ATS optimization.",
-    inputType: "textarea",
-    field: "skills",
-    placeholder: "e.g., React, Node.js, Python, SQL, AWS, Git, JavaScript, TypeScript",
-  },
-  {
-    id: "experience_count",
-    question: "How many work experiences would you like to add? (Enter a number, or 0 if you're a fresher)",
-    inputType: "text",
-    field: "experience_count",
-    placeholder: "e.g., 2",
-  },
-  {
-    id: "education_degree",
-    question: "What is your highest degree/qualification?",
-    inputType: "text",
-    field: "education_degree",
-    placeholder: "e.g., B.Tech in Computer Science",
-  },
-  {
-    id: "education_institution",
-    question: "Which institution did you graduate from?",
-    inputType: "text",
-    field: "education_institution",
-    placeholder: "e.g., IIT Delhi",
-  },
-  {
-    id: "education_year",
-    question: "What year did you graduate?",
-    inputType: "text",
-    field: "education_year",
-    placeholder: "e.g., 2022",
-  },
-  {
-    id: "summary",
-    question: "Finally, write a brief professional summary (2-3 sentences) highlighting your key strengths and career goals. Or type 'auto' and I'll generate one for you!",
-    inputType: "textarea",
-    field: "summary",
-    placeholder: "e.g., Experienced Full Stack Developer with 5+ years of expertise in React and Node.js...",
-  },
+const STEPS = [
+  { id: "welcome", question: "Hi! I'm your AI resume assistant. I'll help you create an ATS-friendly resume in minutes. Ready to start?", options: ["Create a new resume", "I have a CV to upload"], field: "hasExistingCV" },
+  { id: "fullName", question: "What's your full name?", inputType: "text" as const, field: "fullName", placeholder: "e.g., Rahul Sharma" },
+  { id: "email", question: "Professional email address?", inputType: "text" as const, field: "email", placeholder: "e.g., rahul@email.com" },
+  { id: "phone", question: "Contact number?", inputType: "text" as const, field: "phone", placeholder: "e.g., +91 98765 43210" },
+  { id: "location", question: "Current location?", inputType: "select" as const, field: "location", selectOptions: ["Bangalore", "Hyderabad", "Mumbai", "Pune", "Chennai", "Delhi NCR", "Noida", "Gurgaon", "Kolkata", "Remote", "Other"] },
+  { id: "linkedIn", question: "LinkedIn profile URL? (Enter to skip)", inputType: "text" as const, field: "linkedIn", placeholder: "linkedin.com/in/yourprofile", optional: true },
+  { id: "yearsOfExperience", question: "Years of work experience?", inputType: "select" as const, field: "yearsOfExperience", selectOptions: ["Fresher (0-1 years)", "1-3 years", "3-5 years", "5-8 years", "8-12 years", "12+ years"] },
+  { id: "skills", question: "List your key skills (comma-separated). These will be highlighted for ATS optimization.", inputType: "textarea" as const, field: "skills", placeholder: "e.g., React, Node.js, Python, SQL, AWS" },
+  { id: "experience_count", question: "How many work experiences to add? (0 if fresher)", inputType: "text" as const, field: "experience_count", placeholder: "e.g., 2" },
+  { id: "education_degree", question: "Highest degree/qualification?", inputType: "text" as const, field: "education_degree", placeholder: "e.g., B.Tech in Computer Science" },
+  { id: "education_institution", question: "Institution?", inputType: "text" as const, field: "education_institution", placeholder: "e.g., IIT Delhi" },
+  { id: "education_year", question: "Graduation year?", inputType: "text" as const, field: "education_year", placeholder: "e.g., 2022" },
+  { id: "summary", question: "Write a 2-3 sentence professional summary, or type 'auto' for AI-generated.", inputType: "textarea" as const, field: "summary", placeholder: "Your career highlights..." },
 ];
-
-// Utility function to parse comma-separated skills
-const parseSkillsString = (value: string): string[] => {
-  return value.split(",").map(s => s.trim()).filter(s => s.length > 0);
-};
 
 interface AgenticChatProps {
   onNavigateToSearch?: () => void;
@@ -148,39 +66,20 @@ interface AgenticChatProps {
 
 export default function AgenticChat({ onNavigateToSearch }: AgenticChatProps) {
   const { user, saveGeneratedCV, updateProfile } = useAuth();
-  
-  // Initialize messages with welcome message (lazy initialization)
-  const getInitialMessages = (): Message[] => {
-    const welcomeStep = QUESTIONNAIRE_STEPS[0];
-    return [{
-      id: "welcome",
-      role: "bot",
-      content: welcomeStep.question,
-      options: welcomeStep.options,
-    }];
-  };
-  
-  const [messages, setMessages] = useState<Message[]>(getInitialMessages);
+  const [messages, setMessages] = useState<Message[]>([{
+    id: "welcome",
+    role: "bot",
+    content: STEPS[0].question,
+    options: STEPS[0].options,
+  }]);
   const [currentStep, setCurrentStep] = useState(0);
   const [inputValue, setInputValue] = useState("");
   const [formData, setFormData] = useState<CVFormData>({
-    hasExistingCV: null,
-    fullName: user?.name || "",
-    email: user?.email || "",
-    phone: user?.phone || "",
-    location: "",
-    linkedIn: "",
-    portfolio: "",
-    summary: "",
-    yearsOfExperience: "",
-    skills: [],
-    experiences: [],
-    education: [],
-    education_degree: "",
-    education_institution: "",
-    education_year: "",
-    certifications: [],
-    languages: [],
+    hasExistingCV: null, fullName: user?.name || "", email: user?.email || "",
+    phone: user?.phone || "", location: "", linkedIn: "", portfolio: "",
+    summary: "", yearsOfExperience: "", skills: [], experiences: [],
+    education: [], education_degree: "", education_institution: "",
+    education_year: "", certifications: [], languages: [],
   });
   const [experienceCount, setExperienceCount] = useState(0);
   const [currentExperienceIndex, setCurrentExperienceIndex] = useState(0);
@@ -190,264 +89,173 @@ export default function AgenticChat({ onNavigateToSearch }: AgenticChatProps) {
   const [showPreview, setShowPreview] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [cvAccepted, setCvAccepted] = useState(false);
-  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+  const msgCounter = useRef(0);
 
-  // Calculate progress percentage
-  const progressPercentage = Math.min(
-    Math.round((currentStep / (QUESTIONNAIRE_STEPS.length - 1)) * 100),
-    100
-  );
+  const progress = Math.min(Math.round((currentStep / (STEPS.length - 1)) * 100), 100);
 
-  // Auto-scroll to bottom
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  useEffect(() => { inputRef.current?.focus(); }, [currentStep]);
 
-  // Focus input
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, [currentStep]);
-
-  // Counter for unique message IDs
-  const messageCounterRef = useRef(0);
-
-  const addMessage = useCallback((role: "bot" | "user", content: string, options?: string[], inputType?: Message["inputType"], selectOptions?: string[], stepIndex?: number, field?: string, isEditable?: boolean) => {
-    messageCounterRef.current += 1;
-    setMessages(prev => [...prev, {
-      id: `msg_${Date.now()}_${messageCounterRef.current}`,
-      role,
-      content,
-      options,
-      inputType,
-      selectOptions,
-      stepIndex,
-      field,
-      isEditable: isEditable ?? (role === "user" && !options),
-    }]);
+  const addMsg = useCallback((role: "bot" | "user", content: string, options?: string[], inputType?: Message["inputType"], selectOptions?: string[], field?: string) => {
+    msgCounter.current += 1;
+    setMessages(prev => [...prev, { id: `m_${Date.now()}_${msgCounter.current}`, role, content, options, inputType, selectOptions, field }]);
   }, []);
 
-  // Start editing a message
-  const handleEditMessage = (messageId: string, currentContent: string) => {
-    setEditingMessageId(messageId);
-    setEditValue(currentContent);
-  };
+  const generateSummaryAI = async (): Promise<string> => {
+    try {
+      const context = {
+        fullName: formData.fullName, yearsOfExperience: formData.yearsOfExperience,
+        skills: formData.skills, location: formData.location,
+        experiences: formData.experiences, education_degree: formData.education_degree,
+        education_institution: formData.education_institution,
+      };
+      const result = await resumeApi.chat("", "generate_summary", context);
+      if (result.data?.reply) return result.data.reply;
+    } catch { /* use local */ }
 
-  // Save edited message
-  const handleSaveEdit = (messageId: string, field?: string) => {
-    if (!editValue.trim()) return;
-    
-    // Update the message content
-    setMessages(prev => prev.map(msg => 
-      msg.id === messageId ? { ...msg, content: editValue } : msg
-    ));
-    
-    // Update the form data based on the field
-    if (field) {
-      if (field === "skills") {
-        const skillsArray = parseSkillsString(editValue);
-        setFormData(prev => ({ ...prev, skills: skillsArray }));
-      } else {
-        setFormData(prev => ({ ...prev, [field]: editValue }));
-      }
-    }
-    
-    setEditingMessageId(null);
-    setEditValue("");
-  };
-
-  // Cancel editing
-  const handleCancelEdit = () => {
-    setEditingMessageId(null);
-    setEditValue("");
-  };
-
-  const generateAutoSummary = () => {
-    const yearsMap: { [key: string]: string } = {
-      "Fresher (0-1 years)": "a fresh graduate",
-      "1-3 years": "1-3 years",
-      "3-5 years": "3-5 years",
-      "5-8 years": "5-8 years",
-      "8-12 years": "8-12 years",
-      "12+ years": "12+ years",
-    };
-    
-    const years = yearsMap[formData.yearsOfExperience] || "experience";
+    const years = formData.yearsOfExperience || "experience";
     const topSkills = formData.skills.slice(0, 3).join(", ");
-    
-    return `Results-driven professional with ${years} of experience specializing in ${topSkills}. Proven track record of delivering high-quality solutions and collaborating effectively with cross-functional teams. Seeking challenging opportunities to leverage technical expertise and drive innovation.`;
+    return `Results-driven professional with ${years} of experience specializing in ${topSkills}. Proven track record of delivering high-quality solutions and collaborating effectively with cross-functional teams.`;
   };
+
+  const proceedToNext = useCallback(() => {
+    const next = currentStep + 1;
+    if (next >= STEPS.length) { generateCV(); return; }
+    setCurrentStep(next);
+    const s = STEPS[next];
+    addMsg("bot", s.question, s.options, s.inputType, s.selectOptions);
+  }, [currentStep, addMsg]);
 
   const handleExperienceInput = (value: string) => {
     if (!currentExperienceField) {
-      // Starting experience collection
       const count = parseInt(value) || 0;
       setExperienceCount(count);
-      
       if (count > 0) {
         setCurrentExperienceIndex(0);
         setCurrentExperienceField("title");
-        addMessage("user", value);
-        addMessage("bot", `Great! Let's add your ${count} work experience(s). For experience #1, what was your job title?`, undefined, "text");
+        addMsg("user", value);
+        addMsg("bot", `Experience #1 — Job title?`, undefined, "text");
       } else {
-        // Skip to education
-        addMessage("user", value);
-        proceedToNextStep();
+        addMsg("user", value);
+        proceedToNext();
       }
       return;
     }
 
-    // Collecting experience fields
     const updatedExp = { ...tempExperience, [currentExperienceField]: value };
     setTempExperience(updatedExp);
-    addMessage("user", value);
+    addMsg("user", value);
 
-    const experienceFields = [
-      { field: "title", next: "company", question: "Company name?" },
-      { field: "company", next: "location", question: "Location?" },
-      { field: "location", next: "startDate", question: "Start date (e.g., Jan 2020)?" },
-      { field: "startDate", next: "endDate", question: "End date (or 'Present' if current)?" },
-      { field: "endDate", next: "highlights", question: "List 2-3 key achievements/responsibilities (comma-separated):" },
+    const fields = [
+      { field: "title", next: "company", q: "Company name?" },
+      { field: "company", next: "location", q: "Location?" },
+      { field: "location", next: "startDate", q: "Start date? (e.g., Jan 2020)" },
+      { field: "startDate", next: "endDate", q: "End date? (or 'Present')" },
+      { field: "endDate", next: "highlights", q: "Key achievements (comma-separated):" },
     ];
 
-    const currentFieldIndex = experienceFields.findIndex(f => f.field === currentExperienceField);
-    
     if (currentExperienceField === "highlights") {
-      // Complete this experience
-      const completeExp: WorkExperience = {
-        title: updatedExp.title || "",
-        company: updatedExp.company || "",
-        location: updatedExp.location || "",
-        startDate: updatedExp.startDate || "",
-        endDate: updatedExp.endDate || "",
-        current: updatedExp.endDate?.toLowerCase() === "present",
+      const exp: WorkExperience = {
+        title: updatedExp.title || "", company: updatedExp.company || "",
+        location: updatedExp.location || "", startDate: updatedExp.startDate || "",
+        endDate: updatedExp.endDate || "", current: updatedExp.endDate?.toLowerCase() === "present",
         highlights: value.split(",").map((h: string) => h.trim()),
       };
-      
-      setFormData(prev => ({
-        ...prev,
-        experiences: [...prev.experiences, completeExp],
-      }));
-      
+      setFormData(prev => ({ ...prev, experiences: [...prev.experiences, exp] }));
       setTempExperience({});
-      
+
       if (currentExperienceIndex + 1 < experienceCount) {
-        // More experiences to collect
         setCurrentExperienceIndex(prev => prev + 1);
         setCurrentExperienceField("title");
-        addMessage("bot", `Experience #${currentExperienceIndex + 1} added! Now for experience #${currentExperienceIndex + 2}, what was your job title?`, undefined, "text");
+        addMsg("bot", `Experience #${currentExperienceIndex + 2} — Job title?`, undefined, "text");
       } else {
-        // Done with experiences
         setCurrentExperienceField(null);
-        proceedToNextStep();
+        proceedToNext();
       }
-    } else if (currentFieldIndex !== -1) {
-      const nextField = experienceFields[currentFieldIndex];
-      setCurrentExperienceField(nextField.next);
-      addMessage("bot", nextField.question, undefined, "text");
+    } else {
+      const idx = fields.findIndex(f => f.field === currentExperienceField);
+      if (idx !== -1) {
+        setCurrentExperienceField(fields[idx].next);
+        addMsg("bot", fields[idx].q, undefined, "text");
+      }
     }
-  };
-
-  const proceedToNextStep = () => {
-    const nextStepIndex = currentStep + 1;
-    
-    if (nextStepIndex >= QUESTIONNAIRE_STEPS.length) {
-      // Generate CV
-      generateCV();
-      return;
-    }
-    
-    setCurrentStep(nextStepIndex);
-    const nextStep = QUESTIONNAIRE_STEPS[nextStepIndex];
-    
-    addMessage(
-      "bot",
-      nextStep.question,
-      nextStep.options,
-      nextStep.inputType as Message["inputType"],
-      nextStep.selectOptions
-    );
   };
 
   const handleOptionSelect = (option: string) => {
-    addMessage("user", option);
-    
+    addMsg("user", option);
     if (currentStep === 0) {
-      // Handle CV choice
       if (option === "I have a CV to upload") {
         setFormData(prev => ({ ...prev, hasExistingCV: true }));
-        addMessage("bot", "Great! Please upload your CV using the upload button above the chat. Once uploaded, I'll help you search for matching jobs.");
-        setIsComplete(true);
+        addMsg("bot", "CV upload coming soon. For now, let's build one from scratch — it only takes 3 minutes.");
+        setTimeout(() => proceedToNext(), 1000);
       } else {
         setFormData(prev => ({ ...prev, hasExistingCV: false }));
-        proceedToNextStep();
+        proceedToNext();
       }
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSelectChange = (value: string) => {
+    const step = STEPS[currentStep];
+    if (step?.field) setFormData(prev => ({ ...prev, [step.field!]: value }));
+    addMsg("user", value);
+    proceedToNext();
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim()) return;
-    
-    const step = QUESTIONNAIRE_STEPS[currentStep];
+    const step = STEPS[currentStep];
     const value = inputValue.trim();
-    
-    // Handle experience collection separately
+
     if (step?.id === "experience_count" || currentExperienceField) {
       handleExperienceInput(value);
       setInputValue("");
       return;
     }
-    
-    // Handle regular fields
+
     if (step?.field) {
       if (step.field === "skills") {
-        const skillsArray = parseSkillsString(value);
-        setFormData(prev => ({ ...prev, skills: skillsArray }));
+        setFormData(prev => ({ ...prev, skills: value.split(",").map(s => s.trim()).filter(Boolean) }));
       } else if (step.field === "summary") {
-        const finalSummary = value.toLowerCase() === "auto" ? generateAutoSummary() : value;
-        setFormData(prev => ({ ...prev, summary: finalSummary }));
-        addMessage("user", value);
-        if (value.toLowerCase() === "auto") {
-          addMessage("bot", `I've generated this summary for you: "${finalSummary}"`);
-        }
-        // Generate CV after summary
-        setTimeout(() => generateCV(), 500);
+        addMsg("user", value);
         setInputValue("");
+        if (value.toLowerCase() === "auto") {
+          setIsGenerating(true);
+          addMsg("bot", "Generating AI-powered summary...");
+          const summary = await generateSummaryAI();
+          setIsGenerating(false);
+          setFormData(prev => ({ ...prev, summary }));
+          addMsg("bot", `Generated: "${summary}"`);
+          setTimeout(() => generateCV(), 500);
+        } else {
+          setFormData(prev => ({ ...prev, summary: value }));
+          setTimeout(() => generateCV(), 300);
+        }
         return;
       } else {
-        setFormData(prev => ({ ...prev, [step.field]: value }));
+        setFormData(prev => ({ ...prev, [step.field!]: value }));
       }
     }
-    
-    addMessage("user", value);
-    setInputValue("");
-    proceedToNextStep();
-  };
 
-  const handleSelectChange = (value: string) => {
-    const step = QUESTIONNAIRE_STEPS[currentStep];
-    if (step?.field) {
-      setFormData(prev => ({ ...prev, [step.field]: value }));
-    }
-    addMessage("user", value);
-    proceedToNextStep();
+    addMsg("user", value);
+    setInputValue("");
+    proceedToNext();
   };
 
   const generateCV = () => {
-    addMessage("bot", "Generating your ATS-optimized CV...");
-    
+    setIsGenerating(true);
+    addMsg("bot", "Building your ATS-optimized resume...");
+
     setTimeout(() => {
       const cv: GeneratedCV = {
         id: `cv_${crypto.randomUUID()}`,
         personalInfo: {
-          name: formData.fullName,
-          email: formData.email,
-          phone: formData.phone,
-          location: formData.location,
-          linkedIn: formData.linkedIn || undefined,
+          name: formData.fullName, email: formData.email, phone: formData.phone,
+          location: formData.location, linkedIn: formData.linkedIn || undefined,
           portfolio: formData.portfolio || undefined,
         },
         summary: formData.summary,
@@ -463,429 +271,357 @@ export default function AgenticChat({ onNavigateToSearch }: AgenticChatProps) {
         languages: formData.languages,
         createdAt: new Date().toISOString(),
       };
-      
+
       setGeneratedCV(cv);
       saveGeneratedCV(cv);
-      updateProfile({
-        name: formData.fullName,
-        phone: formData.phone,
-        skills: formData.skills,
+      updateProfile({ name: formData.fullName, phone: formData.phone, skills: formData.skills });
+      resumeApi.save(cv as unknown as Record<string, unknown>, "draft").catch((err) => {
+        console.warn("Resume draft save failed:", err);
       });
-      
-      addMessage("bot", "🎉 Your ATS-friendly CV has been generated! Review it below and click 'Accept & Find Jobs' to start your job search.");
+
+      setIsGenerating(false);
+      addMsg("bot", "Your resume is ready! Review it below.");
       setShowPreview(true);
       setIsComplete(true);
-    }, 2000);
+    }, 1500);
   };
 
   const acceptCV = () => {
-    if (generatedCV) {
-      setCvAccepted(true);
-      addMessage("bot", "✅ Excellent! Your CV has been saved and is ready! You can now:\n\n• Search for matching jobs\n• Apply with one click using your CV\n• Track your application status\n\nClick 'Find Jobs Now' below to start searching!");
-    }
+    if (!generatedCV) return;
+    setCvAccepted(true);
+    resumeApi.save(generatedCV as unknown as Record<string, unknown>, "final").catch((err) => {
+      console.warn("Resume final save failed:", err);
+    });
+    addMsg("bot", "Resume saved! You can now download it or search for matching jobs.");
   };
 
-  const renderCurrentInput = () => {
-    const step = QUESTIONNAIRE_STEPS[currentStep];
-    
-    if (!step || isComplete) return null;
-    
-    if (step.options) {
-      return (
-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)", marginTop: "var(--space-md)" }}>
-          {step.options.map((option, idx) => (
-            <button
-              key={idx}
-              onClick={() => handleOptionSelect(option)}
-              className="btn btn-secondary"
-              style={{ textAlign: "left", justifyContent: "flex-start" }}
-            >
-              {option}
-            </button>
-          ))}
-        </div>
-      );
-    }
-    
-    if (step.inputType === "select" && step.selectOptions) {
-      return (
-        <select
-          className="form-input"
-          onChange={(e) => handleSelectChange(e.target.value)}
-          defaultValue=""
-          style={{ marginTop: "var(--space-md)" }}
-        >
-          <option value="" disabled>Select an option...</option>
-          {step.selectOptions.map((opt, idx) => (
-            <option key={idx} value={opt}>{opt}</option>
-          ))}
-        </select>
-      );
-    }
-    
-    return null;
+  const downloadPDF = () => {
+    if (!generatedCV) return;
+    // Generate a clean HTML resume and print to PDF
+    const html = buildResumeHTML(generatedCV);
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.onload = () => {
+      printWindow.print();
+    };
   };
+
+  const step = STEPS[currentStep];
+  const showTextInput = !isComplete && !isGenerating && step && !step.options && !step.selectOptions;
 
   return (
-    <div style={{ 
-      display: "flex", 
-      flexDirection: "column", 
-      height: "600px",
-      border: "1px solid var(--color-border)",
-      borderRadius: "var(--radius-lg)",
-      overflow: "hidden",
-      background: "var(--color-surface)",
-    }}>
-      {/* Chat Header with Progress */}
-      <div style={{ 
-        borderBottom: "1px solid var(--color-border)",
-        background: "var(--color-surface-elevated)",
-      }}>
-        <div style={{ 
-          padding: "var(--space-md)", 
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-sm)" }}>
-            <BotIcon size={24} />
+    <>
+      <style>{chatStyles}</style>
+      <div className="rc-container">
+        {/* Header */}
+        <div className="rc-header">
+          <div className="rc-header-left">
+            <div className="rc-bot-dot" />
             <div>
-              <h4 style={{ margin: 0 }}>JobReady AI Assistant</h4>
-              <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
-                {cvAccepted ? "Ready to find jobs!" : isComplete ? "CV Generated - Review below" : "Creating your ATS-optimized CV"}
-              </p>
+              <span className="rc-header-title">AI Resume Builder</span>
+              <span className="rc-header-sub">
+                {cvAccepted ? "Resume ready" : isComplete ? "Review your resume" : `Step ${currentStep + 1} of ${STEPS.length}`}
+              </span>
             </div>
           </div>
-          {!isComplete && (
-            <div style={{ 
-              display: "flex", 
-              alignItems: "center", 
-              gap: "var(--space-xs)",
-              fontSize: "0.75rem",
-              color: "var(--color-text-muted)",
-            }}>
-              <span>Step {currentStep + 1} of {QUESTIONNAIRE_STEPS.length}</span>
-            </div>
-          )}
-          {cvAccepted && (
-            <span style={{ 
-              padding: "4px 8px", 
-              borderRadius: "var(--radius-sm)", 
-              background: "var(--color-success)", 
-              color: "white", 
-              fontSize: "0.75rem",
-              fontWeight: 600,
-            }}>
-              ✓ CV Ready
-            </span>
-          )}
+          {cvAccepted && <span className="rc-ready-badge"><CheckIcon size={12} /> Ready</span>}
         </div>
-        {/* Progress Bar */}
+
+        {/* Progress */}
         {!isComplete && (
-          <div style={{ 
-            height: "4px", 
-            background: "var(--color-border)",
-          }}>
-            <div style={{ 
-              height: "100%", 
-              background: "var(--color-primary)", 
-              width: `${progressPercentage}%`,
-              transition: "width 0.3s ease",
-            }} />
+          <div className="rc-progress-bar">
+            <div className="rc-progress-fill" style={{ width: `${progress}%` }} />
           </div>
         )}
-      </div>
-      
-      {/* Messages */}
-      <div style={{ 
-        flex: 1, 
-        overflowY: "auto", 
-        padding: "var(--space-md)",
-        display: "flex",
-        flexDirection: "column",
-        gap: "var(--space-md)",
-      }}>
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            style={{
-              display: "flex",
-              justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
-              gap: "var(--space-sm)",
-            }}
-          >
-            {msg.role === "bot" && (
-              <div style={{
-                width: "32px",
-                height: "32px",
-                borderRadius: "50%",
-                background: "var(--color-primary)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}>
-                <BotIcon size={16} color="white" />
+
+        {/* Messages */}
+        <div className="rc-messages">
+          {messages.map((msg) => (
+            <div key={msg.id} className={`rc-msg rc-msg-${msg.role}`}>
+              <div className="rc-msg-avatar">
+                {msg.role === "bot" ? <BotIcon size={14} color="#3b82f6" /> : <UserIcon size={14} color="#a78bfa" />}
               </div>
-            )}
-            <div style={{
-              maxWidth: "80%",
-              position: "relative",
-            }}>
-              {editingMessageId === msg.id ? (
-                // Edit mode
-                <div style={{
-                  padding: "var(--space-sm)",
-                  borderRadius: "var(--radius-lg)",
-                  background: "var(--color-surface-highlight)",
-                  border: "2px solid var(--color-primary)",
-                }}>
-                  {/* Use textarea for fields that originally used textarea (skills, summary) */}
-                  {msg.field === "skills" || msg.field === "summary" || msg.inputType === "textarea" ? (
-                    <textarea
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      className="form-textarea"
-                      style={{ marginBottom: "var(--space-xs)", minHeight: "60px", resize: "none" }}
-                      autoFocus
-                      onKeyDown={(e) => {
-                        if (e.key === "Escape") handleCancelEdit();
-                      }}
-                    />
-                  ) : (
-                    <input
-                      type="text"
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      className="form-input"
-                      style={{ marginBottom: "var(--space-xs)" }}
-                      autoFocus
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleSaveEdit(msg.id, msg.field);
-                        if (e.key === "Escape") handleCancelEdit();
-                      }}
-                    />
-                  )}
-                  <div style={{ display: "flex", gap: "var(--space-xs)" }}>
-                    <button 
-                      onClick={() => handleSaveEdit(msg.id, msg.field)}
-                      className="btn btn-primary"
-                      style={{ padding: "4px 8px", fontSize: "0.75rem" }}
-                    >
-                      Save
-                    </button>
-                    <button 
-                      onClick={handleCancelEdit}
-                      className="btn btn-secondary"
-                      style={{ padding: "4px 8px", fontSize: "0.75rem" }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                // Display mode
-                <div style={{
-                  padding: "var(--space-sm) var(--space-md)",
-                  borderRadius: "var(--radius-lg)",
-                  background: msg.role === "user" ? "var(--color-primary)" : "var(--color-surface-highlight)",
-                  color: msg.role === "user" ? "white" : "var(--color-text)",
-                  whiteSpace: "pre-wrap",
-                }}>
-                  {msg.content}
-                  {/* Edit button for user messages (only when not complete) */}
-                  {msg.role === "user" && msg.isEditable && !isComplete && (
-                    <button
-                      onClick={() => handleEditMessage(msg.id, msg.content)}
-                      style={{
-                        display: "block",
-                        marginTop: "var(--space-xs)",
-                        padding: "2px 6px",
-                        fontSize: "0.7rem",
-                        background: "rgba(255,255,255,0.2)",
-                        border: "none",
-                        borderRadius: "var(--radius-sm)",
-                        color: "white",
-                        cursor: "pointer",
-                      }}
-                    >
-                      Edit
-                    </button>
-                  )}
-                </div>
-              )}
+              <div className="rc-msg-bubble">{msg.content}</div>
             </div>
-            {msg.role === "user" && (
-              <div style={{
-                width: "32px",
-                height: "32px",
-                borderRadius: "50%",
-                background: "var(--color-accent)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}>
-                <UserIcon size={16} color="white" />
-              </div>
-            )}
-          </div>
-        ))}
-        
-        {/* Render options or select if available */}
-        {renderCurrentInput()}
-        
-        {/* CV Preview and Action Buttons */}
-        {showPreview && generatedCV && (
-          <div style={{ 
-            background: "var(--color-surface-elevated)",
-            padding: "var(--space-md)",
-            borderRadius: "var(--radius-md)",
-            border: "1px solid var(--color-border)",
-            marginTop: "var(--space-md)",
-          }}>
-            {/* Action Buttons */}
-            <div style={{ 
-              display: "flex", 
-              gap: "var(--space-sm)", 
-              flexWrap: "wrap",
-              marginBottom: showPreview ? "var(--space-md)" : 0,
-            }}>
-              {!cvAccepted ? (
-                <>
-                  <button 
-                    className="btn btn-primary"
-                    onClick={acceptCV}
-                    style={{ display: "flex", alignItems: "center", gap: "var(--space-xs)", flex: "1 1 auto" }}
-                  >
-                    <CheckIcon size={16} />
-                    Accept & Find Jobs
-                  </button>
-                  <button 
-                    className="btn btn-secondary"
-                    onClick={() => setShowPreview(!showPreview)}
-                    style={{ display: "flex", alignItems: "center", gap: "var(--space-xs)" }}
-                  >
-                    <EyeIcon size={16} />
-                    {showPreview ? "Hide" : "Preview"}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button 
-                    className="btn btn-primary"
-                    onClick={() => onNavigateToSearch?.()}
-                    style={{ display: "flex", alignItems: "center", gap: "var(--space-xs)", flex: "1 1 auto" }}
-                  >
-                    <SearchIcon size={16} />
-                    Find Jobs Now
-                    <ArrowRightIcon size={16} />
-                  </button>
-                  <button 
-                    className="btn btn-secondary"
-                    onClick={() => setShowPreview(!showPreview)}
-                    style={{ display: "flex", alignItems: "center", gap: "var(--space-xs)" }}
-                  >
-                    <EyeIcon size={16} />
-                    {showPreview ? "Hide CV" : "View CV"}
-                  </button>
-                </>
-              )}
+          ))}
+
+          {/* Options */}
+          {step?.options && !isComplete && currentStep === 0 && (
+            <div className="rc-options">
+              {step.options.map((opt, i) => (
+                <button key={i} onClick={() => handleOptionSelect(opt)} className="rc-option-btn">{opt}</button>
+              ))}
             </div>
-            
-            {cvAccepted && (
-              <p style={{ 
-                fontSize: "0.875rem", 
-                color: "var(--color-text-muted)", 
-                textAlign: "center",
-                marginTop: "var(--space-sm)",
-                marginBottom: 0,
-              }}>
-                Your CV will be automatically attached when you apply for jobs
-              </p>
-            )}
-          </div>
-        )}
-        
-        {/* CV Preview */}
-        {showPreview && generatedCV && (
-          <div style={{
-            background: "white",
-            color: "#1a1a2e",
-            padding: "var(--space-lg)",
-            borderRadius: "var(--radius-md)",
-            marginTop: "var(--space-md)",
-            fontSize: "0.875rem",
-          }}>
-            <h3 style={{ marginBottom: "var(--space-xs)", color: "#1a1a2e" }}>{generatedCV.personalInfo.name}</h3>
-            <p style={{ color: "#4b5563", marginBottom: "var(--space-sm)" }}>
-              {generatedCV.personalInfo.email} | {generatedCV.personalInfo.phone} | {generatedCV.personalInfo.location}
-            </p>
-            
-            <h4 style={{ marginTop: "var(--space-md)", color: "#1a1a2e", borderBottom: "1px solid #e5e7eb", paddingBottom: "var(--space-xs)" }}>Professional Summary</h4>
-            <p>{generatedCV.summary}</p>
-            
-            <h4 style={{ marginTop: "var(--space-md)", color: "#1a1a2e", borderBottom: "1px solid #e5e7eb", paddingBottom: "var(--space-xs)" }}>Skills</h4>
-            <p>{generatedCV.skills.join(" • ")}</p>
-            
-            {generatedCV.experience.length > 0 && (
-              <>
-                <h4 style={{ marginTop: "var(--space-md)", color: "#1a1a2e", borderBottom: "1px solid #e5e7eb", paddingBottom: "var(--space-xs)" }}>Work Experience</h4>
-                {generatedCV.experience.map((exp, idx) => (
-                  <div key={idx} style={{ marginBottom: "var(--space-sm)" }}>
-                    <p><strong>{exp.title}</strong> at {exp.company}</p>
-                    <p style={{ color: "#6b7280", fontSize: "0.8rem" }}>{exp.startDate} - {exp.endDate} | {exp.location}</p>
-                    <ul style={{ margin: "var(--space-xs) 0", paddingLeft: "var(--space-md)" }}>
-                      {exp.highlights.map((h, i) => <li key={i}>{h}</li>)}
-                    </ul>
-                  </div>
-                ))}
-              </>
-            )}
-            
-            <h4 style={{ marginTop: "var(--space-md)", color: "#1a1a2e", borderBottom: "1px solid #e5e7eb", paddingBottom: "var(--space-xs)" }}>Education</h4>
-            {generatedCV.education.map((edu, idx) => (
-              <p key={idx}><strong>{edu.degree}</strong> - {edu.institution}, {edu.graduationYear}</p>
-            ))}
-          </div>
-        )}
-        
-        <div ref={messagesEndRef} />
-      </div>
-      
-      {/* Input Area */}
-      {!isComplete && !QUESTIONNAIRE_STEPS[currentStep]?.options && !QUESTIONNAIRE_STEPS[currentStep]?.selectOptions && (
-        <form onSubmit={handleSubmit} style={{ 
-          padding: "var(--space-md)", 
-          borderTop: "1px solid var(--color-border)",
-          display: "flex",
-          gap: "var(--space-sm)",
-        }}>
-          {QUESTIONNAIRE_STEPS[currentStep]?.inputType === "textarea" ? (
-            <textarea
-              ref={inputRef as React.RefObject<HTMLTextAreaElement>}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder={QUESTIONNAIRE_STEPS[currentStep]?.placeholder || "Type your answer..."}
-              className="form-textarea"
-              style={{ flex: 1, minHeight: "60px", resize: "none" }}
-            />
-          ) : (
-            <input
-              ref={inputRef as React.RefObject<HTMLInputElement>}
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder={QUESTIONNAIRE_STEPS[currentStep]?.placeholder || "Type your answer..."}
-              className="form-input"
-              style={{ flex: 1 }}
-            />
           )}
-          <button type="submit" className="btn btn-primary" style={{ padding: "var(--space-sm)" }}>
-            <SendIcon size={20} />
-          </button>
-        </form>
-      )}
-    </div>
+
+          {/* Select */}
+          {step?.selectOptions && !isComplete && !step.options && (
+            <div className="rc-select-wrap">
+              <select className="rc-select" onChange={(e) => handleSelectChange(e.target.value)} defaultValue="">
+                <option value="" disabled>Select...</option>
+                {step.selectOptions.map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
+              </select>
+            </div>
+          )}
+
+          {/* CV Preview */}
+          {showPreview && generatedCV && (
+            <div className="rc-cv-section">
+              <div className="rc-cv-actions">
+                {!cvAccepted ? (
+                  <>
+                    <button className="jr-btn jr-btn-primary" onClick={acceptCV}><CheckIcon size={14} /> Accept Resume</button>
+                    <button className="jr-btn jr-btn-secondary" onClick={downloadPDF}><DownloadIcon size={14} /> Download PDF</button>
+                  </>
+                ) : (
+                  <>
+                    <button className="jr-btn jr-btn-primary" onClick={() => onNavigateToSearch?.()}>
+                      <SearchIcon size={14} /> Find Jobs <ArrowRightIcon size={14} />
+                    </button>
+                    <button className="jr-btn jr-btn-secondary" onClick={downloadPDF}><DownloadIcon size={14} /> Download PDF</button>
+                  </>
+                )}
+              </div>
+
+              <div className="rc-cv-preview">
+                <div className="rc-cv-name">{generatedCV.personalInfo.name}</div>
+                <div className="rc-cv-contact">
+                  {generatedCV.personalInfo.email} | {generatedCV.personalInfo.phone} | {generatedCV.personalInfo.location}
+                  {generatedCV.personalInfo.linkedIn && ` | ${generatedCV.personalInfo.linkedIn}`}
+                </div>
+
+                <div className="rc-cv-section-title">Professional Summary</div>
+                <p className="rc-cv-text">{generatedCV.summary}</p>
+
+                <div className="rc-cv-section-title">Technical Skills</div>
+                <p className="rc-cv-text">{generatedCV.skills.join(" · ")}</p>
+
+                {generatedCV.experience.length > 0 && (
+                  <>
+                    <div className="rc-cv-section-title">Work Experience</div>
+                    {generatedCV.experience.map((exp, i) => (
+                      <div key={i} className="rc-cv-exp">
+                        <div className="rc-cv-exp-header">
+                          <strong>{exp.title}</strong> — {exp.company}
+                        </div>
+                        <div className="rc-cv-exp-meta">{exp.startDate} – {exp.endDate} | {exp.location}</div>
+                        <ul className="rc-cv-list">
+                          {exp.highlights.map((h, j) => <li key={j}>{h}</li>)}
+                        </ul>
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                <div className="rc-cv-section-title">Education</div>
+                {generatedCV.education.map((edu, i) => (
+                  <p key={i} className="rc-cv-text"><strong>{edu.degree}</strong> — {edu.institution}, {edu.graduationYear}</p>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {isGenerating && (
+            <div className="rc-generating">
+              <span className="jr-spinner" /> Processing...
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input */}
+        {showTextInput && (
+          <form onSubmit={handleSubmit} className="rc-input-bar">
+            {step.inputType === "textarea" ? (
+              <textarea
+                ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                placeholder={step.placeholder || "Type your answer..."}
+                className="rc-input rc-textarea"
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(e); } }}
+              />
+            ) : (
+              <input
+                ref={inputRef as React.RefObject<HTMLInputElement>}
+                type="text"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                placeholder={step.placeholder || "Type your answer..."}
+                className="rc-input"
+              />
+            )}
+            <button type="submit" className="rc-send-btn" disabled={!inputValue.trim()}>
+              <SendIcon size={18} />
+            </button>
+          </form>
+        )}
+      </div>
+    </>
   );
 }
+
+// ─── PDF HTML Builder ───────────────────────────────────────────────────────
+
+function buildResumeHTML(cv: GeneratedCV): string {
+  const expHTML = cv.experience.map(exp => `
+    <div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <strong>${exp.title}</strong>
+        <span style="color:#666;font-size:0.85em">${exp.startDate} – ${exp.endDate}</span>
+      </div>
+      <div style="color:#444">${exp.company} | ${exp.location}</div>
+      <ul style="margin:6px 0;padding-left:20px">${exp.highlights.map(h => `<li>${h}</li>`).join("")}</ul>
+    </div>
+  `).join("");
+
+  const eduHTML = cv.education.map(edu => `
+    <p><strong>${edu.degree}</strong> — ${edu.institution}, ${edu.graduationYear}</p>
+  `).join("");
+
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>${cv.personalInfo.name} - Resume</title>
+<style>
+  @page { margin: 0.7in; size: A4; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1a1a2e; font-size: 10.5pt; line-height: 1.5; padding: 40px; }
+  h1 { font-size: 22pt; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 4px; }
+  .contact { color: #555; font-size: 9.5pt; margin-bottom: 16px; }
+  .section-title { font-size: 11pt; font-weight: 700; color: #1a1a2e; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 2px solid #2563eb; padding-bottom: 3px; margin: 18px 0 10px; }
+  p { margin-bottom: 6px; }
+  ul { margin: 4px 0; }
+  li { margin-bottom: 2px; }
+</style></head><body>
+  <h1>${cv.personalInfo.name}</h1>
+  <div class="contact">${cv.personalInfo.email} | ${cv.personalInfo.phone} | ${cv.personalInfo.location}${cv.personalInfo.linkedIn ? ` | ${cv.personalInfo.linkedIn}` : ""}</div>
+  <div class="section-title">Professional Summary</div>
+  <p>${cv.summary}</p>
+  <div class="section-title">Technical Skills</div>
+  <p>${cv.skills.join(" · ")}</p>
+  ${cv.experience.length > 0 ? `<div class="section-title">Work Experience</div>${expHTML}` : ""}
+  <div class="section-title">Education</div>
+  ${eduHTML}
+</body></html>`;
+}
+
+// ─── Styles ─────────────────────────────────────────────────────────────────
+
+const chatStyles = `
+  .rc-container {
+    display: flex; flex-direction: column; height: 640px;
+    background: #0f1117; border: 1px solid #1e293b; border-radius: 12px;
+    overflow: hidden;
+  }
+
+  /* Header */
+  .rc-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px; border-bottom: 1px solid #1e293b;
+    background: #111318;
+  }
+  .rc-header-left { display: flex; align-items: center; gap: 10px; }
+  .rc-bot-dot { width: 10px; height: 10px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px rgba(34, 197, 94, 0.4); }
+  .rc-header-title { display: block; font-size: 0.875rem; font-weight: 600; color: #f1f5f9; }
+  .rc-header-sub { display: block; font-size: 0.6875rem; color: #64748b; }
+  .rc-ready-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; border-radius: 12px;
+    font-size: 0.6875rem; font-weight: 600;
+    background: rgba(34, 197, 94, 0.1); color: #22c55e;
+  }
+
+  /* Progress */
+  .rc-progress-bar { height: 3px; background: #1e293b; }
+  .rc-progress-fill { height: 100%; background: #3b82f6; transition: width 0.3s ease; }
+
+  /* Messages */
+  .rc-messages { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; }
+  .rc-msg { display: flex; gap: 8px; align-items: flex-start; max-width: 85%; }
+  .rc-msg-bot { align-self: flex-start; }
+  .rc-msg-user { align-self: flex-end; flex-direction: row-reverse; }
+  .rc-msg-avatar {
+    width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .rc-msg-bot .rc-msg-avatar { background: #1e293b; }
+  .rc-msg-user .rc-msg-avatar { background: #2d1b69; }
+  .rc-msg-bubble {
+    padding: 10px 14px; border-radius: 12px;
+    font-size: 0.8125rem; line-height: 1.5; white-space: pre-wrap;
+  }
+  .rc-msg-bot .rc-msg-bubble { background: #1e293b; color: #e2e8f0; border-bottom-left-radius: 4px; }
+  .rc-msg-user .rc-msg-bubble { background: #3b82f6; color: white; border-bottom-right-radius: 4px; }
+
+  /* Options */
+  .rc-options { display: flex; gap: 8px; margin-left: 34px; flex-wrap: wrap; }
+  .rc-option-btn {
+    padding: 8px 16px; border-radius: 8px;
+    background: #1e293b; border: 1px solid #2d3748;
+    color: #e2e8f0; font-size: 0.8125rem; font-weight: 500;
+    cursor: pointer; transition: all 0.15s ease;
+  }
+  .rc-option-btn:hover { background: #2d3748; border-color: #3b82f6; }
+
+  /* Select */
+  .rc-select-wrap { margin-left: 34px; }
+  .rc-select {
+    padding: 10px 14px; border-radius: 8px;
+    background: #0a0a0f; border: 1px solid #2d3748;
+    color: #e2e8f0; font-size: 0.8125rem;
+    min-width: 200px; cursor: pointer;
+  }
+  .rc-select:focus { outline: none; border-color: #3b82f6; }
+
+  /* CV Preview */
+  .rc-cv-section { margin-top: 8px; }
+  .rc-cv-actions { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .rc-cv-preview {
+    background: #fafafa; color: #1a1a2e; padding: 28px;
+    border-radius: 8px; font-size: 0.8125rem; line-height: 1.6;
+  }
+  .rc-cv-name { font-size: 1.25rem; font-weight: 700; margin-bottom: 2px; color: #0f172a; }
+  .rc-cv-contact { font-size: 0.75rem; color: #64748b; margin-bottom: 16px; }
+  .rc-cv-section-title {
+    font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; color: #0f172a;
+    border-bottom: 2px solid #3b82f6; padding-bottom: 2px;
+    margin: 16px 0 8px;
+  }
+  .rc-cv-text { margin: 0 0 4px; color: #334155; }
+  .rc-cv-exp { margin-bottom: 12px; }
+  .rc-cv-exp-header { font-size: 0.8125rem; color: #0f172a; }
+  .rc-cv-exp-meta { font-size: 0.75rem; color: #64748b; margin-bottom: 4px; }
+  .rc-cv-list { padding-left: 18px; margin: 4px 0; }
+  .rc-cv-list li { color: #475569; margin-bottom: 2px; }
+
+  /* Generating */
+  .rc-generating {
+    display: flex; align-items: center; gap: 8px;
+    margin-left: 34px; color: #64748b; font-size: 0.8125rem;
+  }
+
+  /* Input Bar */
+  .rc-input-bar {
+    display: flex; gap: 8px; padding: 14px 20px;
+    border-top: 1px solid #1e293b; background: #111318;
+  }
+  .rc-input {
+    flex: 1; padding: 10px 14px; border-radius: 8px;
+    background: #0a0a0f; border: 1px solid #2d3748;
+    color: #e2e8f0; font-size: 0.8125rem;
+  }
+  .rc-input:focus { outline: none; border-color: #3b82f6; }
+  .rc-input::placeholder { color: #475569; }
+  .rc-textarea { min-height: 56px; resize: none; font-family: inherit; }
+  .rc-send-btn {
+    width: 40px; height: 40px; border-radius: 8px;
+    background: #3b82f6; border: none; color: white;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: background 0.15s ease; flex-shrink: 0;
+  }
+  .rc-send-btn:hover { background: #2563eb; }
+  .rc-send-btn:disabled { background: #1e3a5f; cursor: not-allowed; }
+`;

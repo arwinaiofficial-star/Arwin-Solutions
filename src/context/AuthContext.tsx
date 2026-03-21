@@ -294,7 +294,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (user) {
         const updated = { ...user, cvGenerated: true, cvData: cv };
         setUser(updated);
-        // Store CV data locally (will be stored in DB in Phase 2)
         localStorage.setItem("jobready_cv_data", JSON.stringify(cv));
       }
     },

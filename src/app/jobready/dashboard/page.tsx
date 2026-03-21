@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import AgenticChat from "@/components/jobready/AgenticChat";
 import {
@@ -10,12 +9,11 @@ import {
   LogoutIcon,
   SearchIcon,
   DocumentIcon,
-  HomeIcon,
   LocationIcon,
-  ClockIcon,
   CheckIcon,
-  MenuIcon,
-  XIcon,
+  ExternalLinkIcon,
+  DownloadIcon,
+  BriefcaseIcon,
 } from "@/components/icons/Icons";
 
 type TabType = "resume" | "jobs" | "profile";
@@ -23,10 +21,8 @@ type TabType = "resume" | "jobs" | "profile";
 export default function DashboardPage() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>("resume");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
 
-  // Redirect if not authenticated
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       router.push("/jobready/login");
@@ -35,21 +31,15 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <section className="section" style={{ minHeight: "80vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div className="text-center">
-          <div style={{
-            width: "48px",
-            height: "48px",
-            border: "3px solid var(--color-border)",
-            borderTopColor: "var(--color-primary)",
-            borderRadius: "50%",
-            animation: "spin 1s linear infinite",
-            margin: "0 auto",
-          }} />
-          <p style={{ marginTop: "var(--space-md)", color: "var(--color-text-muted)" }}>Loading...</p>
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-        </div>
-      </section>
+      <div className="jr-loading-screen">
+        <div className="jr-loading-spinner" />
+        <p>Loading your workspace...</p>
+        <style>{`
+          .jr-loading-screen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0a0a0f; color: #94a3b8; }
+          .jr-loading-spinner { width: 40px; height: 40px; border: 3px solid #1e293b; border-top-color: #3b82f6; border-radius: 50%; animation: jr-spin 0.8s linear infinite; margin-bottom: 16px; }
+          @keyframes jr-spin { to { transform: rotate(360deg); } }
+        `}</style>
+      </div>
     );
   }
 
@@ -60,366 +50,220 @@ export default function DashboardPage() {
     router.push("/jobready");
   };
 
-  const getResumeStatus = () => {
-    if (user.cvGenerated) return { label: "Resume ready", color: "var(--color-success)" };
-    return { label: "No resume yet", color: "var(--color-warning)" };
-  };
-
-  const resumeStatus = getResumeStatus();
-
-  const navItems = [
-    { id: "resume" as TabType, label: "ATS Resume", icon: DocumentIcon },
-    { id: "jobs" as TabType, label: "Jobs Portal", icon: SearchIcon },
-    { id: "profile" as TabType, label: "My Profile", icon: UserIcon },
+  const tabs = [
+    { id: "resume" as TabType, label: "Resume Builder", icon: DocumentIcon, description: "Create ATS-optimized resume" },
+    { id: "jobs" as TabType, label: "Job Search", icon: SearchIcon, description: "Find jobs across India" },
+    { id: "profile" as TabType, label: "Profile", icon: UserIcon, description: "Your account" },
   ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 80px)" }}>
-      <div style={{ display: "flex", flex: 1 }}>
-        {/* Mobile Menu Button */}
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="btn btn-secondary"
-          style={{
-            position: "fixed",
-            bottom: "var(--space-md)",
-            right: "var(--space-md)",
-            zIndex: 100,
-            display: "none",
-            borderRadius: "50%",
-            width: "56px",
-            height: "56px",
-            padding: 0,
-            boxShadow: "var(--shadow-lg)",
-          }}
-          aria-label="Toggle menu"
-        >
-          {sidebarOpen ? <XIcon size={24} /> : <MenuIcon size={24} />}
-        </button>
-        <style>{`
-          @media (max-width: 768px) {
-            button[aria-label="Toggle menu"] { display: flex !important; align-items: center; justify-content: center; }
-          }
-        `}</style>
-
-        {/* Sidebar */}
-        <aside style={{
-          width: "280px",
-          background: "var(--color-surface)",
-          borderRight: "1px solid var(--color-border)",
-          padding: "var(--space-lg)",
-          display: "flex",
-          flexDirection: "column",
-          position: "sticky",
-          top: "80px",
-          height: "calc(100vh - 80px)",
-          overflowY: "auto",
-          transform: sidebarOpen ? "translateX(0)" : undefined,
-          transition: "transform 0.3s ease",
-        }}
-        className={`dashboard-sidebar ${sidebarOpen ? "sidebar-open" : "sidebar-closed"}`}
-        >
-          <style>{`
-            @media (max-width: 768px) {
-              .dashboard-sidebar {
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                height: 100vh !important;
-                z-index: 99;
-              }
-              .dashboard-sidebar.sidebar-open {
-                transform: translateX(0) !important;
-              }
-              .dashboard-sidebar.sidebar-closed {
-                transform: translateX(-100%) !important;
-              }
-            }
-          `}</style>
-
-          {/* User Info */}
-          <div style={{
-            padding: "var(--space-md)",
-            background: "var(--color-surface-elevated)",
-            borderRadius: "var(--radius-md)",
-            marginBottom: "var(--space-lg)",
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-sm)" }}>
-              <div style={{
-                width: "48px",
-                height: "48px",
-                borderRadius: "50%",
-                background: "var(--color-primary)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}>
-                <UserIcon size={24} color="white" />
-              </div>
-              <div style={{ minWidth: 0 }}>
-                <h4 style={{ margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.name}</h4>
-                <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--color-text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.email}</p>
-              </div>
+    <>
+      <style>{dashboardStyles}</style>
+      <div className="jr-dashboard">
+        {/* Top Navigation Bar */}
+        <header className="jr-topbar">
+          <div className="jr-topbar-left">
+            <div className="jr-brand">
+              <BriefcaseIcon size={22} color="#3b82f6" />
+              <span>JobReady<span className="jr-brand-ai">.ai</span></span>
             </div>
-            <div style={{
-              marginTop: "var(--space-sm)",
-              padding: "var(--space-xs) var(--space-sm)",
-              background: resumeStatus.color === "var(--color-success)" ? "rgba(16, 185, 129, 0.1)" : "rgba(245, 158, 11, 0.1)",
-              borderRadius: "var(--radius-sm)",
-              display: "flex",
-              alignItems: "center",
-              gap: "var(--space-xs)",
-            }}>
-              <span style={{
-                width: "8px",
-                height: "8px",
-                borderRadius: "50%",
-                background: resumeStatus.color,
-                display: "inline-block",
-              }} />
-              <span style={{ fontSize: "0.75rem", color: resumeStatus.color }}>{resumeStatus.label}</span>
-            </div>
-          </div>
-
-          {/* Navigation */}
-          <nav style={{ flex: 1 }}>
-            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "var(--space-xs)" }}>
-              {navItems.map((item) => (
-                <li key={item.id}>
-                  <button
-                    onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
-                    style={{
-                      width: "100%",
-                      padding: "var(--space-sm) var(--space-md)",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "var(--space-sm)",
-                      background: activeTab === item.id ? "var(--color-primary)" : "transparent",
-                      color: activeTab === item.id ? "white" : "var(--color-text)",
-                      border: "none",
-                      borderRadius: "var(--radius-md)",
-                      cursor: "pointer",
-                      transition: "all 0.2s ease",
-                    }}
-                  >
-                    <item.icon size={20} />
-                    <span>{item.label}</span>
-                    {item.id === "jobs" && !user.cvGenerated && (
-                      <span style={{
-                        marginLeft: "auto",
-                        fontSize: "0.625rem",
-                        padding: "2px 6px",
-                        borderRadius: "var(--radius-sm)",
-                        background: "rgba(245, 158, 11, 0.2)",
-                        color: "var(--color-warning)",
-                      }}>
-                        Needs resume
-                      </span>
-                    )}
-                  </button>
-                </li>
+            <nav className="jr-tabs">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`jr-tab ${activeTab === tab.id ? "jr-tab-active" : ""}`}
+                >
+                  <tab.icon size={16} />
+                  <span>{tab.label}</span>
+                </button>
               ))}
-            </ul>
-          </nav>
-
-          {/* Footer Actions */}
-          <div style={{ marginTop: "var(--space-lg)" }}>
-            <Link
-              href="/jobready"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "var(--space-sm)",
-                padding: "var(--space-sm) var(--space-md)",
-                color: "var(--color-text-muted)",
-                textDecoration: "none",
-                borderRadius: "var(--radius-md)",
-                transition: "background 0.2s ease",
-              }}
-            >
-              <HomeIcon size={20} />
-              <span>Back to Home</span>
-            </Link>
-            <button
-              onClick={handleLogout}
-              style={{
-                width: "100%",
-                display: "flex",
-                alignItems: "center",
-                gap: "var(--space-sm)",
-                padding: "var(--space-sm) var(--space-md)",
-                color: "var(--color-error)",
-                background: "transparent",
-                border: "none",
-                borderRadius: "var(--radius-md)",
-                cursor: "pointer",
-                marginTop: "var(--space-xs)",
-              }}
-            >
-              <LogoutIcon size={20} />
-              <span>Sign Out</span>
+            </nav>
+          </div>
+          <div className="jr-topbar-right">
+            <div className="jr-user-pill">
+              <div className="jr-avatar">{user.name.charAt(0).toUpperCase()}</div>
+              <span className="jr-user-name">{user.name.split(" ")[0]}</span>
+            </div>
+            <button onClick={handleLogout} className="jr-btn-icon" title="Sign out">
+              <LogoutIcon size={18} />
             </button>
           </div>
-        </aside>
+        </header>
 
         {/* Main Content */}
-        <main style={{ flex: 1, padding: "var(--space-xl)", maxWidth: "1000px" }}>
+        <main className="jr-main">
           {activeTab === "resume" && (
-            <div>
-              <div style={{ marginBottom: "var(--space-lg)" }}>
-                <h1 style={{ marginBottom: "var(--space-xs)" }}>ATS Resume</h1>
-                <p style={{ color: "var(--color-text-muted)" }}>
-                  Create your ATS-optimised resume with our AI assistant
-                </p>
+            <div className="jr-content">
+              <div className="jr-page-header">
+                <div>
+                  <h1>Resume Builder</h1>
+                  <p>Create an ATS-friendly resume powered by AI</p>
+                </div>
+                {user.cvGenerated && (
+                  <div className="jr-status-badge jr-status-success">
+                    <CheckIcon size={14} /> Resume Ready
+                  </div>
+                )}
               </div>
               <AgenticChat onNavigateToSearch={() => setActiveTab("jobs")} />
             </div>
           )}
 
           {activeTab === "jobs" && (
-            <div>
-              <div style={{ marginBottom: "var(--space-lg)" }}>
-                <h1 style={{ marginBottom: "var(--space-xs)" }}>Jobs Portal</h1>
-                <p style={{ color: "var(--color-text-muted)" }}>
-                  Discover jobs matched to your profile
-                </p>
+            <div className="jr-content">
+              <div className="jr-page-header">
+                <div>
+                  <h1>Job Search</h1>
+                  <p>Real jobs from Adzuna, LinkedIn, Indeed, Glassdoor &amp; more</p>
+                </div>
               </div>
               {!user.cvGenerated ? (
-                <div className="card text-center" style={{ background: "var(--color-surface-elevated)" }}>
-                  <DocumentIcon size={48} color="var(--color-text-muted)" />
-                  <h3 style={{ marginTop: "var(--space-md)" }}>Create Your Resume First</h3>
-                  <p style={{ color: "var(--color-text-muted)", marginBottom: "var(--space-md)" }}>
-                    Build your ATS-optimised resume first, then we&apos;ll match you with relevant jobs from Naukri, LinkedIn, and more.
-                  </p>
-                  <button onClick={() => setActiveTab("resume")} className="btn btn-primary">
+                <div className="jr-empty-state">
+                  <DocumentIcon size={48} color="#475569" />
+                  <h3>Create Your Resume First</h3>
+                  <p>Build your ATS-optimized resume, then search for matching jobs across India.</p>
+                  <button onClick={() => setActiveTab("resume")} className="jr-btn jr-btn-primary">
                     <DocumentIcon size={16} />
-                    <span style={{ marginLeft: "var(--space-xs)" }}>Create Resume</span>
+                    Create Resume
                   </button>
                 </div>
               ) : (
-                <JobSearchWithCV user={user} />
+                <JobSearchPanel user={user} />
               )}
             </div>
           )}
 
           {activeTab === "profile" && (
-            <div>
-              <div style={{ marginBottom: "var(--space-lg)" }}>
-                <h1 style={{ marginBottom: "var(--space-xs)" }}>My Profile</h1>
-                <p style={{ color: "var(--color-text-muted)" }}>
-                  Manage your profile and resume
-                </p>
-              </div>
-
-              <div className="card" style={{ marginBottom: "var(--space-lg)" }}>
-                <h3 style={{ marginBottom: "var(--space-md)" }}>Personal Information</h3>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "var(--space-md)" }}>
-                  <div>
-                    <p style={{ color: "var(--color-text-muted)", fontSize: "0.875rem", marginBottom: "var(--space-xs)" }}>Full Name</p>
-                    <p style={{ fontWeight: 600 }}>{user.name}</p>
-                  </div>
-                  <div>
-                    <p style={{ color: "var(--color-text-muted)", fontSize: "0.875rem", marginBottom: "var(--space-xs)" }}>Email</p>
-                    <p style={{ fontWeight: 600 }}>{user.email}</p>
-                  </div>
-                  {user.phone && (
-                    <div>
-                      <p style={{ color: "var(--color-text-muted)", fontSize: "0.875rem", marginBottom: "var(--space-xs)" }}>Phone</p>
-                      <p style={{ fontWeight: 600 }}>{user.phone}</p>
-                    </div>
-                  )}
-                  {user.location && (
-                    <div>
-                      <p style={{ color: "var(--color-text-muted)", fontSize: "0.875rem", marginBottom: "var(--space-xs)" }}>Location</p>
-                      <p style={{ fontWeight: 600 }}>{user.location}</p>
-                    </div>
-                  )}
+            <div className="jr-content">
+              <div className="jr-page-header">
+                <div>
+                  <h1>Profile</h1>
+                  <p>Your account and resume details</p>
                 </div>
               </div>
-
-              {user.cvGenerated && user.cvData && (
-                <div className="card" style={{ marginBottom: "var(--space-lg)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-md)" }}>
-                    <h3 style={{ margin: 0 }}>Resume</h3>
-                    <span className="badge badge-success">Ready</span>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "var(--space-md)" }}>
-                    <div>
-                      <p style={{ color: "var(--color-text-muted)", fontSize: "0.875rem", marginBottom: "var(--space-xs)" }}>Skills</p>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-xs)" }}>
-                        {user.cvData.skills.slice(0, 5).map((skill, idx) => (
-                          <span key={idx} style={{
-                            background: "var(--color-surface-highlight)",
-                            padding: "4px 8px",
-                            borderRadius: "var(--radius-sm)",
-                            fontSize: "0.75rem",
-                          }}>
-                            {skill}
-                          </span>
-                        ))}
-                        {user.cvData.skills.length > 5 && (
-                          <span style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>
-                            +{user.cvData.skills.length - 5} more
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <p style={{ color: "var(--color-text-muted)", fontSize: "0.875rem", marginBottom: "var(--space-xs)" }}>Experience</p>
-                      <p style={{ fontWeight: 600 }}>{user.cvData.experience.length} role{user.cvData.experience.length !== 1 ? "s" : ""}</p>
-                    </div>
-                  </div>
-                  <div style={{ marginTop: "var(--space-md)", display: "flex", gap: "var(--space-sm)" }}>
-                    <button onClick={() => setActiveTab("resume")} className="btn btn-secondary" style={{ fontSize: "0.875rem" }}>
-                      Update Resume
-                    </button>
-                    <button onClick={() => setActiveTab("jobs")} className="btn btn-primary" style={{ fontSize: "0.875rem" }}>
-                      Find Jobs
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {!user.cvGenerated && (
-                <div className="card text-center" style={{ background: "var(--color-surface-elevated)" }}>
-                  <DocumentIcon size={48} color="var(--color-text-muted)" />
-                  <h3 style={{ marginTop: "var(--space-md)" }}>No Resume Yet</h3>
-                  <p style={{ color: "var(--color-text-muted)", marginBottom: "var(--space-md)" }}>
-                    Create your ATS-optimised resume to get started.
-                  </p>
-                  <button onClick={() => setActiveTab("resume")} className="btn btn-primary">
-                    <DocumentIcon size={16} />
-                    <span style={{ marginLeft: "var(--space-xs)" }}>Create Resume</span>
-                  </button>
-                </div>
-              )}
+              <ProfilePanel user={user} onEditResume={() => setActiveTab("resume")} onFindJobs={() => setActiveTab("jobs")} />
             </div>
           )}
         </main>
       </div>
+    </>
+  );
+}
+
+// ─── Profile Panel ────────────────────────────────────────────────────────
+
+interface ProfilePanelProps {
+  user: {
+    name: string;
+    email: string;
+    phone?: string;
+    location?: string;
+    cvGenerated?: boolean;
+    cvData?: {
+      skills: string[];
+      experience: { title: string; company: string }[];
+      education: { degree: string; institution: string }[];
+      personalInfo: { name: string; email: string; phone: string; location: string };
+      summary: string;
+    } | null;
+    createdAt: string;
+  };
+  onEditResume: () => void;
+  onFindJobs: () => void;
+}
+
+function ProfilePanel({ user, onEditResume, onFindJobs }: ProfilePanelProps) {
+  return (
+    <div className="jr-profile-grid">
+      <div className="jr-card">
+        <h3 className="jr-card-title">Account Information</h3>
+        <div className="jr-info-grid">
+          <div className="jr-info-item">
+            <span className="jr-info-label">Full Name</span>
+            <span className="jr-info-value">{user.name}</span>
+          </div>
+          <div className="jr-info-item">
+            <span className="jr-info-label">Email</span>
+            <span className="jr-info-value">{user.email}</span>
+          </div>
+          {user.phone && (
+            <div className="jr-info-item">
+              <span className="jr-info-label">Phone</span>
+              <span className="jr-info-value">{user.phone}</span>
+            </div>
+          )}
+          {user.location && (
+            <div className="jr-info-item">
+              <span className="jr-info-label">Location</span>
+              <span className="jr-info-value">{user.location}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {user.cvGenerated && user.cvData ? (
+        <div className="jr-card">
+          <div className="jr-card-header-row">
+            <h3 className="jr-card-title">Resume</h3>
+            <div className="jr-status-badge jr-status-success"><CheckIcon size={12} /> Active</div>
+          </div>
+          <div className="jr-info-grid">
+            <div className="jr-info-item">
+              <span className="jr-info-label">Skills</span>
+              <div className="jr-tag-list">
+                {user.cvData.skills.slice(0, 8).map((skill, i) => (
+                  <span key={i} className="jr-tag">{skill}</span>
+                ))}
+                {user.cvData.skills.length > 8 && (
+                  <span className="jr-tag jr-tag-more">+{user.cvData.skills.length - 8}</span>
+                )}
+              </div>
+            </div>
+            <div className="jr-info-item">
+              <span className="jr-info-label">Experience</span>
+              <span className="jr-info-value">{user.cvData.experience.length} role{user.cvData.experience.length !== 1 ? "s" : ""}</span>
+            </div>
+            <div className="jr-info-item">
+              <span className="jr-info-label">Education</span>
+              <span className="jr-info-value">
+                {user.cvData.education[0]?.degree || "Not specified"}
+              </span>
+            </div>
+          </div>
+          <div className="jr-card-actions">
+            <button onClick={onEditResume} className="jr-btn jr-btn-secondary">Update Resume</button>
+            <button onClick={onFindJobs} className="jr-btn jr-btn-primary">Find Jobs</button>
+          </div>
+        </div>
+      ) : (
+        <div className="jr-empty-state">
+          <DocumentIcon size={40} color="#475569" />
+          <h3>No Resume Yet</h3>
+          <p>Create your ATS-optimized resume to get started.</p>
+          <button onClick={onEditResume} className="jr-btn jr-btn-primary">
+            <DocumentIcon size={16} /> Create Resume
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
-// Job Search Component with CV integration
-interface JobSearchWithCVProps {
+// ─── Job Search Panel ────────────────────────────────────────────────────
+
+interface JobSearchPanelProps {
   user: {
     cvData?: {
       skills: string[];
-      personalInfo: {
-        name: string;
-        email: string;
-        phone: string;
-        location: string;
-      };
+      personalInfo: { name: string; email: string; phone: string; location: string };
     } | null;
     name: string;
     email: string;
   };
 }
 
-interface Job {
+interface JobResult {
   id: string;
   title: string;
   company: string;
@@ -434,21 +278,20 @@ interface Job {
   relevanceScore: number;
 }
 
-function JobSearchWithCV({ user }: JobSearchWithCVProps) {
-  const { addApplication } = useAuth();
+function JobSearchPanel({ user }: JobSearchPanelProps) {
   const [isSearching, setIsSearching] = useState(false);
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const [jobs, setJobs] = useState<JobResult[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
-  const [applyingTo, setApplyingTo] = useState<string | null>(null);
-  const [appliedJobs, setAppliedJobs] = useState<Set<string>>(new Set());
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [sourceCounts, setSourceCounts] = useState<Record<string, number>>({});
 
   const userSkills = user.cvData?.skills?.join(", ") || "";
+  const userLocation = user.cvData?.personalInfo?.location || "";
   const [skillsInput, setSkillsInput] = useState(userSkills);
+  const [locationInput, setLocationInput] = useState(userLocation);
 
   const handleSearch = async () => {
     if (!skillsInput.trim()) return;
-
     setIsSearching(true);
     setSearchError(null);
 
@@ -458,16 +301,16 @@ function JobSearchWithCV({ user }: JobSearchWithCVProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           skills: skillsInput,
-          preferences: user.cvData?.personalInfo?.location || "",
+          location: locationInput,
+          preferences: locationInput,
         }),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to search jobs");
-      }
+      if (!response.ok) throw new Error("Failed to search jobs");
 
       const data = await response.json();
       setJobs(data.jobs || []);
+      setSourceCounts(data.sources || {});
       setHasSearched(true);
     } catch (error) {
       setSearchError(error instanceof Error ? error.message : "Failed to search jobs");
@@ -476,203 +319,106 @@ function JobSearchWithCV({ user }: JobSearchWithCVProps) {
     }
   };
 
-  const handleApply = async (job: Job) => {
-    setApplyingTo(job.id);
-
-    // TODO: Replace with real application API in Phase 3
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    addApplication({
-      jobId: job.id,
-      jobTitle: job.title,
-      company: job.company,
-      location: job.location,
-      salary: job.salary,
-      status: "submitted",
-      cvUsed: user.cvData?.personalInfo?.name || "Generated CV",
-    });
-
-    setAppliedJobs(prev => new Set([...prev, job.id]));
-    setApplyingTo(null);
-  };
-
   return (
     <div>
-      {/* CV Summary Card */}
-      <div className="card" style={{
-        marginBottom: "var(--space-lg)",
-        background: "var(--color-surface-elevated)",
-        borderLeft: "4px solid var(--color-success)",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-sm)", marginBottom: "var(--space-sm)" }}>
-          <CheckIcon size={20} color="var(--color-success)" />
-          <h4 style={{ margin: 0 }}>Your Resume is Ready</h4>
-        </div>
-        <p style={{ color: "var(--color-text-muted)", marginBottom: "var(--space-sm)", fontSize: "0.875rem" }}>
-          {user.cvData?.personalInfo?.name} &bull; {user.cvData?.personalInfo?.email}
-        </p>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-xs)" }}>
-          {user.cvData?.skills?.slice(0, 5).map((skill, idx) => (
-            <span key={idx} style={{
-              background: "var(--color-surface-highlight)",
-              padding: "4px 8px",
-              borderRadius: "var(--radius-sm)",
-              fontSize: "0.75rem",
-            }}>
-              {skill}
-            </span>
-          ))}
-          {(user.cvData?.skills?.length || 0) > 5 && (
-            <span style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>
-              +{(user.cvData?.skills?.length || 0) - 5} more
-            </span>
-          )}
-        </div>
-      </div>
-
       {/* Search Form */}
-      <div className="card" style={{ marginBottom: "var(--space-lg)" }}>
-        <h4 style={{ marginBottom: "var(--space-md)" }}>Search for Jobs</h4>
-        <div style={{ display: "flex", gap: "var(--space-sm)", flexWrap: "wrap" }}>
-          <input
-            type="text"
-            value={skillsInput}
-            onChange={(e) => setSkillsInput(e.target.value)}
-            placeholder="Enter skills (e.g., React, Node.js, Python)"
-            className="form-input"
-            style={{ flex: 1, minWidth: "200px" }}
-          />
+      <div className="jr-card jr-search-card">
+        <div className="jr-search-form">
+          <div className="jr-search-field">
+            <label>Skills &amp; Keywords</label>
+            <input
+              type="text"
+              value={skillsInput}
+              onChange={(e) => setSkillsInput(e.target.value)}
+              placeholder="e.g. React, Node.js, Python"
+              className="jr-input"
+            />
+          </div>
+          <div className="jr-search-field jr-search-field-small">
+            <label>Location</label>
+            <input
+              type="text"
+              value={locationInput}
+              onChange={(e) => setLocationInput(e.target.value)}
+              placeholder="e.g. Bangalore"
+              className="jr-input"
+            />
+          </div>
           <button
             onClick={handleSearch}
             disabled={isSearching || !skillsInput.trim()}
-            className="btn btn-primary"
-            style={{ display: "flex", alignItems: "center", gap: "var(--space-xs)" }}
+            className="jr-btn jr-btn-primary jr-search-btn"
           >
             {isSearching ? (
-              <>
-                <LoadingSpinner />
-                Searching...
-              </>
+              <><span className="jr-spinner" /> Searching...</>
             ) : (
-              <>
-                <SearchIcon size={16} />
-                Search Jobs
-              </>
+              <><SearchIcon size={16} /> Search Jobs</>
             )}
           </button>
         </div>
-        <p style={{
-          fontSize: "0.75rem",
-          color: "var(--color-text-muted)",
-          marginTop: "var(--space-sm)",
-          marginBottom: 0,
-        }}>
-          Pre-filled with your resume skills. Modify as needed.
+        <p className="jr-search-hint">
+          Searching across Adzuna, LinkedIn, Indeed, Glassdoor &amp; remote boards
         </p>
       </div>
 
-      {/* Search Error */}
+      {/* Error */}
       {searchError && (
-        <div className="card" style={{
-          marginBottom: "var(--space-lg)",
-          background: "rgba(239, 68, 68, 0.1)",
-          borderColor: "var(--color-error)",
-        }}>
-          <p style={{ color: "var(--color-error)", margin: 0 }}>{searchError}</p>
-        </div>
+        <div className="jr-alert jr-alert-error">{searchError}</div>
       )}
 
       {/* Results */}
       {hasSearched && (
         <div>
-          <h4 style={{ marginBottom: "var(--space-md)" }}>
-            {jobs.length > 0 ? `Found ${jobs.length} matching jobs` : "No jobs found"}
-          </h4>
+          <div className="jr-results-header">
+            <h3>{jobs.length > 0 ? `${jobs.length} jobs found` : "No jobs found"}</h3>
+            {Object.keys(sourceCounts).length > 0 && (
+              <div className="jr-source-pills">
+                {Object.entries(sourceCounts).map(([source, count]) => (
+                  count > 0 && <span key={source} className="jr-source-pill">{source}: {count}</span>
+                ))}
+              </div>
+            )}
+          </div>
 
           {jobs.length === 0 && (
-            <div className="card text-center" style={{ background: "var(--color-surface-elevated)" }}>
-              <p style={{ color: "var(--color-text-muted)" }}>
-                Try adjusting your skills or search terms to find more opportunities.
-              </p>
+            <div className="jr-empty-state">
+              <SearchIcon size={40} color="#475569" />
+              <h3>No matching jobs</h3>
+              <p>Try broadening your skills or changing location.</p>
             </div>
           )}
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-md)" }}>
+          <div className="jr-job-list">
             {jobs.map((job) => (
-              <div key={job.id} className="card" style={{
-                borderLeft: appliedJobs.has(job.id) ? "4px solid var(--color-success)" : "4px solid var(--color-primary)"
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "var(--space-md)", marginBottom: "var(--space-sm)" }}>
+              <div key={job.id} className="jr-job-card">
+                <div className="jr-job-header">
                   <div>
-                    <h4 style={{ marginBottom: "var(--space-xs)" }}>{job.title}</h4>
-                    <p style={{ color: "var(--color-accent)", fontWeight: 600, marginBottom: "var(--space-xs)" }}>
-                      {job.company}
-                    </p>
-                    <div style={{ display: "flex", gap: "var(--space-md)", flexWrap: "wrap", color: "var(--color-text-muted)", fontSize: "0.875rem" }}>
-                      <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                        <LocationIcon size={14} /> {job.location}
-                      </span>
-                      {job.salary && (
-                        <span style={{ color: "var(--color-success)", fontWeight: 600 }}>
-                          {job.salary}
-                        </span>
-                      )}
-                    </div>
+                    <h4 className="jr-job-title">{job.title}</h4>
+                    <p className="jr-job-company">{job.company}</p>
                   </div>
-                  <span className="badge" style={{ background: "var(--color-primary)" }}>
-                    {job.source}
-                  </span>
+                  <span className={`jr-source-badge jr-source-${job.source.toLowerCase()}`}>{job.source}</span>
                 </div>
 
-                <p style={{ color: "var(--color-text-muted)", marginBottom: "var(--space-md)", fontSize: "0.875rem" }}>
-                  {job.description.slice(0, 200)}...
-                </p>
+                <div className="jr-job-meta">
+                  <span><LocationIcon size={14} /> {job.location}</span>
+                  {job.salary && <span className="jr-job-salary">{job.salary}</span>}
+                  {job.postedAt && <span>{job.postedAt}</span>}
+                  {job.jobType && <span>{job.jobType}</span>}
+                </div>
+
+                <p className="jr-job-desc">{job.description}</p>
 
                 {job.tags && job.tags.length > 0 && (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-xs)", marginBottom: "var(--space-md)" }}>
-                    {job.tags.slice(0, 4).map((tag, idx) => (
-                      <span key={idx} style={{
-                        background: "var(--color-surface-highlight)",
-                        padding: "2px 6px",
-                        borderRadius: "var(--radius-sm)",
-                        fontSize: "0.7rem",
-                      }}>
-                        {tag}
-                      </span>
+                  <div className="jr-tag-list">
+                    {job.tags.slice(0, 5).map((tag, idx) => (
+                      <span key={idx} className="jr-tag">{tag}</span>
                     ))}
                   </div>
                 )}
 
-                <div style={{ display: "flex", gap: "var(--space-sm)" }}>
-                  {appliedJobs.has(job.id) ? (
-                    <button className="btn btn-secondary" disabled style={{ flex: 1 }}>
-                      <CheckIcon size={16} />
-                      <span style={{ marginLeft: "var(--space-xs)" }}>Applied</span>
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleApply(job)}
-                      disabled={applyingTo === job.id}
-                      className="btn btn-primary"
-                      style={{ flex: 1 }}
-                    >
-                      {applyingTo === job.id ? (
-                        <>
-                          <LoadingSpinner />
-                          <span style={{ marginLeft: "var(--space-xs)" }}>Applying...</span>
-                        </>
-                      ) : (
-                        "Apply with Resume"
-                      )}
-                    </button>
-                  )}
-                  <a
-                    href={job.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-secondary"
-                  >
-                    View
+                <div className="jr-job-actions">
+                  <a href={job.url} target="_blank" rel="noopener noreferrer" className="jr-btn jr-btn-primary">
+                    Apply Now <ExternalLinkIcon size={14} />
                   </a>
                 </div>
               </div>
@@ -684,17 +430,209 @@ function JobSearchWithCV({ user }: JobSearchWithCVProps) {
   );
 }
 
-function LoadingSpinner() {
-  return (
-    <div style={{
-      width: "16px",
-      height: "16px",
-      border: "2px solid rgba(255,255,255,0.3)",
-      borderTopColor: "white",
-      borderRadius: "50%",
-      animation: "spin 1s linear infinite",
-    }}>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
-  );
-}
+// ─── Styles ─────────────────────────────────────────────────────────────────
+
+const dashboardStyles = `
+  /* Reset for dashboard */
+  .jr-dashboard { background: #0a0a0f; min-height: 100vh; color: #e2e8f0; }
+  .jr-dashboard *, .jr-dashboard *::before, .jr-dashboard *::after { box-sizing: border-box; }
+
+  /* Top Bar */
+  .jr-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px; height: 56px;
+    background: #0f1117; border-bottom: 1px solid #1e293b;
+    position: sticky; top: 0; z-index: 50;
+  }
+  .jr-topbar-left { display: flex; align-items: center; gap: 32px; }
+  .jr-topbar-right { display: flex; align-items: center; gap: 12px; }
+
+  .jr-brand { display: flex; align-items: center; gap: 8px; font-size: 1.125rem; font-weight: 700; color: #f1f5f9; letter-spacing: -0.02em; }
+  .jr-brand-ai { color: #3b82f6; }
+
+  /* Tabs */
+  .jr-tabs { display: flex; gap: 4px; }
+  .jr-tab {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 14px; border-radius: 8px;
+    font-size: 0.8125rem; font-weight: 500;
+    color: #94a3b8; background: transparent; border: none;
+    cursor: pointer; transition: all 0.15s ease;
+  }
+  .jr-tab:hover { color: #e2e8f0; background: #1e293b; }
+  .jr-tab-active { color: #fff; background: #1e293b; }
+
+  /* User */
+  .jr-user-pill {
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 12px 4px 4px; border-radius: 20px;
+    background: #1e293b;
+  }
+  .jr-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 700; color: white;
+  }
+  .jr-user-name { font-size: 0.8125rem; color: #cbd5e1; font-weight: 500; }
+  .jr-btn-icon {
+    width: 36px; height: 36px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent; border: none; color: #64748b;
+    cursor: pointer; transition: all 0.15s ease;
+  }
+  .jr-btn-icon:hover { background: #1e293b; color: #ef4444; }
+
+  /* Main Content */
+  .jr-main { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
+  .jr-content { animation: jr-fadeIn 0.2s ease; }
+  @keyframes jr-fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Page Header */
+  .jr-page-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .jr-page-header h1 { font-size: 1.5rem; font-weight: 700; color: #f1f5f9; margin: 0 0 4px 0; letter-spacing: -0.02em; }
+  .jr-page-header p { font-size: 0.875rem; color: #64748b; margin: 0; }
+
+  /* Status Badge */
+  .jr-status-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 20px;
+    font-size: 0.75rem; font-weight: 600;
+  }
+  .jr-status-success { background: rgba(34, 197, 94, 0.1); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.2); }
+
+  /* Cards */
+  .jr-card {
+    background: #111318; border: 1px solid #1e293b; border-radius: 12px;
+    padding: 24px; margin-bottom: 16px;
+  }
+  .jr-card-title { font-size: 0.9375rem; font-weight: 600; color: #f1f5f9; margin: 0 0 16px 0; }
+  .jr-card-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .jr-card-header-row .jr-card-title { margin: 0; }
+  .jr-card-actions { display: flex; gap: 8px; margin-top: 20px; padding-top: 16px; border-top: 1px solid #1e293b; }
+
+  /* Info Grid */
+  .jr-info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+  .jr-info-item { display: flex; flex-direction: column; gap: 4px; }
+  .jr-info-label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; }
+  .jr-info-value { font-size: 0.875rem; color: #e2e8f0; font-weight: 500; }
+
+  /* Profile Grid */
+  .jr-profile-grid { display: flex; flex-direction: column; gap: 16px; }
+
+  /* Tags */
+  .jr-tag-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .jr-tag {
+    padding: 3px 10px; border-radius: 6px;
+    font-size: 0.6875rem; font-weight: 500;
+    background: #1e293b; color: #94a3b8;
+    border: 1px solid #2d3748;
+  }
+  .jr-tag-more { color: #64748b; }
+
+  /* Buttons */
+  .jr-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 10px 18px; border-radius: 8px;
+    font-size: 0.8125rem; font-weight: 600;
+    border: none; cursor: pointer; transition: all 0.15s ease;
+    text-decoration: none;
+  }
+  .jr-btn-primary { background: #3b82f6; color: white; }
+  .jr-btn-primary:hover { background: #2563eb; }
+  .jr-btn-primary:disabled { background: #1e3a5f; color: #64748b; cursor: not-allowed; }
+  .jr-btn-secondary { background: #1e293b; color: #cbd5e1; border: 1px solid #2d3748; }
+  .jr-btn-secondary:hover { background: #2d3748; }
+
+  /* Empty State */
+  .jr-empty-state {
+    text-align: center; padding: 48px 24px;
+    background: #111318; border: 1px dashed #1e293b; border-radius: 12px;
+  }
+  .jr-empty-state h3 { font-size: 1.125rem; color: #f1f5f9; margin: 16px 0 8px; }
+  .jr-empty-state p { color: #64748b; margin: 0 0 20px; font-size: 0.875rem; }
+
+  /* Search Card */
+  .jr-search-card { margin-bottom: 24px; }
+  .jr-search-form { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+  .jr-search-field { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 200px; }
+  .jr-search-field-small { flex: 0 1 180px; min-width: 140px; }
+  .jr-search-field label { font-size: 0.75rem; color: #94a3b8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
+  .jr-input {
+    padding: 10px 14px; border-radius: 8px;
+    background: #0a0a0f; border: 1px solid #2d3748;
+    color: #e2e8f0; font-size: 0.875rem;
+    transition: border-color 0.15s ease;
+  }
+  .jr-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+  .jr-input::placeholder { color: #475569; }
+  .jr-search-btn { white-space: nowrap; height: 42px; }
+  .jr-search-hint { font-size: 0.75rem; color: #475569; margin: 12px 0 0; }
+
+  /* Spinner */
+  .jr-spinner {
+    width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white; border-radius: 50%;
+    animation: jr-spin 0.6s linear infinite; display: inline-block;
+  }
+
+  /* Results */
+  .jr-results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+  .jr-results-header h3 { font-size: 1rem; font-weight: 600; color: #f1f5f9; margin: 0; }
+  .jr-source-pills { display: flex; gap: 6px; }
+  .jr-source-pill {
+    padding: 4px 10px; border-radius: 20px;
+    font-size: 0.6875rem; font-weight: 500;
+    background: #1e293b; color: #94a3b8;
+  }
+
+  /* Alert */
+  .jr-alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 0.875rem; }
+  .jr-alert-error { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }
+
+  /* Job Cards */
+  .jr-job-list { display: flex; flex-direction: column; gap: 12px; }
+  .jr-job-card {
+    background: #111318; border: 1px solid #1e293b; border-radius: 12px;
+    padding: 20px; transition: border-color 0.15s ease;
+  }
+  .jr-job-card:hover { border-color: #2d3748; }
+  .jr-job-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+  .jr-job-title { font-size: 1rem; font-weight: 600; color: #f1f5f9; margin: 0 0 2px; }
+  .jr-job-company { font-size: 0.875rem; color: #3b82f6; font-weight: 500; margin: 0; }
+  .jr-source-badge {
+    padding: 3px 10px; border-radius: 6px;
+    font-size: 0.6875rem; font-weight: 600;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .jr-source-adzuna { background: rgba(59, 130, 246, 0.1); color: #60a5fa; }
+  .jr-source-jsearch { background: rgba(139, 92, 246, 0.1); color: #a78bfa; }
+  .jr-source-remotive { background: rgba(34, 197, 94, 0.1); color: #4ade80; }
+  .jr-job-meta {
+    display: flex; flex-wrap: wrap; gap: 12px;
+    font-size: 0.8125rem; color: #64748b; margin-bottom: 12px;
+  }
+  .jr-job-meta span { display: flex; align-items: center; gap: 4px; }
+  .jr-job-salary { color: #22c55e; font-weight: 600; }
+  .jr-job-desc { font-size: 0.8125rem; color: #94a3b8; line-height: 1.5; margin: 0 0 12px; }
+  .jr-job-actions { display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #1e293b; }
+  .jr-job-actions .jr-btn { font-size: 0.8125rem; padding: 8px 16px; }
+
+  /* Mobile */
+  @media (max-width: 768px) {
+    .jr-topbar { padding: 0 16px; }
+    .jr-topbar-left { gap: 16px; }
+    .jr-tabs { gap: 2px; }
+    .jr-tab { padding: 6px 10px; font-size: 0.75rem; }
+    .jr-tab span { display: none; }
+    .jr-user-name { display: none; }
+    .jr-main { padding: 20px 16px; }
+    .jr-page-header { flex-direction: column; gap: 8px; }
+    .jr-search-form { flex-direction: column; }
+    .jr-search-field-small { flex: 1; }
+    .jr-results-header { flex-direction: column; align-items: flex-start; }
+  }
+`;

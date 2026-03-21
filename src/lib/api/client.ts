@@ -175,3 +175,96 @@ export const authApi = {
     return !!localStorage.getItem("jobready_access_token");
   },
 };
+
+// Resume API methods
+const RESUME_API_BASE = "/api/resume";
+
+export const resumeApi = {
+  async chat(
+    message: string,
+    action: string = "chat",
+    context?: Record<string, unknown>
+  ): Promise<ApiResponse<{ reply: string; suggestions?: string[] }>> {
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("jobready_access_token")
+        : null;
+
+    try {
+      const response = await fetch(`${RESUME_API_BASE}/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ message, action, context }),
+      });
+
+      const body = await response.json();
+
+      if (!response.ok) {
+        return { error: body.detail || body.error || "Resume chat failed" };
+      }
+
+      return { data: body };
+    } catch {
+      return { error: "Network error. Please check your connection." };
+    }
+  },
+
+  async save(
+    data: Record<string, unknown>,
+    status: string = "draft"
+  ): Promise<ApiResponse<{ id: string; version: number }>> {
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("jobready_access_token")
+        : null;
+
+    try {
+      const response = await fetch(`${RESUME_API_BASE}/save`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ data, status }),
+      });
+
+      const body = await response.json();
+
+      if (!response.ok) {
+        return { error: body.detail || body.error || "Resume save failed" };
+      }
+
+      return { data: body };
+    } catch {
+      return { error: "Network error. Please check your connection." };
+    }
+  },
+
+  async getLatest(): Promise<ApiResponse<{ id: string; data: Record<string, unknown>; version: number; status: string }>> {
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("jobready_access_token")
+        : null;
+
+    try {
+      const response = await fetch(`${RESUME_API_BASE}/latest`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      const body = await response.json();
+
+      if (!response.ok) {
+        return { error: body.detail || body.error || "Failed to fetch resume" };
+      }
+
+      return { data: body };
+    } catch {
+      return { error: "Network error. Please check your connection." };
+    }
+  },
+};
