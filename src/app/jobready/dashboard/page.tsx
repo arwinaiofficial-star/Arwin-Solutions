@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import AgenticChat from "@/components/jobready/AgenticChat";
+import ResumeWizard from "@/components/jobready/ResumeWizard";
 import {
   UserIcon,
   LogoutIcon,
@@ -106,7 +106,7 @@ export default function DashboardPage() {
                   </div>
                 )}
               </div>
-              <AgenticChat onNavigateToSearch={() => setActiveTab("jobs")} />
+              <ResumeWizard onNavigateToSearch={() => setActiveTab("jobs")} />
             </div>
           )}
 
