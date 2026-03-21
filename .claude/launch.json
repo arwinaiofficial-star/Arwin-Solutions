@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "nextjs",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "/Users/ombonthala/.nvm/versions/node/v20.20.0/bin/node",
+      "runtimeArgs": ["node_modules/.bin/next", "dev", "--webpack"],
       "port": 3000
     },
     {

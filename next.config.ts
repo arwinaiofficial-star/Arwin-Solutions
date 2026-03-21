@@ -4,11 +4,6 @@ const nextConfig: NextConfig = {
   // Enable React strict mode for better development experience
   reactStrictMode: true,
 
-  // Set turbopack root to this directory (fixes worktree multi-lockfile issue)
-  turbopack: {
-    root: __dirname,
-  },
-
   // Security headers for production
   async headers() {
     return [

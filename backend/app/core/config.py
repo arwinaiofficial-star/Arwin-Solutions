@@ -25,7 +25,12 @@ class Settings(BaseSettings):
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # CORS
-    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://arwinai.com",
+        "https://www.arwinai.com",
+    ]
 
     # OpenRouter LLM
     OPENROUTER_API_KEY: str = ""

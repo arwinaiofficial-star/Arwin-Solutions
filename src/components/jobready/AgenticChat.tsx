@@ -100,8 +100,8 @@ export default function AgenticChat({ onNavigateToSearch }: AgenticChatProps) {
   useEffect(() => { inputRef.current?.focus(); }, [currentStep]);
 
   const addMsg = useCallback((role: "bot" | "user", content: string, options?: string[], inputType?: Message["inputType"], selectOptions?: string[], field?: string) => {
-    msgCounter.current += 1;
-    setMessages(prev => [...prev, { id: `m_${Date.now()}_${msgCounter.current}`, role, content, options, inputType, selectOptions, field }]);
+    const id = `m_${++msgCounter.current}`;
+    setMessages(prev => [...prev, { id, role, content, options, inputType, selectOptions, field }]);
   }, []);
 
   const generateSummaryAI = async (): Promise<string> => {
