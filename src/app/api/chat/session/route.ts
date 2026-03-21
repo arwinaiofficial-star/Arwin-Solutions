@@ -13,8 +13,17 @@ export async function GET(request: NextRequest) {
       headers: { Authorization: token },
     });
 
-    const data = await response.json();
-    return NextResponse.json(data);
+    if (!response.ok) {
+      return NextResponse.json({ session: null });
+    }
+
+    const text = await response.text();
+    try {
+      const data = JSON.parse(text);
+      return NextResponse.json(data);
+    } catch {
+      return NextResponse.json({ session: null });
+    }
   } catch {
     return NextResponse.json({ session: null });
   }
@@ -25,16 +34,26 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const token = request.headers.get("authorization");
 
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const response = await fetch(`${BACKEND_URL}/api/v1/chat/session`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(token ? { Authorization: token } : {}),
+        Authorization: token,
       },
       body: JSON.stringify(body),
     });
 
-    const data = await response.json();
+    const text = await response.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return NextResponse.json({ error: "Backend error" }, { status: 502 });
+    }
 
     if (!response.ok) {
       return NextResponse.json(

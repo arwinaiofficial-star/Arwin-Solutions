@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
@@ -26,49 +29,68 @@ export async function POST(request: NextRequest) {
     let rawText = "";
 
     if (file.type === "application/pdf") {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const pdfParse = require("pdf-parse");
-      const pdfData = await pdfParse(buffer);
-      rawText = pdfData.text;
+      try {
+        // pdf-parse doesn't have proper ESM types, use require
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const pdfParse = require("pdf-parse") as (buf: Buffer) => Promise<{ text: string }>;
+        const pdfData = await pdfParse(buffer);
+        rawText = pdfData.text;
+      } catch (pdfError) {
+        console.error("pdf-parse failed:", pdfError);
+        // Fallback: send raw buffer to backend for processing
+        rawText = buffer.toString("utf-8").replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s+/g, " ").trim();
+      }
     } else {
       // For DOCX, extract basic text
       const text = buffer.toString("utf-8");
-      // Strip XML tags for basic extraction
       rawText = text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
     }
 
     if (!rawText || rawText.trim().length < 20) {
       return NextResponse.json(
-        { error: "Could not extract text from the file. Please try a different file." },
+        { error: "Could not extract text from the file. Please try a different file or paste your CV content directly." },
         { status: 400 }
       );
     }
 
-    // Forward to backend LLM for structured extraction
+    // Try to forward to backend LLM for structured extraction
     const token = request.headers.get("authorization");
     const backendUrl = process.env.BACKEND_URL || "http://localhost:8000";
 
-    const extractResponse = await fetch(`${backendUrl}/api/v1/resume/chat`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: token } : {}),
-      },
-      body: JSON.stringify({
-        message: rawText.slice(0, 6000),
-        action: "extract_cv",
-        context: { raw_text: rawText.slice(0, 6000) },
-      }),
-    });
-
-    if (extractResponse.ok) {
-      const data = await extractResponse.json();
-      return NextResponse.json({
-        success: true,
-        rawText: rawText.slice(0, 3000),
-        extractedData: data.reply ? JSON.parse(data.reply) : null,
-        fileName: file.name,
+    try {
+      const extractResponse = await fetch(`${backendUrl}/api/v1/resume/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: token } : {}),
+        },
+        body: JSON.stringify({
+          message: rawText.slice(0, 6000),
+          action: "extract_cv",
+          context: { raw_text: rawText.slice(0, 6000) },
+        }),
       });
+
+      if (extractResponse.ok) {
+        const data = await extractResponse.json();
+        let extractedData = null;
+        if (data.reply) {
+          try {
+            extractedData = JSON.parse(data.reply);
+          } catch {
+            // Reply wasn't JSON, use as summary
+            extractedData = { summary: data.reply };
+          }
+        }
+        return NextResponse.json({
+          success: true,
+          rawText: rawText.slice(0, 3000),
+          extractedData,
+          fileName: file.name,
+        });
+      }
+    } catch (backendError) {
+      console.error("Backend extraction failed:", backendError);
     }
 
     // If backend extraction fails, return raw text for frontend processing
