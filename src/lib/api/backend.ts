@@ -22,14 +22,14 @@ if (!process.env.FASTAPI_URL && process.env.NODE_ENV === "production") {
   );
 }
 
-/** Default timeout per attempt (25s — Vercel serverless max is ~30s) */
-const ATTEMPT_TIMEOUT_MS = 25_000;
+/** Timeout per attempt (Vercel Hobby has 10s function limit — keep under that) */
+const ATTEMPT_TIMEOUT_MS = 8_000;
 
-/** Max retries for connection errors (cold start recovery) */
-const MAX_RETRIES = 2;
+/** Max retries — keep total time under 10s (8s attempt + no delay = ~8s for 1 try) */
+const MAX_RETRIES = 0;
 
-/** Delay between retries (let Render wake up) */
-const RETRY_DELAY_MS = 3_000;
+/** Delay between retries */
+const RETRY_DELAY_MS = 1_000;
 
 function isConnectionError(err: unknown): boolean {
   if (err instanceof TypeError && String(err.message).includes("fetch failed")) return true;
