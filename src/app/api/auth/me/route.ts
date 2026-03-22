@@ -4,8 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-
-const FASTAPI_URL = process.env.FASTAPI_URL || "http://localhost:8000";
+import { fetchBackend } from "@/lib/api/backend";
 
 function getAuthHeader(request: NextRequest): Record<string, string> {
   const auth = request.headers.get("authorization");
@@ -17,7 +16,7 @@ function getAuthHeader(request: NextRequest): Record<string, string> {
 
 export async function GET(request: NextRequest) {
   try {
-    const response = await fetch(`${FASTAPI_URL}/api/v1/auth/me`, {
+    const response = await fetchBackend("/api/v1/auth/me", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -47,7 +46,7 @@ export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
 
-    const response = await fetch(`${FASTAPI_URL}/api/v1/auth/me`, {
+    const response = await fetchBackend("/api/v1/auth/me", {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",

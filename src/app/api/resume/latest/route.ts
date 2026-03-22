@@ -4,8 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-
-const FASTAPI_URL = process.env.FASTAPI_URL || "http://localhost:8000";
+import { fetchBackend } from "@/lib/api/backend";
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,7 +17,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const response = await fetch(`${FASTAPI_URL}/api/v1/resume/latest`, {
+    const response = await fetchBackend("/api/v1/resume/latest", {
       headers: {
         Authorization: authHeader,
       },

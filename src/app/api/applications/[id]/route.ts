@@ -5,8 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-
-const FASTAPI_URL = process.env.FASTAPI_URL || "http://localhost:8000";
+import { fetchBackend } from "@/lib/api/backend";
 
 function getAuthHeader(request: NextRequest): Record<string, string> {
   const auth = request.headers.get("authorization");
@@ -25,7 +24,7 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const response = await fetch(`${FASTAPI_URL}/api/v1/applications/${id}`, {
+    const response = await fetchBackend(`/api/v1/applications/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", ...auth },
       body: JSON.stringify(body),
@@ -55,7 +54,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
-    const response = await fetch(`${FASTAPI_URL}/api/v1/applications/${id}`, {
+    const response = await fetchBackend(`/api/v1/applications/${id}`, {
       method: "DELETE",
       headers: { ...auth },
     });

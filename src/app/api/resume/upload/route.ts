@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { fetchBackend } from "@/lib/api/backend";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -78,10 +79,9 @@ export async function POST(request: NextRequest) {
 
     // Try backend LLM extraction
     const token = request.headers.get("authorization");
-    const backendUrl = process.env.FASTAPI_URL || process.env.BACKEND_URL || "http://localhost:8000";
 
     try {
-      const extractResponse = await fetch(`${backendUrl}/api/v1/resume/chat`, {
+      const extractResponse = await fetchBackend("/api/v1/resume/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

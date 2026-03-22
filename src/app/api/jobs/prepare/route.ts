@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import logger from "@/lib/logger";
-
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
+import { fetchBackend } from "@/lib/api/backend";
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,7 +17,7 @@ export async function POST(request: NextRequest) {
     const token = request.headers.get("authorization");
 
     // Use the resume chat endpoint with a special action
-    const response = await fetch(`${BACKEND_URL}/api/v1/resume/chat`, {
+    const response = await fetchBackend("/api/v1/resume/chat", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -6,8 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-
-const FASTAPI_URL = process.env.FASTAPI_URL || "http://localhost:8000";
+import { fetchBackend } from "@/lib/api/backend";
 
 function getAuthHeader(request: NextRequest): Record<string, string> {
   const auth = request.headers.get("authorization");
@@ -25,7 +24,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status");
     const qs = status ? `?status=${encodeURIComponent(status)}` : "";
 
-    const response = await fetch(`${FASTAPI_URL}/api/v1/applications${qs}`, {
+    const response = await fetchBackend(`/api/v1/applications${qs}`, {
       headers: { ...auth },
     });
 
@@ -50,7 +49,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const response = await fetch(`${FASTAPI_URL}/api/v1/applications`, {
+    const response = await fetchBackend("/api/v1/applications", {
       method: "POST",
       headers: { "Content-Type": "application/json", ...auth },
       body: JSON.stringify(body),

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
+import { fetchBackend } from "@/lib/api/backend";
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,7 +8,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ session: null });
     }
 
-    const response = await fetch(`${BACKEND_URL}/api/v1/chat/session`, {
+    const response = await fetchBackend("/api/v1/chat/session", {
       headers: { Authorization: token },
     });
 
@@ -38,7 +37,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const response = await fetch(`${BACKEND_URL}/api/v1/chat/session`, {
+    const response = await fetchBackend("/api/v1/chat/session", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
