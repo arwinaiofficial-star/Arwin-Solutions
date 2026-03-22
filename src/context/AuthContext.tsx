@@ -145,6 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const token = localStorage.getItem("jobready_access_token");
       if (!token) {
+        setUser(null);
         setIsLoading(false);
         return;
       }
@@ -160,10 +161,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (meResult.data) {
             await setUserWithCV(mapUserDataToProfile(meResult.data));
           } else {
+            // Refresh succeeded but /me still failed — force clean state
             authApi.logout();
+            setUser(null);
           }
         } else {
+          // Refresh failed — force clean state so login works fresh
           authApi.logout();
+          setUser(null);
         }
       }
       setIsLoading(false);
@@ -174,6 +179,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+      // Clear any previous user's state before logging in a new user
+      setUser(null);
+
       const result = await authApi.login(email, password);
       if (result.error) return { success: false, error: result.error };
       if (result.data) {
@@ -201,8 +209,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     authApi.logout();
     setUser(null);
-    // Tokens are cleared by authApi.logout()
-    // No localStorage data to clean — everything is in the DB
+    // Force a hard navigation to clear ALL component-level cached state.
+    // This prevents any stale data from the previous user leaking into
+    // the next session in the same browser.
+    if (typeof window !== "undefined") {
+      window.location.href = "/jobready/login";
+    }
   }, []);
 
   const refreshUser = useCallback(async () => {
