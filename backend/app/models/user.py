@@ -157,6 +157,7 @@ class JobApplication(Base):
         UUID(as_uuid=False), nullable=True
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     applied_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

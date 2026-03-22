@@ -379,9 +379,9 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = setTimeout(() => {
       const cv = liveCV;
-      // Save to localStorage immediately (fast)
+      // Update in-memory state immediately
       saveGeneratedCV(cv);
-      // Save to backend as draft (async, don't await)
+      // Persist to Neon DB as draft
       resumeApi.save(cv as unknown as Record<string, unknown>, "draft").then(result => {
         if (result.error) {
           console.warn("Auto-save failed:", result.error);

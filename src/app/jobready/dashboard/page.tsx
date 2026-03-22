@@ -12,7 +12,7 @@ import {
   SettingsIcon, DownloadIcon, XIcon, SendIcon, PlusIcon,
   ArrowRightIcon,
 } from "@/components/icons/Icons";
-import { authApi, resumeApi, jobPrepareApi } from "@/lib/api/client";
+import { authApi, resumeApi, jobPrepareApi, applicationsApi, JobApplicationData } from "@/lib/api/client";
 
 type ViewType = "resume" | "jobs" | "tracker" | "settings" | "coverletter";
 
@@ -39,6 +39,24 @@ interface PrepareData {
   missingSkills: string[];
   matchScore: number;
   coverLetterSnippet: string;
+}
+
+// ─── DB ↔ Frontend mappers ───────────────────────────────────────────────────
+
+function dbAppToTrackedJob(app: JobApplicationData): TrackedJob {
+  return {
+    id: app.id,
+    title: app.job_title,
+    company: app.company,
+    url: app.job_url || "",
+    location: app.location || undefined,
+    salary: app.salary || undefined,
+    source: app.source || undefined,
+    status: (app.status as TrackedJob["status"]) || "saved",
+    addedAt: app.applied_at,
+    notes: app.notes || undefined,
+    description: app.description || undefined,
+  };
 }
 
 // ─── Toast System ────────────────────────────────────────────────────────────
@@ -76,15 +94,22 @@ export default function DashboardPage() {
   const [resumeData, setResumeData] = useState<Record<string, unknown>>({});
   const wizardHandleRef = useRef<ResumeWizardHandle | null>(null);
 
-  // Load tracked jobs from localStorage
-  useEffect(() => {
-    setTrackedJobs(JSON.parse(localStorage.getItem("jr_tracked") || "[]"));
-  }, []);
+  // Load tracked jobs from database (not localStorage)
+  const [trackedJobsLoading, setTrackedJobsLoading] = useState(true);
 
-  // Persist tracked jobs
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    applicationsApi.list().then(result => {
+      if (result.data) {
+        setTrackedJobs(result.data.map(dbAppToTrackedJob));
+      }
+      setTrackedJobsLoading(false);
+    });
+  }, [isAuthenticated]);
+
+  // Update tracked jobs in DB
   const updateTrackedJobs = useCallback((jobs: TrackedJob[]) => {
     setTrackedJobs(jobs);
-    localStorage.setItem("jr_tracked", JSON.stringify(jobs));
   }, []);
 
   useEffect(() => {
@@ -110,21 +135,28 @@ export default function DashboardPage() {
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
-  const saveToTracker = useCallback((job: JobResult) => {
-    const tracked: TrackedJob[] = JSON.parse(localStorage.getItem("jr_tracked") || "[]");
-    if (tracked.find(t => t.id === job.id)) {
+  const saveToTracker = useCallback(async (job: JobResult) => {
+    if (trackedJobs.find(t => t.title === job.title && t.company === job.company)) {
       addToast("Already in tracker", "info");
       return;
     }
-    const updated = [...tracked, {
-      id: job.id, title: job.title, company: job.company, url: job.url,
-      location: job.location, salary: job.salary, source: job.source,
-      status: "saved" as const, addedAt: new Date().toISOString(),
-      notes: "", description: job.description,
-    }];
-    updateTrackedJobs(updated);
-    addToast(`Saved "${job.title}" to tracker`, "success");
-  }, [addToast, updateTrackedJobs]);
+    const result = await applicationsApi.create({
+      job_title: job.title,
+      company: job.company,
+      location: job.location,
+      job_url: job.url,
+      salary: job.salary,
+      source: job.source,
+      status: "saved",
+      description: job.description,
+    });
+    if (result.data) {
+      setTrackedJobs(prev => [dbAppToTrackedJob(result.data!), ...prev]);
+      addToast(`Saved "${job.title}" to tracker`, "success");
+    } else {
+      addToast(result.error || "Failed to save", "error");
+    }
+  }, [addToast, trackedJobs]);
 
   const openCoverLetter = useCallback((job: JobResult, text: string) => {
     setCoverLetterJob(job);
@@ -826,23 +858,35 @@ function Tracker({
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [noteText, setNoteText] = useState("");
 
-  const moveJob = (id: string, status: TrackedJob["status"]) => {
-    const updated = trackedJobs.map(j => j.id === id ? { ...j, status } : j);
-    onUpdate(updated);
-    addToast(`Moved to ${status}`, "success");
+  const moveJob = async (id: string, status: TrackedJob["status"]) => {
+    const result = await applicationsApi.update(id, { status });
+    if (result.data) {
+      onUpdate(trackedJobs.map(j => j.id === id ? { ...j, status } : j));
+      addToast(`Moved to ${status}`, "success");
+    } else {
+      addToast(result.error || "Failed to update", "error");
+    }
   };
 
-  const removeJob = (id: string) => {
-    const updated = trackedJobs.filter(j => j.id !== id);
-    onUpdate(updated);
-    addToast("Removed from tracker", "info");
+  const removeJob = async (id: string) => {
+    const result = await applicationsApi.remove(id);
+    if (!result.error) {
+      onUpdate(trackedJobs.filter(j => j.id !== id));
+      addToast("Removed from tracker", "info");
+    } else {
+      addToast(result.error || "Failed to remove", "error");
+    }
   };
 
-  const saveNote = (id: string) => {
-    const updated = trackedJobs.map(j => j.id === id ? { ...j, notes: noteText } : j);
-    onUpdate(updated);
-    setEditingNote(null);
-    addToast("Note saved", "success");
+  const saveNote = async (id: string) => {
+    const result = await applicationsApi.update(id, { notes: noteText });
+    if (result.data) {
+      onUpdate(trackedJobs.map(j => j.id === id ? { ...j, notes: noteText } : j));
+      setEditingNote(null);
+      addToast("Note saved", "success");
+    } else {
+      addToast(result.error || "Failed to save note", "error");
+    }
   };
 
   const startEditNote = (job: TrackedJob) => {
@@ -1096,11 +1140,13 @@ function SettingsPanel({
     setPwSaving(false);
   };
 
-  const exportData = () => {
+  const exportData = async () => {
+    // Fetch fresh from DB
+    const appsResult = await applicationsApi.list();
     const data = {
       profile: { name: user.name, email: user.email, phone: user.phone, location: user.location },
       resume: user.cvData,
-      applications: JSON.parse(localStorage.getItem("jr_tracked") || "[]"),
+      applications: appsResult.data || [],
       exportedAt: new Date().toISOString(),
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });

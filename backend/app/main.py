@@ -12,6 +12,7 @@ from app.api.health import router as health_router
 from app.api.resume import router as resume_router
 from app.api.social_auth import router as social_auth_router
 from app.api.chat_session import router as chat_session_router
+from app.api.job_applications import router as job_applications_router
 
 
 @asynccontextmanager
@@ -46,6 +47,7 @@ app.include_router(auth_router, prefix=settings.API_PREFIX)
 app.include_router(social_auth_router, prefix=settings.API_PREFIX)
 app.include_router(resume_router, prefix=settings.API_PREFIX)
 app.include_router(chat_session_router, prefix=settings.API_PREFIX)
+app.include_router(job_applications_router, prefix=settings.API_PREFIX)
 
 
 @app.get("/")

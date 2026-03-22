@@ -10,7 +10,8 @@ import {
 } from "react";
 import { authApi, resumeApi, UserData } from "@/lib/api/client";
 
-// Re-export types that the rest of the app uses
+// ─── Shared types ───────────────────────────────────────────────────────────
+
 export interface GeneratedCV {
   id: string;
   personalInfo: {
@@ -48,24 +49,6 @@ export interface Education {
   gpa?: string;
 }
 
-export interface Application {
-  id: string;
-  jobId: string;
-  jobTitle: string;
-  company: string;
-  location: string;
-  salary?: string;
-  appliedAt: string;
-  status:
-    | "pending"
-    | "submitted"
-    | "viewed"
-    | "shortlisted"
-    | "rejected"
-    | "interview";
-  cvUsed: string;
-}
-
 export interface UserProfile {
   id: string;
   email: string;
@@ -82,29 +65,26 @@ export interface UserProfile {
   createdAt: string;
 }
 
+// ─── Context type ───────────────────────────────────────────────────────────
+// NOTE: Applications/tracked jobs are NO LONGER in AuthContext.
+// They live in the database, accessed via applicationsApi in the dashboard.
+// AuthContext handles ONLY: auth state, user profile, and CV data.
+
 interface AuthContextType {
   user: UserProfile | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  applications: Application[];
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signup: (
-    email: string,
-    password: string,
-    name: string
-  ) => Promise<{ success: boolean; error?: string }>;
+  signup: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   updateProfile: (data: Partial<UserProfile>) => void;
   saveGeneratedCV: (cv: GeneratedCV) => void;
-  addApplication: (app: Omit<Application, "id" | "appliedAt">) => void;
-  updateApplicationStatus: (
-    appId: string,
-    status: Application["status"]
-  ) => void;
   refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
 function mapUserDataToProfile(data: UserData): UserProfile {
   return {
@@ -115,78 +95,47 @@ function mapUserDataToProfile(data: UserData): UserProfile {
     location: data.location || undefined,
     is_active: data.is_active,
     cvGenerated: data.has_resume,
-    cvData: null, // Will be loaded from DB or localStorage
+    cvData: null,
     createdAt: data.created_at,
   };
 }
 
-function getStoredApplications(): Application[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const stored = localStorage.getItem("jobready_applications");
-    return stored ? JSON.parse(stored) : [];
-  } catch {
-    return [];
-  }
-}
-
-function getStoredCV(): GeneratedCV | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const stored = localStorage.getItem("jobready_cv_data");
-    return stored ? JSON.parse(stored) : null;
-  } catch {
-    return null;
-  }
-}
-
 /**
- * Load CV data from the best available source:
- * 1. Try localStorage first (faster, no network)
- * 2. If not in localStorage but user has_resume, fetch from backend DB
- * 3. Cache the DB result back into localStorage for next time
+ * Load CV data — always from DB (source of truth).
+ * Uses localStorage only as a fast cache layer.
  */
 async function loadCVData(hasResume: boolean): Promise<GeneratedCV | null> {
-  // 1. Try localStorage
-  const localCV = getStoredCV();
-  if (localCV) return localCV;
+  if (!hasResume) return null;
 
-  // 2. If backend says user has a resume, fetch it
-  if (hasResume) {
-    try {
-      const result = await resumeApi.getLatest();
-      if (result.data?.data) {
-        const cvData = result.data.data as unknown as GeneratedCV;
-        // Cache to localStorage for faster next load
-        localStorage.setItem("jobready_cv_data", JSON.stringify(cvData));
-        return cvData;
-      }
-    } catch {
-      // Silently fail — user can still build a new resume
+  // Always fetch from DB — it's the source of truth
+  try {
+    const result = await resumeApi.getLatest();
+    if (result.data?.data) {
+      const cvData = result.data.data as unknown as GeneratedCV;
+      return cvData;
     }
+  } catch {
+    // Network error — can't load, user starts fresh
   }
 
   return null;
 }
 
+// ─── Provider ───────────────────────────────────────────────────────────────
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [applications, setApplications] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Helper: set user profile with CV data loaded from best source
   const setUserWithCV = useCallback(async (profile: UserProfile) => {
-    // Set user immediately (don't block on CV load)
     setUser(profile);
-
-    // Then load CV data asynchronously
     const cvData = await loadCVData(profile.cvGenerated ?? false);
     if (cvData) {
       setUser(prev => prev ? { ...prev, cvGenerated: true, cvData } : prev);
     }
   }, []);
 
-  // On mount, check if we have a valid token and load user
+  // On mount: validate token and load user
   useEffect(() => {
     const init = async () => {
       if (typeof window === "undefined") {
@@ -200,60 +149,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Try to get current user with existing token
       const result = await authApi.getMe();
       if (result.data) {
-        const profile = mapUserDataToProfile(result.data);
-        setApplications(getStoredApplications());
-        await setUserWithCV(profile);
+        await setUserWithCV(mapUserDataToProfile(result.data));
       } else {
-        // Token might be expired, try refresh
+        // Token expired — try refresh
         const refreshResult = await authApi.refreshToken();
         if (refreshResult.data) {
           const meResult = await authApi.getMe();
           if (meResult.data) {
-            const profile = mapUserDataToProfile(meResult.data);
-            setApplications(getStoredApplications());
-            await setUserWithCV(profile);
+            await setUserWithCV(mapUserDataToProfile(meResult.data));
           } else {
             authApi.logout();
           }
         } else {
-          // Both failed, clear tokens
           authApi.logout();
         }
       }
       setIsLoading(false);
     };
-
     init();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Persist applications to localStorage
-  useEffect(() => {
-    if (typeof window !== "undefined" && applications.length > 0) {
-      localStorage.setItem(
-        "jobready_applications",
-        JSON.stringify(applications)
-      );
-    }
-  }, [applications]);
-
   const login = useCallback(
-    async (
-      email: string,
-      password: string
-    ): Promise<{ success: boolean; error?: string }> => {
+    async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
       const result = await authApi.login(email, password);
-      if (result.error) {
-        return { success: false, error: result.error };
-      }
+      if (result.error) return { success: false, error: result.error };
       if (result.data) {
-        const profile = mapUserDataToProfile(result.data.user);
-        setApplications(getStoredApplications());
-        // Load CV from DB if available (critical for returning users)
-        await setUserWithCV(profile);
+        await setUserWithCV(mapUserDataToProfile(result.data.user));
         return { success: true };
       }
       return { success: false, error: "Unknown error" };
@@ -262,15 +186,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signup = useCallback(
-    async (
-      email: string,
-      password: string,
-      name: string
-    ): Promise<{ success: boolean; error?: string }> => {
+    async (email: string, password: string, name: string): Promise<{ success: boolean; error?: string }> => {
       const result = await authApi.register(email, password, name);
-      if (result.error) {
-        return { success: false, error: result.error };
-      }
+      if (result.error) return { success: false, error: result.error };
       if (result.data) {
         setUser(mapUserDataToProfile(result.data.user));
         return { success: true };
@@ -283,20 +201,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     authApi.logout();
     setUser(null);
-    setApplications([]);
-    // Note: We keep jobready_cv_data in localStorage as a cache.
-    // On next login, loadCVData() will use it or fetch from DB.
-    // Only clear the applications which are purely local.
-    localStorage.removeItem("jobready_applications");
-    // Don't remove CV data — it's a cache, not auth state
-    // localStorage.removeItem("jobready_cv_data");
+    // Tokens are cleared by authApi.logout()
+    // No localStorage data to clean — everything is in the DB
   }, []);
 
   const refreshUser = useCallback(async () => {
     const result = await authApi.getMe();
     if (result.data) {
-      const profile = mapUserDataToProfile(result.data);
-      await setUserWithCV(profile);
+      await setUserWithCV(mapUserDataToProfile(result.data));
     }
   }, [setUserWithCV]);
 
@@ -304,7 +216,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (data: Partial<UserProfile>) => {
       if (user) {
         setUser({ ...user, ...data });
-        // Also update server-side if name/phone/location changed
         const serverUpdate: Record<string, string> = {};
         if (data.name) serverUpdate.name = data.name;
         if (data.phone) serverUpdate.phone = data.phone;
@@ -320,34 +231,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const saveGeneratedCV = useCallback(
     (cv: GeneratedCV) => {
       if (user) {
-        const updated = { ...user, cvGenerated: true, cvData: cv };
-        setUser(updated);
-        // Persist to localStorage as cache
-        localStorage.setItem("jobready_cv_data", JSON.stringify(cv));
+        setUser(prev => prev ? { ...prev, cvGenerated: true, cvData: cv } : prev);
       }
     },
     [user]
-  );
-
-  const addApplication = useCallback(
-    (app: Omit<Application, "id" | "appliedAt">) => {
-      const newApp: Application = {
-        ...app,
-        id: `app_${Date.now()}`,
-        appliedAt: new Date().toISOString(),
-      };
-      setApplications((prev) => [...prev, newApp]);
-    },
-    []
-  );
-
-  const updateApplicationStatus = useCallback(
-    (appId: string, status: Application["status"]) => {
-      setApplications((prev) =>
-        prev.map((app) => (app.id === appId ? { ...app, status } : app))
-      );
-    },
-    []
   );
 
   return (
@@ -356,14 +243,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isLoading,
         isAuthenticated: !!user,
-        applications,
         login,
         signup,
         logout,
         updateProfile,
         saveGeneratedCV,
-        addApplication,
-        updateApplicationStatus,
         refreshUser,
       }}
     >

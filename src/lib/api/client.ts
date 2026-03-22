@@ -463,6 +463,103 @@ export const socialAuthApi = {
   },
 };
 
+// ─── Job Applications (DB-backed, replaces localStorage) ────────────────────
+
+export interface JobApplicationData {
+  id: string;
+  user_id: string;
+  job_title: string;
+  company: string;
+  location: string | null;
+  job_url: string | null;
+  salary: string | null;
+  source: string | null;
+  status: string;
+  resume_id: string | null;
+  notes: string | null;
+  description: string | null;
+  applied_at: string;
+  updated_at: string;
+}
+
+export const applicationsApi = {
+  async list(status?: string): Promise<ApiResponse<JobApplicationData[]>> {
+    try {
+      const qs = status ? `?status=${encodeURIComponent(status)}` : "";
+      const response = await authenticatedFetch(`/api/applications${qs}`, {});
+      const body = await response.json();
+      if (!response.ok) {
+        return { error: body.error || "Failed to load applications" };
+      }
+      return { data: body };
+    } catch {
+      return { error: "Network error" };
+    }
+  },
+
+  async create(data: {
+    job_title: string;
+    company: string;
+    location?: string;
+    job_url?: string;
+    salary?: string;
+    source?: string;
+    status?: string;
+    notes?: string;
+    description?: string;
+  }): Promise<ApiResponse<JobApplicationData>> {
+    try {
+      const response = await authenticatedFetch("/api/applications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        return { error: body.error || "Failed to save application" };
+      }
+      return { data: body };
+    } catch {
+      return { error: "Network error" };
+    }
+  },
+
+  async update(
+    id: string,
+    data: { status?: string; notes?: string; job_url?: string; salary?: string }
+  ): Promise<ApiResponse<JobApplicationData>> {
+    try {
+      const response = await authenticatedFetch(`/api/applications/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        return { error: body.error || "Failed to update application" };
+      }
+      return { data: body };
+    } catch {
+      return { error: "Network error" };
+    }
+  },
+
+  async remove(id: string): Promise<ApiResponse<void>> {
+    try {
+      const response = await authenticatedFetch(`/api/applications/${id}`, {
+        method: "DELETE",
+      });
+      if (response.status === 204 || response.ok) {
+        return { data: undefined };
+      }
+      const body = await response.json();
+      return { error: body.error || "Failed to delete application" };
+    } catch {
+      return { error: "Network error" };
+    }
+  },
+};
+
 // ─── Jobs Prepare to Apply ──────────────────────────────────────────────────
 
 export const jobPrepareApi = {

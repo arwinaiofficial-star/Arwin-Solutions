@@ -135,47 +135,63 @@ async def get_latest_resume(db: AsyncSession, user_id: str) -> Resume | None:
     return result.scalars().first()
 
 
-EXTRACT_CV_PROMPT = """You are an expert CV parser. Extract structured data from the raw text of a CV/resume.
-Return a JSON object with these fields (use empty string/array if not found):
+EXTRACT_CV_PROMPT = """You are an expert CV/resume parser. Your job is to extract EVERY piece of structured data from the raw text below.
+
+IMPORTANT RULES:
+- Extract ALL education entries — degrees, diplomas, certifications, bootcamps, courses
+- Extract ALL work experiences with bullet-point achievements
+- For education: always extract the degree name, institution name, location, graduation year, and GPA/grade if mentioned
+- For experiences: extract start/end dates (use "Present" if current), and convert bullet points into highlights array
+- For skills: extract technical skills, soft skills, tools, frameworks, languages — everything mentioned
+- If a professional summary or objective is present, extract it verbatim
+- If no summary exists, leave it as empty string — do NOT invent one
+
+Return a JSON object with EXACTLY these fields (use empty string or empty array if not found):
 {
-  "fullName": "string",
-  "email": "string",
-  "phone": "string",
-  "location": "string",
-  "linkedIn": "string",
-  "summary": "string",
-  "skills": ["string"],
-  "yearsOfExperience": "string",
+  "fullName": "string — candidate's full name",
+  "email": "string — email address",
+  "phone": "string — phone number with country code if present",
+  "location": "string — city, state/country",
+  "linkedIn": "string — LinkedIn URL if present",
+  "portfolio": "string — portfolio/website URL if present",
+  "summary": "string — professional summary/objective if present, else empty string",
+  "skills": ["skill1", "skill2", "..."],
+  "yearsOfExperience": "string — e.g. '5 years' or 'Entry level'",
   "experiences": [
     {
-      "title": "string",
-      "company": "string",
-      "location": "string",
-      "startDate": "string",
-      "endDate": "string",
-      "highlights": ["string"]
+      "title": "Job Title",
+      "company": "Company Name",
+      "location": "City, State/Country",
+      "startDate": "MMM YYYY or YYYY",
+      "endDate": "MMM YYYY or Present",
+      "highlights": ["Achievement or responsibility 1", "Achievement 2"]
     }
   ],
   "education": [
     {
-      "degree": "string",
-      "institution": "string",
-      "graduationYear": "string"
+      "degree": "Full degree name (e.g. Bachelor of Science in Computer Science)",
+      "institution": "University/College/School name",
+      "location": "City, State/Country of institution",
+      "graduationYear": "YYYY or expected YYYY",
+      "gpa": "GPA or grade if mentioned, else empty string"
     }
   ],
-  "certifications": ["string"],
-  "languages": ["string"]
+  "certifications": ["Certification name — Issuing body (Year)"],
+  "languages": ["Language (Proficiency level)"]
 }
-Return ONLY the JSON, no markdown formatting."""
+
+Return ONLY valid JSON. No markdown, no code blocks, no explanation."""
 
 
 async def extract_cv_from_text(raw_text: str) -> dict:
     """Extract structured CV data from raw PDF/document text using LLM."""
+    # Use up to 8000 chars to capture education that often appears at the end
+    text_chunk = raw_text[:8000]
     messages = [
         {"role": "system", "content": EXTRACT_CV_PROMPT},
-        {"role": "user", "content": f"Extract CV data from this text:\n\n{raw_text[:6000]}"},
+        {"role": "user", "content": f"Extract ALL data from this CV:\n\n{text_chunk}"},
     ]
-    result = await llm_chat(messages, temperature=0.1, max_tokens=2048)
+    result = await llm_chat(messages, temperature=0.1, max_tokens=3000)
 
     # Parse the JSON response
     import json
