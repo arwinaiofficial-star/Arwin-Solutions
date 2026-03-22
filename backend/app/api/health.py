@@ -14,7 +14,7 @@ router = APIRouter(tags=["Health"])
 _start_time = time.time()
 
 
-@router.get("/health")
+@router.api_route("/health", methods=["GET", "HEAD"])
 async def health_check():
     """Health check with service status."""
     checks = {}
