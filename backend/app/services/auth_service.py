@@ -160,7 +160,7 @@ class AuthService:
         This ensures returning users can restore their progress.
         """
         result = await self.db.execute(
-            select(Resume).where(Resume.user_id == user.id)
+            select(Resume).where(Resume.user_id == user.id).limit(1)
         )
         has_resume = result.scalar_one_or_none() is not None
 

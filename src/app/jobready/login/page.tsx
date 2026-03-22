@@ -11,6 +11,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [retryCountdown, setRetryCountdown] = useState(0);
   const { login, isAuthenticated } = useAuth();
   const router = useRouter();
 
@@ -27,17 +28,40 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setIsLoading(true);
-    try {
+    setRetryCountdown(0);
+
+    const attemptLogin = async (attemptsLeft: number): Promise<void> => {
       const result = await login(email, password);
       if (result.success) {
         router.push("/jobready/dashboard");
-      } else {
-        setError(result.error || "Invalid email or password.");
+        return;
       }
+      // Backend cold-start: retry up to 2 times with 30s countdown
+      if (result.error?.includes("connect to backend") && attemptsLeft > 0) {
+        setError("Backend is waking up, retrying in 30 seconds…");
+        let secs = 30;
+        setRetryCountdown(secs);
+        await new Promise<void>((resolve) => {
+          const interval = setInterval(() => {
+            secs--;
+            setRetryCountdown(secs);
+            if (secs <= 0) { clearInterval(interval); resolve(); }
+          }, 1000);
+        });
+        setError("");
+        setRetryCountdown(0);
+        return attemptLogin(attemptsLeft - 1);
+      }
+      setError(result.error || "Invalid email or password.");
+    };
+
+    try {
+      await attemptLogin(2);
     } catch {
       setError("An error occurred. Please try again.");
     } finally {
       setIsLoading(false);
+      setRetryCountdown(0);
     }
   };
 
@@ -75,7 +99,7 @@ export default function LoginPage() {
               />
             </div>
             <button type="submit" className="auth-submit" disabled={isLoading}>
-              {isLoading ? "Signing in..." : "Sign In"}
+              {retryCountdown > 0 ? `Retrying in ${retryCountdown}s…` : isLoading ? "Signing in..." : "Sign In"}
             </button>
           </form>
 
