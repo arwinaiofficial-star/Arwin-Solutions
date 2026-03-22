@@ -784,37 +784,47 @@ function JobBoard({
       </div>
 
       {!hasSearched && !skills && (
-        <div className="jb-empty"><BriefcaseIcon size={40} color="#475569" /><p>Build your resume first, then your skills auto-search for matching jobs.</p></div>
+        <div className="jb-empty">
+          <BriefcaseIcon size={40} color="#475569" />
+          <p style={{ fontWeight: 600, marginBottom: 4 }}>No resume detected</p>
+          <p style={{ color: "#64748b", fontSize: "0.8125rem" }}>Build your resume in the Resume tab first. Your skills will be used to auto-search for matching jobs across multiple platforms.</p>
+        </div>
       )}
       {hasSearched && jobs.length === 0 && <div className="jb-empty"><p>No jobs found. Try different keywords.</p></div>}
 
       {hasSearched && jobs.length > 0 && (
-        <div className="jb-result-count">{jobs.length} jobs found from multiple sources</div>
+        <div className="jb-result-count">
+          <strong>{jobs.length}</strong> jobs found
+          <span className="jb-result-sources"> from {[...new Set(jobs.map(j => j.source))].join(", ")}</span>
+        </div>
       )}
 
       <div className="jb-results">
-        {jobs.map(job => {
+        {[...jobs].sort((a, b) => getMatchScore(b) - getMatchScore(a)).map(job => {
           const score = getMatchScore(job);
           const isExpanded = expandedJob === job.id;
+          const descText = job.description || "";
+          const truncatedDesc = descText.length > 150 ? descText.slice(0, 150) + "..." : descText;
           return (
-            <div key={job.id} className={`jb-card ${isExpanded ? "jb-card-exp" : ""}`}>
+            <div key={job.id} className={`jb-card ${isExpanded ? "jb-card-exp" : ""} ${score >= 70 ? "jb-card-hi" : score >= 40 ? "jb-card-md" : ""}`}>
               <div className="jb-card-top">
                 <div className="jb-card-info">
                   <h4>{job.title}</h4>
                   <span className="jb-company">{job.company}</span>
                   <div className="jb-meta">
                     <span><LocationIcon size={12} /> {job.location}</span>
-                    {job.salary && <span>💰 {job.salary}</span>}
+                    {job.salary && <span className="jb-salary">💰 {job.salary}</span>}
+                    {job.jobType && <span className="jb-type">📋 {job.jobType}</span>}
                     {job.postedAt && <span>🕐 {job.postedAt}</span>}
                     <span className="jb-source">{job.source}</span>
                   </div>
                 </div>
                 <div className="jb-card-right">
-                  {score > 0 && <span className={`jb-score ${score >= 60 ? "jb-score-hi" : score >= 30 ? "jb-score-md" : "jb-score-lo"}`}>{score}% match</span>}
+                  <span className={`jb-score ${score >= 70 ? "jb-score-hi" : score >= 40 ? "jb-score-md" : "jb-score-lo"}`}>{score}% match</span>
                 </div>
               </div>
-              <p className="jb-desc">{job.description?.slice(0, 200)}...</p>
-              {job.tags?.length ? <div className="jb-tags">{job.tags.slice(0, 6).map(t => <span key={t} className="jb-tag">{t}</span>)}</div> : null}
+              <p className="jb-desc">{truncatedDesc}</p>
+              {job.tags?.length ? <div className="jb-tags">{job.tags.slice(0, 8).map(t => <span key={t} className="jb-tag">{t}</span>)}</div> : null}
               <div className="jb-actions">
                 <button className="jb-prepare-btn" onClick={() => setPrepareJob(job)}>
                   🚀 Prepare to Apply
@@ -1429,29 +1439,36 @@ const workspaceCSS = `
   .jb-search-btn:disabled { opacity:0.6; cursor:not-allowed; }
   .jb-empty { text-align:center; padding:48px 20px; color:#475569; }
   .jb-empty p { margin:12px 0 0; font-size:0.875rem; }
-  .jb-result-count { font-size:0.75rem; color:#64748b; margin-bottom:12px; padding:8px 12px; background:#0a0c12; border-radius:8px; border:1px solid #1a1f2e; }
+  .jb-result-count { font-size:0.8125rem; color:#94a3b8; margin-bottom:12px; padding:10px 14px; background:#0a0c12; border-radius:8px; border:1px solid #1a1f2e; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .jb-result-count strong { color:#e2e8f0; }
+  .jb-result-sources { color:#64748b; font-size:0.75rem; }
   .jb-results { display:flex; flex-direction:column; gap:10px; }
   .jb-card { background:#0c0e14; border:1px solid #1a1f2e; border-radius:10px; padding:16px; transition:border-color 0.2s; }
   .jb-card:hover { border-color:#2d3748; }
   .jb-card-exp { border-color:#3b82f6; }
+  .jb-card-hi { border-left:3px solid #22c55e; }
+  .jb-card-md { border-left:3px solid #eab308; }
   .jb-card-top { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
   .jb-card-info h4 { margin:0 0 2px; font-size:0.9375rem; color:#f1f5f9; }
   .jb-company { font-size:0.8125rem; color:#3b82f6; }
   .jb-meta { display:flex; gap:12px; margin-top:6px; font-size:0.6875rem; color:#64748b; flex-wrap:wrap; }
   .jb-meta span { display:flex; align-items:center; gap:3px; }
   .jb-source { background:#111827; padding:1px 8px; border-radius:4px; }
-  .jb-score { padding:3px 10px; border-radius:12px; font-size:0.6875rem; font-weight:600; }
-  .jb-score-hi { background:rgba(34,197,94,0.1); color:#22c55e; }
-  .jb-score-md { background:rgba(234,179,8,0.1); color:#eab308; }
-  .jb-score-lo { background:rgba(239,68,68,0.1); color:#f87171; }
+  .jb-score { padding:5px 12px; border-radius:12px; font-size:0.75rem; font-weight:700; letter-spacing:0.02em; white-space:nowrap; }
+  .jb-score-hi { background:rgba(34,197,94,0.15); color:#22c55e; border:1px solid rgba(34,197,94,0.3); }
+  .jb-score-md { background:rgba(234,179,8,0.15); color:#eab308; border:1px solid rgba(234,179,8,0.3); }
+  .jb-score-lo { background:rgba(239,68,68,0.1); color:#f87171; border:1px solid rgba(239,68,68,0.2); }
+  .jb-salary { color:#22c55e !important; font-weight:600; }
+  .jb-type { color:#8b5cf6 !important; }
   .jb-desc { font-size:0.8125rem; color:#94a3b8; margin:10px 0; line-height:1.5; }
-  .jb-tags { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px; }
-  .jb-tag { padding:2px 10px; border-radius:6px; background:#111827; border:1px solid #1e293b; font-size:0.6875rem; color:#94a3b8; }
+  .jb-tags { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+  .jb-tag { padding:4px 12px; border-radius:6px; background:#111827; border:1px solid #1e293b; font-size:0.6875rem; color:#94a3b8; transition:border-color 0.15s; }
+  .jb-tag:hover { border-color:#3b82f6; color:#cbd5e1; }
   .jb-actions { display:flex; gap:8px; flex-wrap:wrap; }
-  .jb-prepare-btn { display:inline-flex; align-items:center; gap:4px; padding:7px 16px; border-radius:8px; background:linear-gradient(135deg,#3b82f6,#8b5cf6); border:none; color:#fff; font-size:0.75rem; font-weight:600; cursor:pointer; transition:all 0.15s; }
-  .jb-prepare-btn:hover { opacity:0.9; transform:translateY(-1px); }
-  .jb-apply-btn { display:inline-flex; align-items:center; gap:4px; padding:7px 16px; border-radius:8px; background:#22c55e; color:#fff; font-size:0.75rem; font-weight:600; text-decoration:none; transition:all 0.15s; }
-  .jb-apply-btn:hover { background:#16a34a; }
+  .jb-prepare-btn { display:inline-flex; align-items:center; gap:6px; padding:9px 20px; border-radius:8px; background:linear-gradient(135deg,#3b82f6,#8b5cf6); border:none; color:#fff; font-size:0.8125rem; font-weight:600; cursor:pointer; transition:all 0.15s; box-shadow:0 2px 8px rgba(59,130,246,0.25); }
+  .jb-prepare-btn:hover { opacity:0.9; transform:translateY(-1px); box-shadow:0 4px 12px rgba(59,130,246,0.35); }
+  .jb-apply-btn { display:inline-flex; align-items:center; gap:4px; padding:7px 16px; border-radius:8px; background:transparent; border:1px solid #22c55e; color:#22c55e; font-size:0.75rem; font-weight:600; text-decoration:none; transition:all 0.15s; }
+  .jb-apply-btn:hover { background:rgba(34,197,94,0.1); }
   .jb-save-btn, .jb-detail-btn { padding:7px 14px; border-radius:8px; background:transparent; border:1px solid #1e293b; color:#94a3b8; font-size:0.75rem; cursor:pointer; transition:all 0.15s; }
   .jb-save-btn:hover, .jb-detail-btn:hover { border-color:#3b82f6; color:#60a5fa; }
   .jb-full-desc { margin-top:12px; padding-top:12px; border-top:1px solid #1a1f2e; }
@@ -1544,28 +1561,80 @@ const workspaceCSS = `
   .sp-btn-outline { padding:8px 18px; border-radius:8px; background:transparent; border:1px solid #1e293b; color:#94a3b8; font-size:0.8125rem; cursor:pointer; }
   .sp-btn-outline:hover { border-color:#3b82f6; color:#60a5fa; }
 
-  /* Mobile */
+  /* ─── Mobile: Tablet ─── */
   @media (max-width: 768px) {
-    .ws-sidebar { width:100%; height:52px; flex-direction:row; border-right:none; border-top:1px solid #1a1f2e; order:2; justify-content:space-around; padding:0; position:fixed; bottom:0; left:0; z-index:20; background:#0a0c12; }
-    .ws-logo { display:none; }
-    .ws-side-active::before { display:none; }
-    .ws-main { order:1; height:calc(100vh - 52px); }
-    .ws-copilot { display:none; }
-    .ws-panel { padding:16px; }
-    .tk-board { grid-template-columns:1fr 1fr; }
-    .ws-user-pill span { display:none; }
-    .jb-search { flex-direction:column; }
-    .jb-field, .jb-field-sm { min-width:100%; }
-    .cl-fields { flex-direction:column; }
-    .cl-field { min-width:100%; }
-    .modal-prepare { max-width:100%; margin:0; border-radius:12px; }
-    .prep-tabs { overflow-x:auto; }
-    .prep-tabs button { white-space:nowrap; }
+    .ws { flex-direction: column; }
+    .ws-sidebar {
+      width: 100%; height: 52px; flex-direction: row;
+      border-right: none; border-top: 1px solid #1a1f2e;
+      order: 2; justify-content: space-around; padding: 0;
+      position: fixed; bottom: 0; left: 0; z-index: 20;
+      background: #0a0c12;
+    }
+    .ws-logo { display: none; }
+    .ws-side-active::before { display: none; }
+    .ws-main { order: 1; height: calc(100vh - 52px); }
+    .ws-copilot {
+      position: fixed; top: 0; right: 0; bottom: 52px; left: 0;
+      width: 100% !important; z-index: 30; border-left: none;
+    }
+    .ws-panel { padding: 12px; }
+    .ws-user-pill span { display: none; }
+    .ws-header { padding: 12px 16px; }
+    .ws-header h2 { font-size: 1rem; }
+
+    /* Job Board mobile */
+    .jb-search { flex-direction: column; gap: 8px; }
+    .jb-field, .jb-field-sm { min-width: 100%; }
+    .jb-search-btn { width: 100%; }
+    .jb-card-top { flex-direction: column; gap: 8px; }
+    .jb-card-right { align-self: flex-start; }
+    .jb-meta { flex-wrap: wrap; }
+    .jb-actions { flex-wrap: wrap; gap: 6px; }
+    .jb-tags { flex-wrap: wrap; }
+
+    /* Tracker mobile */
+    .tk-board { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .tk-card { padding: 10px; }
+    .tk-title { font-size: 1.1rem; }
+
+    /* Modal mobile */
+    .modal-prepare { max-width: 100%; margin: 0; border-radius: 12px 12px 0 0; max-height: 90vh; }
+    .prep-tabs { overflow-x: auto; gap: 4px; padding-bottom: 4px; }
+    .prep-tabs button { white-space: nowrap; font-size: 0.7rem; padding: 6px 10px; }
+
+    /* Cover Letter mobile */
+    .cl-fields { flex-direction: column; }
+    .cl-field { min-width: 100%; }
+
+    /* Settings mobile */
+    .sp-form { padding: 16px; }
+    .sp-grid { grid-template-columns: 1fr; }
   }
 
+  /* ─── Mobile: Phone ─── */
   @media (max-width: 480px) {
-    .tk-board { grid-template-columns:1fr; }
-    .jb-actions { flex-direction:column; }
-    .jb-actions > * { width:100%; text-align:center; justify-content:center; }
+    .ws-sidebar button { padding: 8px; }
+    .ws-sidebar button svg { width: 18px; height: 18px; }
+    .ws-panel { padding: 8px; }
+
+    /* Job Board phone */
+    .jb-card { padding: 12px; }
+    .jb-card h4 { font-size: 0.875rem; }
+    .jb-actions { flex-direction: column; }
+    .jb-actions > * { width: 100%; text-align: center; justify-content: center; }
+    .jb-prepare-btn, .jb-apply-btn, .jb-save-btn { padding: 10px; font-size: 0.8125rem; }
+
+    /* Tracker phone */
+    .tk-board { grid-template-columns: 1fr; }
+    .tk-col-header { font-size: 0.8125rem; }
+
+    /* Modal phone */
+    .modal-prepare { border-radius: 0; max-height: 100vh; }
+    .prep-body { padding: 12px; }
+
+    /* Settings phone */
+    .sp-actions { flex-direction: column; }
+    .sp-actions > * { width: 100%; }
   }
 `;

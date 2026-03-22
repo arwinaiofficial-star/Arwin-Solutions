@@ -140,7 +140,8 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
           location: e.location || "", graduationYear: e.graduationYear, gpa: e.gpa || "",
         })),
       });
-      if (cv.skills && cv.skills.length > 0) {
+      // Returning user with existing CV → go straight to preview
+      if (cv.personalInfo?.name || cv.skills?.length || cv.experience?.length) {
         setStep(5);
       }
     }
@@ -272,6 +273,7 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
             phone: (ext.phone as string) || prev.phone,
             location: (ext.location as string) || prev.location,
             linkedIn: (ext.linkedIn as string) || prev.linkedIn,
+            portfolio: (ext.portfolio as string) || prev.portfolio,
             summary: (ext.summary as string) || prev.summary,
             skills: Array.isArray(ext.skills) ? (ext.skills as string[]) : prev.skills,
             experiences: ((ext.experiences as Array<Record<string, unknown>>)?.map(e => ({
@@ -286,7 +288,33 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
               gpa: (e.gpa as string) || "",
             }))) || prev.education,
           }));
-          setStep(1);
+          // Smart routing: go to preview if we have enough data, else first gap
+          const hasName = !!((ext.fullName as string) || data.fullName);
+          const hasExp = Array.isArray(ext.experiences) && (ext.experiences as unknown[]).length > 0;
+          const hasSkills = Array.isArray(ext.skills) && (ext.skills as string[]).length > 0;
+          const hasEdu = Array.isArray(ext.education) && (ext.education as unknown[]).length > 0;
+
+          if (hasName && (hasExp || hasSkills)) {
+            // Rich extraction — go straight to preview for review
+            // Add empty entries if needed so user can add missing sections from preview
+            setData(prev => {
+              const updated = { ...prev };
+              if (updated.experiences.length === 0) updated.experiences = [{ id: uid(), title: "", company: "", location: "", startDate: "", endDate: "", current: false, highlights: [""] }];
+              if (updated.education.length === 0) updated.education = [{ id: uid(), degree: "", institution: "", location: "", graduationYear: "", gpa: "" }];
+              return updated;
+            });
+            // Small delay to let state settle, then save and go to preview
+            setTimeout(() => {
+              saveCV("final");
+              setStep(5);
+            }, 100);
+          } else if (!hasName) {
+            setStep(1); // Need personal info
+          } else if (!hasExp) {
+            setStep(2); // Need experience
+          } else {
+            setStep(4); // Need skills
+          }
         }
       } else if (result.data?.rawText) {
         setData(prev => ({ ...prev, summary: result.data!.rawText.slice(0, 500) }));
