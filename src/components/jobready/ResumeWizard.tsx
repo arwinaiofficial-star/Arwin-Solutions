@@ -95,6 +95,7 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
   const [isEnhancing, setIsEnhancing] = useState<string | null>(null);
   const [uploadFileName, setUploadFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cvLoadedRef = useRef(false);
 
   // Preview state
   const [theme, setTheme] = useState<ResumeTheme>("classic");
@@ -117,9 +118,13 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
   // ── LIVE PREVIEW: Derive CV from data in real-time (no race condition) ──
   const liveCV = useMemo<GeneratedCV>(() => buildCVFromData(data), [data]);
 
-  // If user already has a CV, pre-populate
+  // If user already has a CV, pre-populate.
+  // Runs when user.cvData becomes available (async — loaded after auth completes).
+  // Uses a ref guard instead of !data.fullName because data.fullName is pre-seeded
+  // from user.name and would always block the load.
   useEffect(() => {
-    if (user?.cvData && !data.fullName) {
+    if (user?.cvData && !cvLoadedRef.current) {
+      cvLoadedRef.current = true;
       const cv = user.cvData;
       setData({
         fullName: cv.personalInfo?.name || user.name || "",
@@ -145,7 +150,7 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
         setStep(5);
       }
     }
-  }, []); // eslint-disable-line
+  }, [user?.cvData]); // eslint-disable-line
 
   // ─── Data Helpers ────────────────────────────────────────────────────────
 
