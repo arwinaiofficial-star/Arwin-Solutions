@@ -17,7 +17,7 @@ export async function GET() {
     const start = Date.now();
     const response = await fetch(BACKEND_HEALTH_URL, {
       method: "GET",
-      signal: AbortSignal.timeout(55000), // 55s timeout — Vercel crons allow 60s, Render cold start ~50s
+      signal: AbortSignal.timeout(8000), // 8s timeout — stays within Vercel Hobby's 10s function limit
     });
     const elapsed = Date.now() - start;
 
