@@ -154,11 +154,13 @@ class AuthService:
         )
 
     async def _build_user_response(self, user: User) -> UserResponse:
-        """Build UserResponse with resume status."""
+        """Build UserResponse with resume status.
+
+        has_resume is true if the user has ANY resume (draft or final).
+        This ensures returning users can restore their progress.
+        """
         result = await self.db.execute(
-            select(Resume).where(
-                Resume.user_id == user.id, Resume.status == "final"
-            )
+            select(Resume).where(Resume.user_id == user.id)
         )
         has_resume = result.scalar_one_or_none() is not None
 

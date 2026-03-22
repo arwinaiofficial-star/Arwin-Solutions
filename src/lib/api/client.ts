@@ -1,6 +1,11 @@
 /**
  * API client for communicating with the backend.
  * All auth API calls go through Next.js BFF routes which proxy to FastAPI.
+ *
+ * Key reliability features:
+ * - Automatic token refresh on 401 (transparent retry)
+ * - Centralized auth header management
+ * - Consistent error handling across all endpoints
  */
 
 const API_BASE = "/api/auth";
@@ -10,6 +15,85 @@ interface ApiResponse<T = unknown> {
   error?: string;
 }
 
+// ─── Token management ────────────────────────────────────────────────────────
+
+export interface AuthTokens {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+}
+
+function storeTokens(tokens: AuthTokens) {
+  localStorage.setItem("jobready_access_token", tokens.access_token);
+  localStorage.setItem("jobready_refresh_token", tokens.refresh_token);
+}
+
+function clearTokens() {
+  localStorage.removeItem("jobready_access_token");
+  localStorage.removeItem("jobready_refresh_token");
+}
+
+function getAccessToken(): string | null {
+  return typeof window !== "undefined"
+    ? localStorage.getItem("jobready_access_token")
+    : null;
+}
+
+function getRefreshToken(): string | null {
+  return typeof window !== "undefined"
+    ? localStorage.getItem("jobready_refresh_token")
+    : null;
+}
+
+function authHeaders(): Record<string, string> {
+  const token = getAccessToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+// ─── Refresh lock (prevent concurrent refresh attempts) ─────────────────────
+
+let _refreshPromise: Promise<boolean> | null = null;
+
+async function tryRefreshToken(): Promise<boolean> {
+  // If a refresh is already in progress, wait for it
+  if (_refreshPromise) return _refreshPromise;
+
+  _refreshPromise = (async () => {
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) return false;
+
+    try {
+      const response = await fetch(`${API_BASE}/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+
+      if (!response.ok) {
+        clearTokens();
+        return false;
+      }
+
+      const body = await response.json();
+      if (body.access_token && body.refresh_token) {
+        storeTokens(body as AuthTokens);
+        return true;
+      }
+      clearTokens();
+      return false;
+    } catch {
+      return false;
+    } finally {
+      _refreshPromise = null;
+    }
+  })();
+
+  return _refreshPromise;
+}
+
+// ─── Core request function with auto-refresh ────────────────────────────────
+
 async function request<T>(
   endpoint: string,
   options: RequestInit = {}
@@ -18,16 +102,8 @@ async function request<T>(
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       ...((options.headers as Record<string, string>) || {}),
+      ...authHeaders(),
     };
-
-    // Attach access token if available
-    const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem("jobready_access_token")
-        : null;
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
 
     const response = await fetch(`${API_BASE}${endpoint}`, {
       ...options,
@@ -36,6 +112,34 @@ async function request<T>(
 
     if (response.status === 204) {
       return { data: undefined as T };
+    }
+
+    // Auto-refresh on 401 (token expired)
+    if (response.status === 401 && !endpoint.includes("/refresh") && !endpoint.includes("/login") && !endpoint.includes("/register")) {
+      const refreshed = await tryRefreshToken();
+      if (refreshed) {
+        // Retry the original request with the new token
+        const retryHeaders: Record<string, string> = {
+          "Content-Type": "application/json",
+          ...((options.headers as Record<string, string>) || {}),
+          ...authHeaders(), // fresh token
+        };
+        const retryResponse = await fetch(`${API_BASE}${endpoint}`, {
+          ...options,
+          headers: retryHeaders,
+        });
+
+        if (retryResponse.status === 204) {
+          return { data: undefined as T };
+        }
+        const retryBody = await retryResponse.json();
+        if (!retryResponse.ok) {
+          return { error: retryBody.detail || retryBody.error || "Something went wrong" };
+        }
+        return { data: retryBody as T };
+      }
+      // Refresh failed — force re-login
+      return { error: "Session expired. Please log in again." };
     }
 
     const body = await response.json();
@@ -50,13 +154,37 @@ async function request<T>(
   }
 }
 
-// Auth API types
-export interface AuthTokens {
-  access_token: string;
-  refresh_token: string;
-  token_type: string;
-  expires_in: number;
+/**
+ * Authenticated fetch wrapper for non-auth API endpoints (resume, jobs, etc.).
+ * Includes automatic token refresh on 401.
+ */
+async function authenticatedFetch(
+  url: string,
+  options: RequestInit = {}
+): Promise<Response> {
+  const headers: Record<string, string> = {
+    ...((options.headers as Record<string, string>) || {}),
+    ...authHeaders(),
+  };
+
+  let response = await fetch(url, { ...options, headers });
+
+  // Auto-refresh on 401
+  if (response.status === 401) {
+    const refreshed = await tryRefreshToken();
+    if (refreshed) {
+      const retryHeaders: Record<string, string> = {
+        ...((options.headers as Record<string, string>) || {}),
+        ...authHeaders(), // fresh token
+      };
+      response = await fetch(url, { ...options, headers: retryHeaders });
+    }
+  }
+
+  return response;
 }
+
+// ─── Auth API types ─────────────────────────────────────────────────────────
 
 export interface UserData {
   id: string;
@@ -76,24 +204,8 @@ interface AuthResponse {
   tokens: AuthTokens;
 }
 
-// Token management
-function storeTokens(tokens: AuthTokens) {
-  localStorage.setItem("jobready_access_token", tokens.access_token);
-  localStorage.setItem("jobready_refresh_token", tokens.refresh_token);
-}
+// ─── Auth API ───────────────────────────────────────────────────────────────
 
-function clearTokens() {
-  localStorage.removeItem("jobready_access_token");
-  localStorage.removeItem("jobready_refresh_token");
-}
-
-function getRefreshToken(): string | null {
-  return typeof window !== "undefined"
-    ? localStorage.getItem("jobready_refresh_token")
-    : null;
-}
-
-// Auth API methods
 export const authApi = {
   async register(
     email: string,
@@ -172,11 +284,12 @@ export const authApi = {
   },
 
   isAuthenticated(): boolean {
-    return !!localStorage.getItem("jobready_access_token");
+    return !!getAccessToken();
   },
 };
 
-// Resume API methods
+// ─── Resume API ─────────────────────────────────────────────────────────────
+
 const RESUME_API_BASE = "/api/resume";
 
 export const resumeApi = {
@@ -185,27 +298,17 @@ export const resumeApi = {
     action: string = "chat",
     context?: Record<string, unknown>
   ): Promise<ApiResponse<{ reply: string; suggestions?: string[] }>> {
-    const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem("jobready_access_token")
-        : null;
-
     try {
-      const response = await fetch(`${RESUME_API_BASE}/chat`, {
+      const response = await authenticatedFetch(`${RESUME_API_BASE}/chat`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message, action, context }),
       });
 
       const body = await response.json();
-
       if (!response.ok) {
         return { error: body.detail || body.error || "Resume chat failed" };
       }
-
       return { data: body };
     } catch {
       return { error: "Network error. Please check your connection." };
@@ -216,82 +319,69 @@ export const resumeApi = {
     data: Record<string, unknown>,
     status: string = "draft"
   ): Promise<ApiResponse<{ id: string; version: number }>> {
-    const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem("jobready_access_token")
-        : null;
-
     try {
-      const response = await fetch(`${RESUME_API_BASE}/save`, {
+      const response = await authenticatedFetch(`${RESUME_API_BASE}/save`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ data, status }),
       });
 
       const body = await response.json();
-
       if (!response.ok) {
         return { error: body.detail || body.error || "Resume save failed" };
       }
-
       return { data: body };
     } catch {
       return { error: "Network error. Please check your connection." };
     }
   },
 
-  async getLatest(): Promise<ApiResponse<{ id: string; data: Record<string, unknown>; version: number; status: string }>> {
-    const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem("jobready_access_token")
-        : null;
-
+  async getLatest(): Promise<
+    ApiResponse<{
+      id: string;
+      data: Record<string, unknown>;
+      version: number;
+      status: string;
+    }>
+  > {
     try {
-      const response = await fetch(`${RESUME_API_BASE}/latest`, {
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
+      const response = await authenticatedFetch(`${RESUME_API_BASE}/latest`, {});
 
       const body = await response.json();
-
       if (!response.ok) {
-        return { error: body.detail || body.error || "Failed to fetch resume" };
+        return {
+          error: body.detail || body.error || "Failed to fetch resume",
+        };
       }
-
       return { data: body };
     } catch {
       return { error: "Network error. Please check your connection." };
     }
   },
 
-  async uploadCV(file: File): Promise<ApiResponse<{ rawText: string; extractedData: Record<string, unknown> | null; fileName: string }>> {
-    const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem("jobready_access_token")
-        : null;
-
+  async uploadCV(
+    file: File
+  ): Promise<
+    ApiResponse<{
+      rawText: string;
+      extractedData: Record<string, unknown> | null;
+      fileName: string;
+    }>
+  > {
     try {
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await fetch("/api/resume/upload", {
+      // Don't set Content-Type — browser will set multipart boundary
+      const response = await authenticatedFetch("/api/resume/upload", {
         method: "POST",
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
         body: formData,
       });
 
       const body = await response.json();
-
       if (!response.ok) {
         return { error: body.error || "Upload failed" };
       }
-
       return { data: body };
     } catch {
       return { error: "Network error. Please check your connection." };
@@ -299,21 +389,22 @@ export const resumeApi = {
   },
 };
 
-// Chat Session API (auto-save / restore)
+// ─── Chat Session API ───────────────────────────────────────────────────────
+
 export const chatSessionApi = {
-  async getSession(): Promise<ApiResponse<{ session: { id: string; messages: unknown[]; agent_state: Record<string, unknown>; collected_data: Record<string, unknown>; last_active_at: string } | null }>> {
-    const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem("jobready_access_token")
-        : null;
-
+  async getSession(): Promise<
+    ApiResponse<{
+      session: {
+        id: string;
+        messages: unknown[];
+        agent_state: Record<string, unknown>;
+        collected_data: Record<string, unknown>;
+        last_active_at: string;
+      } | null;
+    }>
+  > {
     try {
-      const response = await fetch("/api/chat/session", {
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
-
+      const response = await authenticatedFetch("/api/chat/session", {});
       const body = await response.json();
       return { data: body };
     } catch {
@@ -327,21 +418,12 @@ export const chatSessionApi = {
     agent_state: Record<string, unknown>;
     collected_data: Record<string, unknown>;
   }): Promise<ApiResponse<{ id: string }>> {
-    const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem("jobready_access_token")
-        : null;
-
     try {
-      const response = await fetch("/api/chat/session", {
+      const response = await authenticatedFetch("/api/chat/session", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-
       const body = await response.json();
       return { data: body };
     } catch {
@@ -350,7 +432,8 @@ export const chatSessionApi = {
   },
 };
 
-// Social Auth
+// ─── Social Auth ────────────────────────────────────────────────────────────
+
 export const socialAuthApi = {
   async login(data: {
     provider: string;
@@ -367,15 +450,12 @@ export const socialAuthApi = {
       });
 
       const body = await response.json();
-
       if (!response.ok) {
         return { error: body.error || "Social login failed" };
       }
-
       if (body.tokens) {
         storeTokens(body.tokens);
       }
-
       return { data: body };
     } catch {
       return { error: "Network error during social login" };
@@ -383,7 +463,8 @@ export const socialAuthApi = {
   },
 };
 
-// Jobs Prepare to Apply
+// ─── Jobs Prepare to Apply ──────────────────────────────────────────────────
+
 export const jobPrepareApi = {
   async prepare(data: {
     jobTitle: string;
@@ -391,38 +472,31 @@ export const jobPrepareApi = {
     jobCompany?: string;
     jobLocation?: string;
     cvData: Record<string, unknown>;
-  }): Promise<ApiResponse<{
-    aiTips: string;
-    matchedSkills: string[];
-    missingSkills: string[];
-    matchScore: number;
-    coverLetterSnippet: string;
-  }>> {
-    const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem("jobready_access_token")
-        : null;
-
+  }): Promise<
+    ApiResponse<{
+      aiTips: string;
+      matchedSkills: string[];
+      missingSkills: string[];
+      matchScore: number;
+      coverLetterSnippet: string;
+    }>
+  > {
     try {
-      const response = await fetch("/api/jobs/prepare", {
+      const response = await authenticatedFetch("/api/jobs/prepare", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
 
       const body = await response.json();
-
       if (!response.ok) {
-        return { error: body.error || "Failed to prepare application tips" };
+        return {
+          error: body.error || "Failed to prepare application tips",
+        };
       }
-
       return { data: body };
     } catch {
       return { error: "Network error" };
     }
   },
 };
-

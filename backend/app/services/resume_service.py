@@ -93,31 +93,34 @@ async def chat_reply(message: str, context: dict | None = None) -> str:
 
 
 async def save_resume(db: AsyncSession, user_id: str, data: dict, status: str = "draft") -> Resume:
-    """Save or update a user's resume in the database."""
-    # Check if user already has a resume
+    """Save or update a user's resume in the database.
+
+    For draft saves (auto-save): update the latest draft in-place to avoid creating
+    hundreds of versions. For final saves: always create a new version.
+    """
+    # Get the user's latest resume
     result = await db.execute(
         select(Resume).where(Resume.user_id == user_id).order_by(Resume.version.desc())
     )
     existing = result.scalars().first()
 
-    if existing:
-        # Update existing resume with new version
-        resume = Resume(
-            id=str(uuid.uuid4()),
-            user_id=user_id,
-            data=data,
-            version=existing.version + 1,
-            status=status,
-        )
-    else:
-        resume = Resume(
-            id=str(uuid.uuid4()),
-            user_id=user_id,
-            data=data,
-            version=1,
-            status=status,
-        )
+    if existing and status == "draft" and existing.status == "draft":
+        # Update existing draft in-place (auto-save optimization)
+        existing.data = data
+        existing.updated_at = datetime.now(timezone.utc)
+        await db.commit()
+        await db.refresh(existing)
+        return existing
 
+    # Create new version for final saves, or first resume ever
+    version = (existing.version + 1) if existing else 1
+    resume = Resume(
+        id=str(uuid.uuid4()),
+        user_id=user_id,
+        data=data,
+        version=version,
+        status=status,
+    )
     db.add(resume)
     await db.commit()
     await db.refresh(resume)

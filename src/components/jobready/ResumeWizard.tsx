@@ -344,15 +344,63 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
 
   // ─── Save & Finish ────────────────────────────────────────────────────
 
-  const saveCV = useCallback(() => {
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+
+  const saveCV = useCallback(async (status: "draft" | "final" = "final") => {
     const cv = liveCV;
     saveGeneratedCV(cv);
     updateProfile({ name: data.fullName, phone: data.phone, skills: data.skills });
-    resumeApi.save(cv as unknown as Record<string, unknown>, "final").catch(() => {});
+    setSaveStatus("saving");
+    try {
+      const result = await resumeApi.save(cv as unknown as Record<string, unknown>, status);
+      if (result.error) {
+        console.error("Resume save failed:", result.error);
+        setSaveStatus("error");
+        return;
+      }
+      setSaveStatus("saved");
+      // Reset indicator after 3s
+      setTimeout(() => setSaveStatus(prev => prev === "saved" ? "idle" : prev), 3000);
+    } catch {
+      setSaveStatus("error");
+    }
   }, [liveCV, data, saveGeneratedCV, updateProfile]);
 
+  // Auto-save draft when user changes steps (debounced)
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    // Only auto-save if user has entered meaningful data
+    if (!data.fullName && !data.email && data.experiences.length === 0) return;
+    // Only auto-save during editing steps (1-4)
+    if (step < 1 || step > 4) return;
+
+    // Debounce: save 2 seconds after last data change
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      const cv = liveCV;
+      // Save to localStorage immediately (fast)
+      saveGeneratedCV(cv);
+      // Save to backend as draft (async, don't await)
+      resumeApi.save(cv as unknown as Record<string, unknown>, "draft").then(result => {
+        if (result.error) {
+          console.warn("Auto-save failed:", result.error);
+          setSaveStatus("error");
+        } else {
+          setSaveStatus("saved");
+          setTimeout(() => setSaveStatus(prev => prev === "saved" ? "idle" : prev), 2000);
+        }
+      });
+    }, 2000);
+
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, step]);
+
   const finishAndSave = () => {
-    saveCV();
+    saveCV("final");
     setStep(5);
   };
 
@@ -707,6 +755,11 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
                   ← {step === 1 ? "Start" : "Back"}
                 </button>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  {saveStatus !== "idle" && (
+                    <span className={`rw-save-indicator rw-save-${saveStatus}`}>
+                      {saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "✓ Saved" : "⚠ Save failed"}
+                    </span>
+                  )}
                   <button className="rw-btn-toggle-preview" onClick={() => setShowPreview(p => !p)}>
                     {showPreview ? "Hide Preview" : "Show Preview"}
                   </button>
@@ -791,7 +844,9 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
                 <SearchIcon size={14} /> Find Matching Jobs <ArrowRightIcon size={14} />
               </button>
               <button className="rw-btn rw-btn-ghost" onClick={() => setStep(1)}>✏ Edit Resume</button>
-              <button className="rw-btn rw-btn-ghost" onClick={saveCV}>💾 Save</button>
+              <button className="rw-btn rw-btn-ghost" onClick={() => saveCV("final")}>
+                {saveStatus === "saving" ? "⏳ Saving..." : saveStatus === "saved" ? "✓ Saved" : saveStatus === "error" ? "⚠ Retry Save" : "💾 Save"}
+              </button>
             </div>
 
             {/* Full Preview */}
@@ -1052,6 +1107,15 @@ const wizardStyles = `
     cursor: pointer; transition: all 0.15s;
   }
   .rw-btn-toggle-preview:hover { color: #94a3b8; border-color: #475569; }
+
+  /* Save status indicator */
+  .rw-save-indicator {
+    font-size: 0.7rem; font-weight: 500; padding: 4px 10px;
+    border-radius: 6px; transition: all 0.2s;
+  }
+  .rw-save-saving { color: #94a3b8; }
+  .rw-save-saved { color: #4ade80; }
+  .rw-save-error { color: #f87171; }
 
   /* Sections */
   .rw-section { animation: rw-in 0.2s ease; }
