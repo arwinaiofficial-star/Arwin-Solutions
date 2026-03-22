@@ -15,6 +15,36 @@ interface ApiResponse<T = unknown> {
   error?: string;
 }
 
+// ─── Backend wake-up retry (client-side, no Vercel timeout limit) ────────────
+
+const WAKE_MAX_RETRIES = 3;
+const WAKE_RETRY_DELAY_MS = 4_000;
+
+/**
+ * Fetch with automatic retry on 503 (backend sleeping / cold start).
+ * Runs in the browser — no serverless timeout constraint.
+ */
+async function fetchWithWakeRetry(
+  url: string,
+  options: RequestInit,
+  retries = WAKE_MAX_RETRIES
+): Promise<Response> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const response = await fetch(url, options);
+
+    // 503 = BFF couldn't reach backend (cold start). Retry after delay.
+    if (response.status === 503 && attempt < retries) {
+      await new Promise((r) => setTimeout(r, WAKE_RETRY_DELAY_MS));
+      continue;
+    }
+
+    return response;
+  }
+
+  // Should never reach here
+  return fetch(url, options);
+}
+
 // ─── Token management ────────────────────────────────────────────────────────
 
 export interface AuthTokens {
@@ -105,7 +135,7 @@ async function request<T>(
       ...authHeaders(),
     };
 
-    const response = await fetch(`${API_BASE}${endpoint}`, {
+    const response = await fetchWithWakeRetry(`${API_BASE}${endpoint}`, {
       ...options,
       headers,
     });
@@ -124,7 +154,7 @@ async function request<T>(
           ...((options.headers as Record<string, string>) || {}),
           ...authHeaders(), // fresh token
         };
-        const retryResponse = await fetch(`${API_BASE}${endpoint}`, {
+        const retryResponse = await fetchWithWakeRetry(`${API_BASE}${endpoint}`, {
           ...options,
           headers: retryHeaders,
         });
@@ -150,7 +180,7 @@ async function request<T>(
 
     return { data: body as T };
   } catch {
-    return { error: "Network error. Please check your connection." };
+    return { error: "Unable to reach server. Please try again in a moment." };
   }
 }
 
@@ -167,7 +197,7 @@ async function authenticatedFetch(
     ...authHeaders(),
   };
 
-  let response = await fetch(url, { ...options, headers });
+  let response = await fetchWithWakeRetry(url, { ...options, headers });
 
   // Auto-refresh on 401
   if (response.status === 401) {
@@ -177,7 +207,7 @@ async function authenticatedFetch(
         ...((options.headers as Record<string, string>) || {}),
         ...authHeaders(), // fresh token
       };
-      response = await fetch(url, { ...options, headers: retryHeaders });
+      response = await fetchWithWakeRetry(url, { ...options, headers: retryHeaders });
     }
   }
 
