@@ -34,6 +34,16 @@ const STOP_WORDS = new Set([
   "team", "teams", "using", "within", "work", "working", "worldwide",
 ]);
 
+const KEYWORD_HEADS = new Set([
+  "accessibility", "ai", "app", "apps", "brand", "brands", "creative",
+  "cross", "design", "designer", "designers", "engineering", "experience",
+  "figma", "flow", "flows", "frontend", "hardware", "interface", "interfaces",
+  "iot", "journey", "journeys", "machine", "mobile", "ml", "platform",
+  "platforms", "product", "products", "prototype", "prototypes", "prototyping",
+  "research", "source", "strategy", "systems", "user", "users", "ux", "ui",
+  "visual", "web", "workflow", "workflows",
+]);
+
 function uniqueStrings(values: string[]): string[] {
   const seen = new Set<string>();
   const result: string[] = [];
@@ -90,6 +100,20 @@ function buildResumeTokenSet(resume: ResumeMatchData): Set<string> {
   return new Set(tokenizeText(parts.join(" ")));
 }
 
+function buildResumeText(resume: ResumeMatchData): string {
+  return normalizeText([
+    resume.summary || "",
+    ...(resume.skills || []),
+    resume.personalInfo?.location || "",
+    ...((resume.experience || []).flatMap((item) => [
+      item.title || "",
+      item.company || "",
+      item.location || "",
+      ...(item.highlights || []),
+    ])),
+  ].join(" "));
+}
+
 function buildJobText(job: JobMatchData): string {
   return normalizeText([job.title, job.description || "", ...(job.tags || []), job.location || ""].join(" "));
 }
@@ -120,25 +144,46 @@ function stemToken(token: string): string {
   return token;
 }
 
-function rankJobKeywords(job: JobMatchData): string[] {
-  const weights: Array<{ text: string; weight: number }> = [
-    { text: job.title, weight: 5 },
-    { text: (job.tags || []).join(" "), weight: 4 },
-    { text: job.location || "", weight: 2 },
-    { text: job.description || "", weight: 1 },
-  ];
+function collectPhrases(text: string, minWords: number, maxWords: number): string[] {
+  const tokens = normalizeText(text)
+    .split(/\s+/)
+    .map((token) => stemToken(token.trim()))
+    .filter((token) => token.length >= 3 && !STOP_WORDS.has(token));
 
-  const scores = new Map<string, number>();
-
-  for (const part of weights) {
-    for (const token of tokenizeText(part.text)) {
-      scores.set(token, (scores.get(token) || 0) + part.weight);
+  const phrases: string[] = [];
+  for (let size = minWords; size <= maxWords; size += 1) {
+    for (let index = 0; index <= tokens.length - size; index += 1) {
+      const window = tokens.slice(index, index + size);
+      const keywordHits = window.filter((token) => KEYWORD_HEADS.has(token)).length;
+      if (keywordHits === 0) continue;
+      if (size > 1 && keywordHits < 1) continue;
+      phrases.push(window.join(" "));
     }
   }
 
-  return [...scores.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .map(([token]) => token);
+  return uniqueStrings(phrases);
+}
+
+function rankJobKeywords(job: JobMatchData): string[] {
+  const phraseScores = new Map<string, number>();
+  const weightedSources: Array<{ phrases: string[]; weight: number }> = [
+    { phrases: uniqueStrings([normalizeText(job.title), ...collectPhrases(job.title, 2, 3)]), weight: 8 },
+    { phrases: uniqueStrings((job.tags || []).map((tag) => normalizeText(tag))), weight: 7 },
+    { phrases: collectPhrases(job.description || "", 2, 3), weight: 3 },
+  ];
+
+  for (const source of weightedSources) {
+    for (const phrase of source.phrases) {
+      if (!phrase || phrase.length < 4) continue;
+      const keywordHits = tokenizeText(phrase).filter((token) => KEYWORD_HEADS.has(token)).length;
+      const phraseWeight = source.weight + Math.min(3, keywordHits);
+      phraseScores.set(phrase, (phraseScores.get(phrase) || 0) + phraseWeight);
+    }
+  }
+
+  return [...phraseScores.entries()]
+    .sort((a, b) => b[1] - a[1] || b[0].length - a[0].length)
+    .map(([phrase]) => phrase);
 }
 
 export function computeResumeJobMatch(
@@ -155,13 +200,17 @@ export function computeResumeJobMatch(
   const jobText = buildJobText(job);
   const jobTokens = new Set(tokenizeText(jobText));
   const resumeTokens = buildResumeTokenSet(safeResume);
+  const resumeText = buildResumeText(safeResume);
 
   const matchedSkills = skills.filter((skill) => phraseMatchRatio(skill, jobText, jobTokens) >= 0.5);
   const titleTokens = tokenizeText(job.title);
   const rankedKeywords = rankJobKeywords(job).slice(0, 12);
-  const matchedKeywords = rankedKeywords.filter((token) => resumeTokens.has(token));
+  const matchedKeywords = rankedKeywords.filter((phrase) => phraseMatchRatio(phrase, resumeText, resumeTokens) >= 0.6);
   const missingKeywords = rankedKeywords
-    .filter((token) => !resumeTokens.has(token) && !skills.some((skill) => normalizeText(skill).includes(token)))
+    .filter((phrase) =>
+      phraseMatchRatio(phrase, resumeText, resumeTokens) < 0.6 &&
+      !skills.some((skill) => phraseMatchRatio(phrase, normalizeText(skill), new Set(tokenizeText(skill))) >= 0.6)
+    )
     .slice(0, 6);
 
   const skillCoverage = skills.length > 0 ? matchedSkills.length / skills.length : 0;
