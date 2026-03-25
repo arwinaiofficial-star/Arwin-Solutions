@@ -78,7 +78,7 @@ interface AuthContextType {
   signup: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   updateProfile: (data: Partial<UserProfile>) => void;
-  saveGeneratedCV: (cv: GeneratedCV) => void;
+  saveGeneratedCV: (cv: GeneratedCV, options?: { markGenerated?: boolean }) => void;
   refreshUser: () => Promise<void>;
 }
 
@@ -101,13 +101,9 @@ function mapUserDataToProfile(data: UserData): UserProfile {
 }
 
 /**
- * Load CV data — always from DB (source of truth).
- * Uses localStorage only as a fast cache layer.
+ * Load CV data from the backend when available, with local fallback support.
  */
 async function loadCVData(hasResume: boolean): Promise<GeneratedCV | null> {
-  if (!hasResume) return null;
-
-  // Always fetch from DB — it's the source of truth
   try {
     const result = await resumeApi.getLatest();
     if (result.data?.data) {
@@ -115,9 +111,10 @@ async function loadCVData(hasResume: boolean): Promise<GeneratedCV | null> {
       return cvData;
     }
   } catch {
-    // Network error — can't load, user starts fresh
+    // Resume fallback remains available through resumeApi.getLatest.
   }
 
+  if (!hasResume) return null;
   return null;
 }
 
@@ -241,12 +238,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const saveGeneratedCV = useCallback(
-    (cv: GeneratedCV) => {
-      if (user) {
-        setUser(prev => prev ? { ...prev, cvGenerated: true, cvData: cv } : prev);
-      }
+    (cv: GeneratedCV, options?: { markGenerated?: boolean }) => {
+      const markGenerated = options?.markGenerated ?? true;
+      setUser(prev => prev ? {
+        ...prev,
+        cvGenerated: markGenerated ? true : prev.cvGenerated,
+        cvData: cv,
+      } : prev);
     },
-    [user]
+    []
   );
 
   return (

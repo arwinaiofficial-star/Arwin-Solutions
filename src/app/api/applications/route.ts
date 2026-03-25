@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { fetchBackend } from "@/lib/api/backend";
+import { fetchBackend, getBackendCapabilities } from "@/lib/api/backend";
 
 function getAuthHeader(request: NextRequest): Record<string, string> {
   const auth = request.headers.get("authorization");
@@ -18,6 +18,16 @@ export async function GET(request: NextRequest) {
     const auth = getAuthHeader(request);
     if (!auth.Authorization) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
+    const capabilities = await getBackendCapabilities();
+    if (!capabilities.supportsApplications) {
+      return NextResponse.json(
+        {
+          error: "Configured backend does not support application tracking. Deploy the current JobReady backend or point FASTAPI_URL to a compatible API.",
+        },
+        { status: 503 }
+      );
     }
 
     const { searchParams } = new URL(request.url);
@@ -46,6 +56,16 @@ export async function POST(request: NextRequest) {
     const auth = getAuthHeader(request);
     if (!auth.Authorization) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
+    const capabilities = await getBackendCapabilities();
+    if (!capabilities.supportsApplications) {
+      return NextResponse.json(
+        {
+          error: "Configured backend does not support application tracking. Deploy the current JobReady backend or point FASTAPI_URL to a compatible API.",
+        },
+        { status: 503 }
+      );
     }
 
     const body = await request.json();

@@ -94,6 +94,7 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isEnhancing, setIsEnhancing] = useState<string | null>(null);
   const [uploadFileName, setUploadFileName] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cvLoadedRef = useRef(false);
 
@@ -161,10 +162,34 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
   // Generic field setter for copilot auto-fill
   const setField = useCallback((field: string, value: unknown) => {
     setData(prev => {
-      if (field in prev) {
-        return { ...prev, [field]: value };
+      if (!(field in prev)) return prev;
+
+      if (field === "skills" && Array.isArray(value)) {
+        const mergedSkills = Array.from(
+          new Set(
+            [...prev.skills, ...value]
+              .map((skill) => typeof skill === "string" ? skill.trim() : "")
+              .filter(Boolean)
+          )
+        );
+        return { ...prev, skills: mergedSkills };
       }
-      return prev;
+
+      if (field === "experiences" && Array.isArray(value)) {
+        return {
+          ...prev,
+          experiences: mergeExperienceEntries(prev.experiences, value),
+        };
+      }
+
+      if (field === "education" && Array.isArray(value)) {
+        return {
+          ...prev,
+          education: mergeEducationEntries(prev.education, value),
+        };
+      }
+
+      return { ...prev, [field]: value };
     });
   }, []);
 
@@ -297,7 +322,6 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
           const hasName = !!((ext.fullName as string) || data.fullName);
           const hasExp = Array.isArray(ext.experiences) && (ext.experiences as unknown[]).length > 0;
           const hasSkills = Array.isArray(ext.skills) && (ext.skills as string[]).length > 0;
-          const hasEdu = Array.isArray(ext.education) && (ext.education as unknown[]).length > 0;
 
           if (hasName && (hasExp || hasSkills)) {
             // Rich extraction — go straight to preview for review
@@ -381,20 +405,24 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
 
   const saveCV = useCallback(async (status: "draft" | "final" = "final") => {
     const cv = liveCV;
-    saveGeneratedCV(cv);
-    updateProfile({ name: data.fullName, phone: data.phone, skills: data.skills });
     setSaveStatus("saving");
+    setSaveError(null);
     try {
       const result = await resumeApi.save(cv as unknown as Record<string, unknown>, status);
       if (result.error) {
         console.error("Resume save failed:", result.error);
+        setSaveError(result.error);
         setSaveStatus("error");
         return;
       }
+      saveGeneratedCV(cv, { markGenerated: status === "final" });
+      updateProfile({ name: data.fullName, phone: data.phone, skills: data.skills });
+      setSaveError(null);
       setSaveStatus("saved");
       // Reset indicator after 3s
       setTimeout(() => setSaveStatus(prev => prev === "saved" ? "idle" : prev), 3000);
     } catch {
+      setSaveError("Unable to save your resume right now.");
       setSaveStatus("error");
     }
   }, [liveCV, data, saveGeneratedCV, updateProfile]);
@@ -412,14 +440,15 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = setTimeout(() => {
       const cv = liveCV;
-      // Update in-memory state immediately
-      saveGeneratedCV(cv);
       // Persist to Neon DB as draft
       resumeApi.save(cv as unknown as Record<string, unknown>, "draft").then(result => {
         if (result.error) {
           console.warn("Auto-save failed:", result.error);
+          setSaveError(result.error);
           setSaveStatus("error");
         } else {
+          setSaveError(null);
+          saveGeneratedCV(cv, { markGenerated: false });
           setSaveStatus("saved");
           setTimeout(() => setSaveStatus(prev => prev === "saved" ? "idle" : prev), 2000);
         }
@@ -801,6 +830,7 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
                   </button>
                 </div>
               </div>
+              {saveError && <p className="rw-save-error">{saveError}</p>}
             </div>
 
             {/* Right: Live Preview */}
@@ -881,6 +911,7 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
                 {saveStatus === "saving" ? "⏳ Saving..." : saveStatus === "saved" ? "✓ Saved" : saveStatus === "error" ? "⚠ Retry Save" : "💾 Save"}
               </button>
             </div>
+            {saveError && <p className="rw-save-error">{saveError}</p>}
 
             {/* Full Preview */}
             <div className={`rw-preview rw-theme-${theme}`}>
@@ -895,7 +926,7 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
 
 // ─── Live Preview Component (shared between split-pane and full view) ────
 
-function LivePreviewContent({ cv, theme }: { cv: GeneratedCV; theme: ResumeTheme }) {
+function LivePreviewContent({ cv }: { cv: GeneratedCV; theme: ResumeTheme }) {
   if (!cv.personalInfo?.name && cv.skills.length === 0 && cv.experience.length === 0) {
     return <p style={{ color: "#94a3b8", textAlign: "center", padding: 20 }}>Fill in your details to see preview</p>;
   }
@@ -964,12 +995,145 @@ function uid() {
   return `_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
+function isMeaningfulExperience(exp: {
+  title: string;
+  company: string;
+  location: string;
+  startDate: string;
+  endDate: string;
+  highlights: string[];
+}) {
+  return Boolean(
+    exp.title.trim() ||
+    exp.company.trim() ||
+    exp.location.trim() ||
+    exp.startDate.trim() ||
+    exp.endDate.trim() ||
+    exp.highlights.some((highlight) => highlight.trim())
+  );
+}
+
+function isMeaningfulEducation(edu: {
+  degree: string;
+  institution: string;
+  location: string;
+  graduationYear: string;
+  gpa: string;
+}) {
+  return Boolean(
+    edu.degree.trim() ||
+    edu.institution.trim() ||
+    edu.location.trim() ||
+    edu.graduationYear.trim() ||
+    edu.gpa.trim()
+  );
+}
+
+function mergeExperienceEntries(
+  current: ExperienceEntry[],
+  incoming: unknown[]
+): ExperienceEntry[] {
+  const normalizedIncoming = incoming
+    .map((item) => {
+      const experience = item as Partial<ExperienceEntry>;
+      return {
+        id: uid(),
+        title: typeof experience.title === "string" ? experience.title : "",
+        company: typeof experience.company === "string" ? experience.company : "",
+        location: typeof experience.location === "string" ? experience.location : "",
+        startDate: typeof experience.startDate === "string" ? experience.startDate : "",
+        endDate: typeof experience.endDate === "string" ? experience.endDate : "",
+        current: Boolean(experience.current),
+        highlights: Array.isArray(experience.highlights)
+          ? experience.highlights
+              .map((highlight) => typeof highlight === "string" ? highlight.trim() : "")
+              .filter(Boolean)
+          : [],
+      };
+    })
+    .filter(isMeaningfulExperience);
+
+  if (normalizedIncoming.length === 0) return current;
+  if (current.every((entry) => !isMeaningfulExperience(entry))) {
+    return normalizedIncoming;
+  }
+
+  const existingKeys = new Set(
+    current
+      .filter(isMeaningfulExperience)
+      .map((entry) => `${entry.title}|${entry.company}|${entry.startDate}|${entry.endDate}`.toLowerCase())
+  );
+  const dedupedIncoming = normalizedIncoming.filter((entry) => {
+    const key = `${entry.title}|${entry.company}|${entry.startDate}|${entry.endDate}`.toLowerCase();
+    if (existingKeys.has(key)) return false;
+    existingKeys.add(key);
+    return true;
+  });
+
+  return dedupedIncoming.length > 0 ? [...current, ...dedupedIncoming] : current;
+}
+
+function mergeEducationEntries(
+  current: EducationEntry[],
+  incoming: unknown[]
+): EducationEntry[] {
+  const normalizedIncoming = incoming
+    .map((item) => {
+      const education = item as Partial<EducationEntry>;
+      return {
+        id: uid(),
+        degree: typeof education.degree === "string" ? education.degree : "",
+        institution: typeof education.institution === "string" ? education.institution : "",
+        location: typeof education.location === "string" ? education.location : "",
+        graduationYear: typeof education.graduationYear === "string" ? education.graduationYear : "",
+        gpa: typeof education.gpa === "string" ? education.gpa : "",
+      };
+    })
+    .filter(isMeaningfulEducation);
+
+  if (normalizedIncoming.length === 0) return current;
+  if (current.every((entry) => !isMeaningfulEducation(entry))) {
+    return normalizedIncoming;
+  }
+
+  const existingKeys = new Set(
+    current
+      .filter(isMeaningfulEducation)
+      .map((entry) => `${entry.degree}|${entry.institution}|${entry.graduationYear}`.toLowerCase())
+  );
+  const dedupedIncoming = normalizedIncoming.filter((entry) => {
+    const key = `${entry.degree}|${entry.institution}|${entry.graduationYear}`.toLowerCase();
+    if (existingKeys.has(key)) return false;
+    existingKeys.add(key);
+    return true;
+  });
+
+  return dedupedIncoming.length > 0 ? [...current, ...dedupedIncoming] : current;
+}
+
 function buildCVFromData(data: {
   fullName: string; email: string; phone: string; location: string;
   linkedIn: string; portfolio: string; summary: string; skills: string[];
   experiences: { title: string; company: string; location: string; startDate: string; endDate: string; current: boolean; highlights: string[] }[];
   education: { degree: string; institution: string; location: string; graduationYear: string; gpa: string }[];
 }): GeneratedCV {
+  const filteredExperience = data.experiences.filter(isMeaningfulExperience).map((e) => ({
+    title: e.title,
+    company: e.company,
+    location: e.location,
+    startDate: e.startDate,
+    endDate: e.current ? "Present" : e.endDate,
+    current: e.current,
+    highlights: e.highlights.filter(h => h.trim()),
+  }));
+  const filteredEducation = data.education.filter(isMeaningfulEducation).map((e) => ({
+    degree: e.degree,
+    institution: e.institution,
+    location: e.location,
+    graduationYear: e.graduationYear,
+    gpa: e.gpa,
+  }));
+
   let summary = data.summary;
   if (!summary && data.skills.length > 0) {
     const topSkills = data.skills.slice(0, 3).join(", ");
@@ -985,15 +1149,8 @@ function buildCVFromData(data: {
     },
     summary: summary || "",
     skills: data.skills,
-    experience: data.experiences.map(e => ({
-      title: e.title, company: e.company, location: e.location,
-      startDate: e.startDate, endDate: e.current ? "Present" : e.endDate,
-      current: e.current, highlights: e.highlights.filter(h => h.trim()),
-    })),
-    education: data.education.map(e => ({
-      degree: e.degree, institution: e.institution,
-      location: e.location, graduationYear: e.graduationYear, gpa: e.gpa,
-    })),
+    experience: filteredExperience,
+    education: filteredEducation,
     createdAt: new Date().toISOString(),
   };
 }
@@ -1320,6 +1477,7 @@ const wizardStyles = `
 
   /* Preview */
   .rw-preview-actions { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+  .rw-save-error { margin: -8px 0 16px; color: #fca5a5; font-size: 0.75rem; line-height: 1.5; }
 
   .rw-preview {
     background: #fafafa; color: #1a1a2e; padding: 32px;

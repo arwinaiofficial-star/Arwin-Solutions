@@ -33,9 +33,6 @@ export interface AICopilotProps {
   resumeStep?: number;
   resumeData?: Record<string, unknown>;
 }
-
-type ViewType = "resume" | "jobs" | "tracker" | "settings" | "coverletter";
-
 const contextLabels: Record<string, string> = {
   resume: "Resume Builder",
   jobs: "Job Search",
@@ -43,6 +40,116 @@ const contextLabels: Record<string, string> = {
   settings: "Settings",
   coverletter: "Cover Letter",
 };
+
+function normalizeEducationUpdates(parsed: Record<string, unknown>): Record<string, unknown>[] {
+  if (Array.isArray(parsed.education)) {
+    return parsed.education.filter(
+      (entry): entry is Record<string, unknown> => Boolean(entry && typeof entry === "object")
+    );
+  }
+
+  const degree = typeof parsed.education_degree === "string" ? parsed.education_degree.trim() : "";
+  const institution = typeof parsed.education_institution === "string" ? parsed.education_institution.trim() : "";
+  const graduationYear = typeof parsed.education_year === "string" ? parsed.education_year.trim() : "";
+
+  if (!degree && !institution && !graduationYear) return [];
+
+  return [{
+    degree,
+    institution,
+    graduationYear,
+    location: "",
+    gpa: "",
+  }];
+}
+
+function buildResumeFillActions(parsed: unknown): CopilotAction[] {
+  if (!parsed || typeof parsed !== "object") return [];
+
+  const data = parsed as Record<string, unknown>;
+  const actions: CopilotAction[] = [];
+  const simpleFields = ["fullName", "email", "phone", "location", "linkedIn", "portfolio", "summary"];
+
+  for (const field of simpleFields) {
+    const value = data[field];
+    if (typeof value === "string" && value.trim()) {
+      actions.push({
+        type: "fill_field",
+        label: `Apply ${field}`,
+        payload: { field, value: value.trim() },
+      });
+    }
+  }
+
+  if (Array.isArray(data.skills) && data.skills.some((skill) => typeof skill === "string" && skill.trim())) {
+    actions.push({
+      type: "fill_field",
+      label: "Apply skills",
+      payload: { field: "skills", value: data.skills },
+    });
+  }
+
+  if (Array.isArray(data.experiences) && data.experiences.length > 0) {
+    actions.push({
+      type: "fill_field",
+      label: "Apply experience",
+      payload: { field: "experiences", value: data.experiences },
+    });
+  }
+
+  const educationUpdates = normalizeEducationUpdates(data);
+  if (educationUpdates.length > 0) {
+    actions.push({
+      type: "fill_field",
+      label: "Apply education",
+      payload: { field: "education", value: educationUpdates },
+    });
+  }
+
+  return actions;
+}
+
+function parseResumeUpdateLocally(text: string): Record<string, unknown> | null {
+  const updates: Record<string, unknown> = {};
+
+  const emailMatch = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  if (emailMatch) updates.email = emailMatch[0];
+
+  const phoneMatch = text.match(/(?:\+?\d[\d\s()-]{7,}\d)/);
+  if (phoneMatch) updates.phone = phoneMatch[0].trim();
+
+  const nameMatch = text.match(/(?:my name is|i am|i'm)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3})/i);
+  if (nameMatch) updates.fullName = nameMatch[1].trim();
+
+  const locationMatch = text.match(/(?:location|based in|live in|located in)\s+(?:is\s+)?([^.,;\n]+?)(?=\s+(?:and|with|while)\b|[.?!]|$)/i);
+  if (locationMatch) updates.location = locationMatch[1].trim();
+
+  const linkedInMatch = text.match(/https?:\/\/(?:www\.)?linkedin\.com\/[^\s]+|linkedin\.com\/[^\s]+/i);
+  if (linkedInMatch) updates.linkedIn = linkedInMatch[0].trim();
+
+  const portfolioMatch = text.match(/https?:\/\/(?!.*linkedin\.com)[^\s]+/i);
+  if (portfolioMatch) updates.portfolio = portfolioMatch[0].trim();
+
+  const skillsMatch = text.match(/skills?(?: include| are|:)?\s+([^.\n]+)/i);
+  if (skillsMatch) {
+    const skills = skillsMatch[1]
+      .split(/,| and /i)
+      .map((skill) => skill.trim())
+      .filter(Boolean);
+    if (skills.length > 0) updates.skills = skills;
+  }
+
+  return Object.keys(updates).length > 0 ? updates : null;
+}
+
+function summarizeAppliedUpdates(actions: CopilotAction[]): string {
+  const labels = actions
+    .map((action) => action.payload.field)
+    .filter((field): field is string => typeof field === "string");
+
+  if (labels.length === 0) return "I updated your resume details.";
+  return `Updated ${labels.join(", ")}.`;
+}
 
 // ─── Suggestion Actions (these trigger real workspace actions, not just chat) ─
 
@@ -365,6 +472,30 @@ export default function AICopilot({
         onTriggerAction?.("enhanceExperience", {});
         addMessage("action", "Enhancing your experience bullet points...");
       } else {
+        if (context === "resume") {
+          const localParsed = parseResumeUpdateLocally(trimmed);
+          const localActions = buildResumeFillActions(localParsed);
+          if (localActions.length > 0) {
+            addMessage("ai", summarizeAppliedUpdates(localActions));
+            localActions.forEach((action) => executeAction(action));
+            setIsLoading(false);
+            return;
+          }
+
+          const parsedResult = await resumeApi.chat(
+            trimmed,
+            "parse_resume_update",
+            { ...(cvData || {}), ...(resumeData || {}) },
+          );
+          const parsedActions = buildResumeFillActions(parsedResult.data?.data);
+          if (parsedActions.length > 0) {
+            addMessage("ai", parsedResult.data?.reply || summarizeAppliedUpdates(parsedActions));
+            parsedActions.forEach((action) => executeAction(action));
+            setIsLoading(false);
+            return;
+          }
+        }
+
         // General chat with enriched context
         const enrichedContext = {
           ...(cvData || {}),

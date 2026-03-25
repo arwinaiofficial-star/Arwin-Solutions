@@ -24,6 +24,7 @@ async def resume_chat(
     - generate_summary: Generate professional summary from CV context
     - enhance_cv: Enhance/improve CV text
     - extract_cv: Extract structured data from raw CV text
+    - parse_resume_update: Extract resume field updates from natural language
     """
     try:
         if data.action == "generate_summary":
@@ -54,6 +55,23 @@ async def resume_chat(
             import json
             extracted = await resume_service.extract_cv_from_text(raw_text)
             return ResumeChatResponse(reply=json.dumps(extracted))
+
+        elif data.action == "parse_resume_update":
+            parsed = await resume_service.parse_user_response(
+                data.message,
+                {
+                    "collected_data": data.context or {},
+                    "missing_fields": [],
+                },
+            )
+            understood = parsed.get("understood_message") or "I updated your resume details."
+            next_question = parsed.get("next_question")
+            reply = (
+                f"{understood}\n\n{next_question}"
+                if next_question and next_question != understood
+                else understood
+            )
+            return ResumeChatResponse(reply=reply, data=parsed)
 
         else:
             # Default: general chat

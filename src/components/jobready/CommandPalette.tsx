@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 interface Action {
   id: string;
@@ -19,19 +19,25 @@ interface CommandPaletteProps {
 export default function CommandPalette({ isOpen, onClose, actions }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const closePalette = useCallback(() => {
+    setQuery("");
+    onClose();
+  }, [onClose]);
 
   useEffect(() => {
-    if (isOpen) { setQuery(""); setTimeout(() => inputRef.current?.focus(), 50); }
-  }, [isOpen]);
+    if (!isOpen) return;
+    const timer = setTimeout(() => inputRef.current?.focus(), 50);
+    return () => clearTimeout(timer);
+  }, [isOpen, closePalette]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); onClose(); }
-      if (e.key === "Escape" && isOpen) onClose();
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); closePalette(); }
+      if (e.key === "Escape" && isOpen) closePalette();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -40,18 +46,18 @@ export default function CommandPalette({ isOpen, onClose, actions }: CommandPale
   return (
     <>
       <style>{cmdCSS}</style>
-      <div className="cmd-overlay" onClick={onClose}>
+      <div className="cmd-overlay" onClick={closePalette}>
         <div className="cmd" onClick={e => e.stopPropagation()}>
           <div className="cmd-search">
             <span>⌘</span>
             <input ref={inputRef} value={query} onChange={e => setQuery(e.target.value)} placeholder="Type a command..." onKeyDown={e => {
-              if (e.key === "Enter" && filtered.length > 0) { filtered[0].action(); onClose(); }
+              if (e.key === "Enter" && filtered.length > 0) { filtered[0].action(); closePalette(); }
             }} />
           </div>
           <div className="cmd-list">
             {filtered.length === 0 && <div className="cmd-empty">No matching commands</div>}
             {filtered.map(a => (
-              <button key={a.id} className="cmd-item" onClick={() => { a.action(); onClose(); }}>
+              <button key={a.id} className="cmd-item" onClick={() => { a.action(); closePalette(); }}>
                 <span className="cmd-icon">{a.icon}</span>
                 <span className="cmd-label">{a.label}</span>
                 {a.shortcut && <span className="cmd-shortcut">{a.shortcut}</span>}

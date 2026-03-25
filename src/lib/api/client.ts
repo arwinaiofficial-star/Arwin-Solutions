@@ -20,6 +20,27 @@ interface ApiResponse<T = unknown> {
 const WAKE_MAX_RETRIES = 3;
 const WAKE_RETRY_DELAY_MS = 4_000;
 
+async function shouldRetry503(response: Response): Promise<boolean> {
+  if (response.status !== 503) return false;
+
+  try {
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      return true;
+    }
+
+    const body = await response.clone().json() as { error?: string; detail?: string };
+    const message = body.error || body.detail || "";
+    if (message.includes("Configured backend does not support")) {
+      return false;
+    }
+  } catch {
+    // Fall through to retry for transient/non-JSON 503s.
+  }
+
+  return true;
+}
+
 /**
  * Fetch with automatic retry on 503 (backend sleeping / cold start).
  * Runs in the browser — no serverless timeout constraint.
@@ -33,7 +54,7 @@ async function fetchWithWakeRetry(
     const response = await fetch(url, options);
 
     // 503 = BFF couldn't reach backend (cold start). Retry after delay.
-    if (response.status === 503 && attempt < retries) {
+    if (attempt < retries && await shouldRetry503(response)) {
       await new Promise((r) => setTimeout(r, WAKE_RETRY_DELAY_MS));
       continue;
     }
@@ -79,6 +100,137 @@ function getRefreshToken(): string | null {
 function authHeaders(): Record<string, string> {
   const token = getAccessToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function parseTokenPayload(token: string | null): Record<string, unknown> | null {
+  if (!token) return null;
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+
+  try {
+    return JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function currentUserStorageScope(): string {
+  if (typeof window === "undefined") return "server";
+  const payload = parseTokenPayload(getAccessToken());
+  const sub = typeof payload?.sub === "string" ? payload.sub : "anonymous";
+  return sub;
+}
+
+function scopedStorageKey(base: string): string {
+  return `${base}:${currentUserStorageScope()}`;
+}
+
+function readScopedStorage<T>(base: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = localStorage.getItem(scopedStorageKey(base));
+    return raw ? JSON.parse(raw) as T : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeScopedStorage<T>(base: string, value: T) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(scopedStorageKey(base), JSON.stringify(value));
+}
+
+function makeLocalId(prefix: string): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return `${prefix}_${crypto.randomUUID()}`;
+  }
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function shouldUseLocalFallback(status: number, error?: string): boolean {
+  if (status === 503 || status === 405) return true;
+  return Boolean(error && (
+    error.includes("Configured backend does not support") ||
+    error.includes("Unable to connect to backend") ||
+    error.includes("Network error")
+  ));
+}
+
+type LocalResumeRecord = {
+  id: string;
+  data: Record<string, unknown>;
+  version: number;
+  status: string;
+  created_at: string;
+  updated_at: string;
+};
+
+const LOCAL_RESUME_KEY = "jobready_resume_records";
+const LOCAL_APPLICATIONS_KEY = "jobready_application_records";
+const LOCAL_CHAT_SESSION_KEY = "jobready_chat_session";
+
+function readLocalResumeRecords(): LocalResumeRecord[] {
+  return readScopedStorage<LocalResumeRecord[]>(LOCAL_RESUME_KEY, []);
+}
+
+function writeLocalResumeRecords(records: LocalResumeRecord[]) {
+  writeScopedStorage(LOCAL_RESUME_KEY, records);
+}
+
+function cacheLatestResume(record: LocalResumeRecord) {
+  const records = readLocalResumeRecords();
+  const nextRecords = records.filter((item) => item.id !== record.id);
+  nextRecords.push(record);
+  writeLocalResumeRecords(nextRecords);
+}
+
+function saveResumeLocally(
+  data: Record<string, unknown>,
+  status: string
+): { id: string; version: number; status: string; created_at: string } {
+  const now = new Date().toISOString();
+  const records = readLocalResumeRecords().sort((a, b) => b.version - a.version);
+  const latest = records[0];
+
+  if (status === "draft" && latest?.status === "draft") {
+    const updated: LocalResumeRecord = {
+      ...latest,
+      data,
+      updated_at: now,
+    };
+    writeLocalResumeRecords([updated, ...records.slice(1)]);
+    return {
+      id: updated.id,
+      version: updated.version,
+      status: updated.status,
+      created_at: updated.created_at,
+    };
+  }
+
+  const record: LocalResumeRecord = {
+    id: makeLocalId("resume"),
+    data,
+    version: (latest?.version || 0) + 1,
+    status,
+    created_at: now,
+    updated_at: now,
+  };
+  writeLocalResumeRecords([...records, record]);
+  return {
+    id: record.id,
+    version: record.version,
+    status: record.status,
+    created_at: record.created_at,
+  };
+}
+
+function getLatestLocalResume(): LocalResumeRecord | null {
+  const records = readLocalResumeRecords();
+  if (records.length === 0) return null;
+  return [...records].sort((a, b) => {
+    if (b.version !== a.version) return b.version - a.version;
+    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+  })[0];
 }
 
 // ─── Refresh lock (prevent concurrent refresh attempts) ─────────────────────
@@ -327,7 +479,7 @@ export const resumeApi = {
     message: string,
     action: string = "chat",
     context?: Record<string, unknown>
-  ): Promise<ApiResponse<{ reply: string; suggestions?: string[] }>> {
+  ): Promise<ApiResponse<{ reply: string; suggestions?: string[]; data?: Record<string, unknown> }>> {
     try {
       const response = await authenticatedFetch(`${RESUME_API_BASE}/chat`, {
         method: "POST",
@@ -358,11 +510,24 @@ export const resumeApi = {
 
       const body = await response.json();
       if (!response.ok) {
+        if (shouldUseLocalFallback(response.status, body.error || body.detail)) {
+          return { data: saveResumeLocally(data, status) };
+        }
         return { error: body.detail || body.error || "Resume save failed" };
+      }
+      if (body.id && body.version) {
+        cacheLatestResume({
+          id: body.id as string,
+          data,
+          version: body.version as number,
+          status: (body.status as string) || status,
+          created_at: (body.created_at as string) || new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
       }
       return { data: body };
     } catch {
-      return { error: "Network error. Please check your connection." };
+      return { data: saveResumeLocally(data, status) };
     }
   },
 
@@ -379,13 +544,48 @@ export const resumeApi = {
 
       const body = await response.json();
       if (!response.ok) {
+        if (shouldUseLocalFallback(response.status, body.error || body.detail)) {
+          const localResume = getLatestLocalResume();
+          if (!localResume) {
+            return { error: "No resume found" };
+          }
+          return {
+            data: {
+              id: localResume.id,
+              data: localResume.data,
+              version: localResume.version,
+              status: localResume.status,
+            },
+          };
+        }
         return {
           error: body.detail || body.error || "Failed to fetch resume",
         };
       }
+      if (body.id && body.data) {
+        cacheLatestResume({
+          id: body.id as string,
+          data: body.data as Record<string, unknown>,
+          version: (body.version as number) || 1,
+          status: (body.status as string) || "final",
+          created_at: (body.created_at as string) || new Date().toISOString(),
+          updated_at: (body.updated_at as string) || new Date().toISOString(),
+        });
+      }
       return { data: body };
     } catch {
-      return { error: "Network error. Please check your connection." };
+      const localResume = getLatestLocalResume();
+      if (!localResume) {
+        return { error: "Network error. Please check your connection." };
+      }
+      return {
+        data: {
+          id: localResume.id,
+          data: localResume.data,
+          version: localResume.version,
+          status: localResume.status,
+        },
+      };
     }
   },
 
@@ -436,9 +636,12 @@ export const chatSessionApi = {
     try {
       const response = await authenticatedFetch("/api/chat/session", {});
       const body = await response.json();
+      if (!response.ok) {
+        return { data: { session: readLocalChatSession() } };
+      }
       return { data: body };
     } catch {
-      return { data: { session: null } };
+      return { data: { session: readLocalChatSession() } };
     }
   },
 
@@ -455,9 +658,37 @@ export const chatSessionApi = {
         body: JSON.stringify(data),
       });
       const body = await response.json();
+      if (!response.ok) {
+        const now = new Date().toISOString();
+        const session = {
+          id: data.session_id || makeLocalId("session"),
+          messages: data.messages,
+          agent_state: data.agent_state,
+          collected_data: data.collected_data,
+          last_active_at: now,
+        };
+        writeLocalChatSession(session);
+        return { data: { id: session.id } };
+      }
+      writeLocalChatSession({
+        id: (body.id as string) || data.session_id || makeLocalId("session"),
+        messages: data.messages,
+        agent_state: data.agent_state,
+        collected_data: data.collected_data,
+        last_active_at: (body.last_active_at as string) || new Date().toISOString(),
+      });
       return { data: body };
     } catch {
-      return { error: "Failed to save session" };
+      const now = new Date().toISOString();
+      const session = {
+        id: data.session_id || makeLocalId("session"),
+        messages: data.messages,
+        agent_state: data.agent_state,
+        collected_data: data.collected_data,
+        last_active_at: now,
+      };
+      writeLocalChatSession(session);
+      return { data: { id: session.id } };
     }
   },
 };
@@ -512,6 +743,89 @@ export interface JobApplicationData {
   updated_at: string;
 }
 
+function readLocalApplications(): JobApplicationData[] {
+  return readScopedStorage<JobApplicationData[]>(LOCAL_APPLICATIONS_KEY, []);
+}
+
+function writeLocalApplications(applications: JobApplicationData[]) {
+  writeScopedStorage(LOCAL_APPLICATIONS_KEY, applications);
+}
+
+function createLocalApplication(data: {
+  job_title: string;
+  company: string;
+  location?: string;
+  job_url?: string;
+  salary?: string;
+  source?: string;
+  status?: string;
+  notes?: string;
+  description?: string;
+}): JobApplicationData {
+  const now = new Date().toISOString();
+  const application: JobApplicationData = {
+    id: makeLocalId("app"),
+    user_id: currentUserStorageScope(),
+    job_title: data.job_title,
+    company: data.company,
+    location: data.location || null,
+    job_url: data.job_url || null,
+    salary: data.salary || null,
+    source: data.source || null,
+    status: data.status || "saved",
+    resume_id: null,
+    notes: data.notes || null,
+    description: data.description || null,
+    applied_at: now,
+    updated_at: now,
+  };
+  const applications = readLocalApplications();
+  writeLocalApplications([application, ...applications]);
+  return application;
+}
+
+function updateLocalApplication(
+  id: string,
+  data: { status?: string; notes?: string; job_url?: string; salary?: string }
+): JobApplicationData | null {
+  const now = new Date().toISOString();
+  let updatedApp: JobApplicationData | null = null;
+  const applications = readLocalApplications().map((application) => {
+    if (application.id !== id) return application;
+    updatedApp = {
+      ...application,
+      ...data,
+      updated_at: now,
+    };
+    return updatedApp;
+  });
+  writeLocalApplications(applications);
+  return updatedApp;
+}
+
+function removeLocalApplication(id: string): boolean {
+  const applications = readLocalApplications();
+  const nextApplications = applications.filter((application) => application.id !== id);
+  writeLocalApplications(nextApplications);
+  return nextApplications.length !== applications.length;
+}
+
+type LocalChatSession = {
+  id: string;
+  messages: unknown[];
+  agent_state: Record<string, unknown>;
+  collected_data: Record<string, unknown>;
+  last_active_at: string;
+};
+
+function readLocalChatSession(): LocalChatSession | null {
+  return readScopedStorage<LocalChatSession | null>(LOCAL_CHAT_SESSION_KEY, null);
+}
+
+function writeLocalChatSession(session: LocalChatSession | null) {
+  writeScopedStorage(LOCAL_CHAT_SESSION_KEY, session);
+}
+
 export const applicationsApi = {
   async list(status?: string): Promise<ApiResponse<JobApplicationData[]>> {
     try {
@@ -519,11 +833,23 @@ export const applicationsApi = {
       const response = await authenticatedFetch(`/api/applications${qs}`, {});
       const body = await response.json();
       if (!response.ok) {
+        if (shouldUseLocalFallback(response.status, body.error || body.detail)) {
+          const localApplications = readLocalApplications()
+            .filter((application) => !status || application.status === status)
+            .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+          return { data: localApplications };
+        }
         return { error: body.error || "Failed to load applications" };
+      }
+      if (Array.isArray(body)) {
+        writeLocalApplications(body as JobApplicationData[]);
       }
       return { data: body };
     } catch {
-      return { error: "Network error" };
+      const localApplications = readLocalApplications()
+        .filter((application) => !status || application.status === status)
+        .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+      return { data: localApplications };
     }
   },
 
@@ -546,11 +872,21 @@ export const applicationsApi = {
       });
       const body = await response.json();
       if (!response.ok) {
+        if (shouldUseLocalFallback(response.status, body.error || body.detail)) {
+          return { data: createLocalApplication(data) };
+        }
         return { error: body.error || "Failed to save application" };
+      }
+      if (body?.id) {
+        const applications = readLocalApplications();
+        writeLocalApplications([
+          body as JobApplicationData,
+          ...applications.filter((application) => application.id !== (body as JobApplicationData).id),
+        ]);
       }
       return { data: body };
     } catch {
-      return { error: "Network error" };
+      return { data: createLocalApplication(data) };
     }
   },
 
@@ -566,11 +902,22 @@ export const applicationsApi = {
       });
       const body = await response.json();
       if (!response.ok) {
+        if (shouldUseLocalFallback(response.status, body.error || body.detail)) {
+          const updated = updateLocalApplication(id, data);
+          return updated ? { data: updated } : { error: "Application not found" };
+        }
         return { error: body.error || "Failed to update application" };
+      }
+      if (body?.id) {
+        const applications = readLocalApplications().map((application) =>
+          application.id === (body as JobApplicationData).id ? body as JobApplicationData : application
+        );
+        writeLocalApplications(applications);
       }
       return { data: body };
     } catch {
-      return { error: "Network error" };
+      const updated = updateLocalApplication(id, data);
+      return updated ? { data: updated } : { error: "Network error" };
     }
   },
 
@@ -580,12 +927,18 @@ export const applicationsApi = {
         method: "DELETE",
       });
       if (response.status === 204 || response.ok) {
+        removeLocalApplication(id);
         return { data: undefined };
       }
       const body = await response.json();
+      if (shouldUseLocalFallback(response.status, body.error || body.detail)) {
+        removeLocalApplication(id);
+        return { data: undefined };
+      }
       return { error: body.error || "Failed to delete application" };
     } catch {
-      return { error: "Network error" };
+      removeLocalApplication(id);
+      return { data: undefined };
     }
   },
 };

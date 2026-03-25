@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { fetchBackend } from "@/lib/api/backend";
+import { fetchBackend, getBackendCapabilities } from "@/lib/api/backend";
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,6 +15,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Authentication required" },
         { status: 401 }
+      );
+    }
+
+    const capabilities = await getBackendCapabilities();
+    if (!capabilities.supportsResumeSave) {
+      return NextResponse.json(
+        {
+          error: "Configured backend does not support resume persistence. Deploy the current JobReady backend or point FASTAPI_URL to a compatible API.",
+        },
+        { status: 503 }
       );
     }
 

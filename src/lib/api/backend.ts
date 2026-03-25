@@ -102,3 +102,42 @@ export async function fetchBackend(
 export function getBackendUrl(): string {
   return FASTAPI_URL;
 }
+
+type BackendCapabilities = {
+  supportsResumeSave: boolean;
+  supportsResumeLatest: boolean;
+  supportsApplications: boolean;
+};
+
+let backendCapabilitiesPromise: Promise<BackendCapabilities> | null = null;
+
+export async function getBackendCapabilities(): Promise<BackendCapabilities> {
+  if (!backendCapabilitiesPromise) {
+    backendCapabilitiesPromise = (async () => {
+      try {
+        const response = await fetch(`${FASTAPI_URL}/openapi.json`, {
+          signal: AbortSignal.timeout(ATTEMPT_TIMEOUT_MS),
+        });
+        if (!response.ok) {
+          throw new Error(`OpenAPI fetch failed with ${response.status}`);
+        }
+        const body = await response.json() as { paths?: Record<string, unknown> };
+        const paths = body.paths || {};
+
+        return {
+          supportsResumeSave: "/api/v1/resume/save" in paths,
+          supportsResumeLatest: "/api/v1/resume/latest" in paths,
+          supportsApplications: "/api/v1/applications" in paths,
+        };
+      } catch {
+        return {
+          supportsResumeSave: false,
+          supportsResumeLatest: false,
+          supportsApplications: false,
+        };
+      }
+    })();
+  }
+
+  return backendCapabilitiesPromise;
+}

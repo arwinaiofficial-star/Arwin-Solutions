@@ -4,6 +4,20 @@ import { fetchBackend } from "@/lib/api/backend";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+type MammothModule = {
+  extractRawText: (input: { buffer: Buffer }) => Promise<{ value: string }>;
+};
+
+function loadMammoth(): MammothModule | null {
+  try {
+    // Keep DOCX extraction optional so builds do not fail on stale local installs.
+    const runtimeRequire = eval("require") as (id: string) => MammothModule;
+    return runtimeRequire("mammoth");
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
@@ -56,7 +70,10 @@ export async function POST(request: NextRequest) {
     } else {
       // DOCX is a ZIP archive — use mammoth for proper extraction
       try {
-        const mammoth = await import("mammoth");
+        const mammoth = loadMammoth();
+        if (!mammoth) {
+          throw new Error("mammoth is not installed");
+        }
         const result = await mammoth.extractRawText({ buffer });
         rawText = result.value;
       } catch (docxError) {

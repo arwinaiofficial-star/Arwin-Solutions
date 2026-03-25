@@ -7,10 +7,9 @@ import ResumeWizard, { ResumeWizardHandle } from "@/components/jobready/ResumeWi
 import AICopilot from "@/components/jobready/AICopilot";
 import CommandPalette from "@/components/jobready/CommandPalette";
 import {
-  UserIcon, LogoutIcon, SearchIcon, DocumentIcon,
-  LocationIcon, CheckIcon, ExternalLinkIcon, BriefcaseIcon,
-  SettingsIcon, DownloadIcon, XIcon, SendIcon, PlusIcon,
-  ArrowRightIcon,
+  LogoutIcon, SearchIcon, DocumentIcon,
+  LocationIcon, ExternalLinkIcon, BriefcaseIcon,
+  SettingsIcon, XIcon, SendIcon,
 } from "@/components/icons/Icons";
 import { authApi, resumeApi, jobPrepareApi, applicationsApi, JobApplicationData } from "@/lib/api/client";
 
@@ -78,7 +77,7 @@ function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id
 // ─── Main Page ──────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const { user, isAuthenticated, isLoading, logout, saveGeneratedCV } = useAuth();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
   const router = useRouter();
   const [activeView, setActiveView] = useState<ViewType>("resume");
   const [copilotOpen, setCopilotOpen] = useState(true);
@@ -93,19 +92,6 @@ export default function DashboardPage() {
   const [resumeStep, setResumeStep] = useState(0);
   const [resumeData, setResumeData] = useState<Record<string, unknown>>({});
   const wizardHandleRef = useRef<ResumeWizardHandle | null>(null);
-
-  // Load tracked jobs from database (not localStorage)
-  const [trackedJobsLoading, setTrackedJobsLoading] = useState(true);
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    applicationsApi.list().then(result => {
-      if (result.data) {
-        setTrackedJobs(result.data.map(dbAppToTrackedJob));
-      }
-      setTrackedJobsLoading(false);
-    });
-  }, [isAuthenticated]);
 
   // Update tracked jobs in DB
   const updateTrackedJobs = useCallback((jobs: TrackedJob[]) => {
@@ -126,7 +112,7 @@ export default function DashboardPage() {
   }, []);
 
   const addToast = useCallback((message: string, type: Toast["type"] = "info") => {
-    const id = `t_${Date.now()}`;
+    const id = `t_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
   }, []);
@@ -134,6 +120,17 @@ export default function DashboardPage() {
   const dismissToast = useCallback((id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    applicationsApi.list().then(result => {
+      if (result.data) {
+        setTrackedJobs(result.data.map(dbAppToTrackedJob));
+      } else if (result.error) {
+        addToast(result.error, "error");
+      }
+    });
+  }, [isAuthenticated, addToast]);
 
   const saveToTracker = useCallback(async (job: JobResult) => {
     if (trackedJobs.find(t => t.title === job.title && t.company === job.company)) {
@@ -1100,7 +1097,7 @@ function SettingsPanel({
   onEditResume: () => void;
   addToast: (msg: string, type: Toast["type"]) => void;
 }) {
-  const { updateProfile, refreshUser } = useAuth();
+  const { updateProfile } = useAuth();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user.name);
   const [phone, setPhone] = useState(user.phone || "");
