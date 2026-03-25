@@ -660,8 +660,8 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
         {step === 0 && (
           <div className="rw-start">
             <div className="rw-start-icon"><DocumentIcon size={34} /></div>
-            <h2>Build Your Professional Resume</h2>
-            <p>Create an ATS-optimized resume that gets you noticed by recruiters.</p>
+            <h2>Build a sharper resume</h2>
+            <p>Import, refine, and finalize a professional resume for real applications.</p>
 
             <div className="rw-start-options">
               <button className="rw-option" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
@@ -689,8 +689,8 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
               <div className="rw-story-card">
                 <div className="rw-story-header">
                   <div>
-                    <strong>Tell me about your background</strong>
-                    <p>You can write naturally. Mention your work history, skills, education, certifications, and anything you want captured.</p>
+                    <strong>Share your background</strong>
+                    <p>Write naturally. Include work history, skills, education, certifications, and anything worth capturing.</p>
                   </div>
                   <button className="rw-btn-ai" onClick={handleStoryImport} disabled={isStoryImporting || !storyInput.trim()}>
                     {isStoryImporting ? <><span className="rw-spinner" /> Reading...</> : <><SparklesIcon size={14} /> Auto-fill from story</>}
@@ -1430,8 +1430,8 @@ const wizardStyles = `
     --rw-text: #e7edf0;
     --rw-muted: #91a4ad;
     --rw-soft: #627983;
-    --rw-accent: #2f6e6a;
-    --rw-accent-2: #b7844d;
+    --rw-accent: #2563eb;
+    --rw-accent-2: #60a5fa;
     --rw-success: #4db38a;
     --rw-paper: #f4f1ea;
     height: 100%;
@@ -1475,7 +1475,7 @@ const wizardStyles = `
     color: var(--rw-soft); font-size: 0.8125rem; font-weight: 600;
     cursor: default; transition: all 0.2s;
   }
-  .rw-step-active { border-color: rgba(92,163,168,0.38); color: var(--rw-text); background: linear-gradient(180deg, rgba(255,255,255,0.024), transparent 16%), var(--rw-panel-2); box-shadow: 0 12px 24px rgba(6,12,16,0.2); }
+  .rw-step-active { border-color: rgba(37,99,235,0.38); color: var(--rw-text); background: linear-gradient(180deg, rgba(255,255,255,0.024), transparent 16%), var(--rw-panel-2); box-shadow: 0 12px 24px rgba(6,12,16,0.2); }
   .rw-step-done { color: #84d4b2; cursor: pointer; }
   .rw-step-done:hover { background: var(--rw-panel-2); }
   .rw-step-num {
@@ -1484,7 +1484,7 @@ const wizardStyles = `
     font-size: 0.6875rem; font-weight: 700;
     background: rgba(255,255,255,0.03); color: var(--rw-muted); border: 1px solid var(--rw-border);
   }
-  .rw-step-active .rw-step-num { background: rgba(92,163,168,0.18); color: #dff7f8; border-color: rgba(92,163,168,0.36); }
+  .rw-step-active .rw-step-num { background: rgba(37,99,235,0.18); color: #dbeafe; border-color: rgba(37,99,235,0.36); }
   .rw-step-done .rw-step-num { background: rgba(77,179,138,0.15); color: #84d4b2; border-color: rgba(77,179,138,0.32); }
   .rw-step-label { white-space: nowrap; }
 
@@ -1501,7 +1501,7 @@ const wizardStyles = `
   .rw-start-icon {
     width:68px; height:68px; margin:0 auto 18px; border-radius:20px;
     display:flex; align-items:center; justify-content:center;
-    background:rgba(47,110,106,0.14); color:#d8efed; border:1px solid rgba(47,110,106,0.26);
+    background:rgba(37,99,235,0.14); color:#dbeafe; border:1px solid rgba(37,99,235,0.26);
   }
   .rw-start h2 { font-size: 2rem; font-weight: 700; letter-spacing: -0.04em; color: #f1f5f9; margin: 0 0 10px; }
   .rw-start p { color: var(--rw-muted); margin: 0 0 32px; font-size: 0.98rem; line-height: 1.65; max-width: 620px; margin-left: auto; margin-right: auto; }
@@ -1514,9 +1514,9 @@ const wizardStyles = `
     color: var(--rw-muted); cursor: pointer; transition: all 0.2s;
     text-align: center;
   }
-  .rw-option:hover { border-color: rgba(92,163,168,0.34); background: linear-gradient(180deg, rgba(255,255,255,0.024), transparent 16%), var(--rw-panel-2); color: #e2e8f0; transform: translateY(-2px); box-shadow: 0 18px 30px rgba(6,12,16,0.24); }
+  .rw-option:hover { border-color: rgba(37,99,235,0.34); background: linear-gradient(180deg, rgba(255,255,255,0.024), transparent 16%), var(--rw-panel-2); color: #e2e8f0; transform: translateY(-2px); box-shadow: 0 18px 30px rgba(6,12,16,0.24); }
   .rw-option:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-  .rw-option-active { border-color: rgba(47,110,106,0.34); background: linear-gradient(180deg, rgba(255,255,255,0.024), transparent 16%), var(--rw-panel-2); }
+  .rw-option-active { border-color: rgba(37,99,235,0.34); background: linear-gradient(180deg, rgba(255,255,255,0.024), transparent 16%), var(--rw-panel-2); }
   .rw-option strong { color: #f1f5f9; font-size: 1rem; }
   .rw-option span { font-size: 0.78rem; line-height: 1.5; }
   .rw-option-file { font-size: 0.6875rem; color: var(--rw-accent-2); margin-top: 4px; }
@@ -1611,7 +1611,7 @@ const wizardStyles = `
     color: var(--rw-text); font-size: 0.89rem; font-family: inherit;
     transition: border-color 0.15s;
   }
-  .rw-field input:focus, .rw-textarea:focus { outline: none; border-color: var(--rw-accent); box-shadow: 0 0 0 3px rgba(47,110,106,0.12); }
+  .rw-field input:focus, .rw-textarea:focus { outline: none; border-color: var(--rw-accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
   .rw-field input::placeholder, .rw-textarea::placeholder { color: #475569; }
   .rw-field input:disabled { opacity: 0.5; }
   .rw-textarea { resize: vertical; min-height: 100px; line-height: 1.6; }
@@ -1654,12 +1654,12 @@ const wizardStyles = `
     min-height: 44px; align-items: center;
     transition: border-color 0.15s;
   }
-  .rw-skills-input:focus-within { border-color: var(--rw-accent); box-shadow: 0 0 0 3px rgba(47,110,106,0.12); }
+  .rw-skills-input:focus-within { border-color: var(--rw-accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
   .rw-skill-tag {
     display: inline-flex; align-items: center; gap: 4px;
     padding: 4px 10px; border-radius: 999px;
-    background: rgba(92,163,168,0.12); border: 1px solid rgba(92,163,168,0.22);
-    color: #9ed6d8; font-size: 0.75rem; font-weight: 700;
+    background: rgba(37,99,235,0.12); border: 1px solid rgba(37,99,235,0.22);
+    color: #bfdbfe; font-size: 0.75rem; font-weight: 700;
   }
   .rw-skill-tag button {
     background: none; border: none; color: #60a5fa; cursor: pointer; padding: 0;
@@ -1685,8 +1685,8 @@ const wizardStyles = `
   .rw-btn-add {
     display: inline-flex; align-items: center; gap: 4px;
     padding: 8px 14px; border-radius: 999px;
-    background: #132128; border: 1px solid rgba(47,110,106,0.3);
-    color: #9ed6d8; font-size: 0.8125rem; font-weight: 700;
+    background: #11203a; border: 1px solid rgba(37,99,235,0.3);
+    color: #bfdbfe; font-size: 0.8125rem; font-weight: 700;
     cursor: pointer; transition: all 0.15s;
   }
   .rw-btn-add:hover { background: #17303a; border-color: var(--rw-accent); }
@@ -1698,12 +1698,12 @@ const wizardStyles = `
   .rw-btn-ai {
     display: inline-flex; align-items: center; gap: 4px;
     padding: 6px 12px; border-radius: 999px;
-    background: rgba(47,110,106,0.12);
-    border: 1px solid rgba(47,110,106,0.28);
-    color: #b7dfe2; font-size: 0.75rem; font-weight: 700;
+    background: rgba(37,99,235,0.12);
+    border: 1px solid rgba(37,99,235,0.28);
+    color: #bfdbfe; font-size: 0.75rem; font-weight: 700;
     cursor: pointer; transition: all 0.15s;
   }
-  .rw-btn-ai:hover { background: rgba(47,110,106,0.18); border-color: var(--rw-accent); }
+  .rw-btn-ai:hover { background: rgba(37,99,235,0.18); border-color: var(--rw-accent); }
   .rw-btn-ai:disabled { opacity: 0.6; cursor: not-allowed; }
 
   /* Empty State */

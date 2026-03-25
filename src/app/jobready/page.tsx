@@ -12,51 +12,49 @@ import {
 } from "@/components/icons/Icons";
 
 export const metadata: Metadata = {
-  title: "JobReady.ai - Find Jobs in India",
+  title: "JobReady.ai - Resume, Match, Apply",
   description:
-    "AI-powered job search platform for India. Create ATS-friendly CV with our AI assistant. Auto-apply with one click. Jobs from Infosys, TCS, Flipkart, and more.",
+    "Build a sharper resume, match the right roles, and track every application in one workflow.",
 };
 
 const steps = [
   {
     step: "01",
-    title: "Sign Up & Chat with AI",
-    description: "Create your account and start an intelligent conversation. Our AI guides you through building your professional profile.",
+    title: "Set Up Your Profile",
+    description: "Import your resume, tell your story, or start clean. JobReady turns it into structured career data.",
     icon: BotIcon,
     color: "#2563eb",
   },
   {
     step: "02",
-    title: "AI Creates Your CV",
-    description: "Answer focused questions and get an ATS-optimized, professionally formatted CV generated in seconds.",
+    title: "Strengthen Your Resume",
+    description: "Refine summary, experience, skills, and ATS quality without leaving the workflow.",
     icon: DocumentIcon,
-    color: "#7c3aed",
+    color: "#1d4ed8",
   },
   {
     step: "03",
-    title: "Find & Apply to Jobs",
-    description: "Browse matched positions from India's top companies. One-click apply with your CV automatically attached.",
+    title: "Match the Right Roles",
+    description: "See ranked roles, tailor the resume to the job, and prepare a stronger application package.",
     icon: SearchIcon,
-    color: "#10b981",
+    color: "#3b82f6",
   },
   {
     step: "04",
-    title: "Track Applications",
-    description: "Monitor every application in your personal dashboard. Real-time updates on views, shortlists, and interviews.",
+    title: "Run the Pipeline",
+    description: "Save, apply, follow up, and track progress from one dashboard instead of scattered spreadsheets.",
     icon: ClipboardIcon,
-    color: "#f59e0b",
+    color: "#60a5fa",
   },
 ];
 
 const features = [
-  "Intelligent AI chat assistant",
-  "ATS-optimized CV generation",
-  "Jobs from top Indian companies",
-  "Salaries displayed in INR (\u20b9)",
-  "One-click job applications",
-  "Personal application dashboard",
-  "Real-time status tracking",
-  "Secure user accounts",
+  "Structured resume import",
+  "ATS-focused resume editing",
+  "Matched jobs in one workspace",
+  "Tailored resume and cover letter flow",
+  "Application tracking by stage",
+  "Secure account and resume storage",
 ];
 
 const cities = ["Bangalore", "Hyderabad", "Mumbai", "Pune", "Chennai", "Delhi NCR", "Noida", "Gurgaon"];
@@ -77,19 +75,19 @@ export default function JobReadyPage() {
         <div className="container jr-hero-content">
           <div className="jr-hero-badge">
             <span className="jr-pulse" />
-            Now Live in India
+            Guided Application Workflow
           </div>
           <h1 className="jr-hero-title">
-            Your AI-Powered<br />Career Platform
+            Resume to application,<br />in one system
           </h1>
           <p className="jr-hero-sub">
-            Create an ATS-friendly CV through intelligent chat, find matching jobs 
-            at India&apos;s top companies, and apply with one click.
+            Build an ATS-ready resume, match stronger roles, tailor for each opportunity,
+            and track the full pipeline without switching tools.
           </p>
           <div className="jr-hero-actions">
             <Link href="/jobready/signup" className="btn btn-primary btn-lg">
               <RocketIcon size={18} />
-              Get Started Free
+              Start Free
             </Link>
             <Link href="/jobready/login" className="btn btn-outline btn-lg">
               <UserIcon size={18} />
@@ -97,7 +95,7 @@ export default function JobReadyPage() {
             </Link>
           </div>
           <div className="jr-hero-companies">
-            <span className="jr-companies-label">Jobs from:</span>
+            <span className="jr-companies-label">Coverage:</span>
             <span className="jr-companies-list">
               Infosys &bull; TCS &bull; Flipkart &bull; Razorpay &bull; Paytm &bull; Swiggy &bull; Google India &bull; Amazon India
             </span>
@@ -110,9 +108,9 @@ export default function JobReadyPage() {
         <div className="container">
           <div className="text-center mb-xl">
             <div className="eyebrow mb-sm">How It Works</div>
-            <h2>Four Simple Steps</h2>
+            <h2>One Clear Flow</h2>
             <p className="text-muted max-w-screen-md mx-auto" style={{ fontSize: "1.0625rem" }}>
-              A streamlined, AI-powered process to get you job-ready
+              Import, improve, match, tailor, and track without breaking context.
             </p>
           </div>
 
@@ -144,9 +142,9 @@ export default function JobReadyPage() {
             </div>
             <div className="jr-features-content">
               <div className="eyebrow mb-sm">Features</div>
-              <h2 className="mb-md">Everything You Need</h2>
+              <h2 className="mb-md">Built for focused applications</h2>
               <p className="text-muted mb-lg" style={{ fontSize: "1.0625rem" }}>
-                Land your dream job in India with tools built for you.
+                Cleaner workflow, stronger documents, better job targeting.
               </p>
               <ul className="jr-feature-list">
                 {features.map((feature, index) => (
@@ -168,9 +166,9 @@ export default function JobReadyPage() {
         <div className="container">
           <div className="text-center mb-xl">
             <div className="eyebrow mb-sm">Coverage</div>
-            <h2>Jobs Across India</h2>
+            <h2>Across India&apos;s hiring hubs</h2>
             <p className="text-muted" style={{ fontSize: "1.0625rem" }}>
-              Opportunities in India&apos;s top tech hubs
+              Roles across product, engineering, design, and operations.
             </p>
           </div>
           <div className="jr-cities">
@@ -188,15 +186,14 @@ export default function JobReadyPage() {
       <section className="section">
         <div className="container">
           <div className="jr-cta">
-            <h2 className="jr-cta-title">Ready to Find Your Dream Job?</h2>
+            <h2 className="jr-cta-title">Ready to run a sharper search?</h2>
             <p className="jr-cta-sub">
-              Join thousands of job seekers landing roles at India&apos;s top companies. 
-              Create your AI-powered CV and start applying today.
+              Set up your profile, tighten the resume, and move into matched roles with less friction.
             </p>
             <div className="jr-cta-actions">
               <Link href="/jobready/signup" className="btn btn-lg jr-cta-btn-primary">
                 <RocketIcon size={18} />
-                Get Started Free
+                Start Free
               </Link>
               <Link href="/jobready/login" className="btn btn-lg jr-cta-btn-secondary">
                 Sign In

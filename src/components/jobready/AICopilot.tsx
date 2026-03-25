@@ -640,9 +640,9 @@ const copilotCSS = `
     --cop-text:#e7edf0;
     --cop-muted:#8fa2ab;
     --cop-soft:#627983;
-    --cop-accent:#2f6e6a;
-    --cop-accent-strong:#9ed5cf;
-    --cop-warm:#b7844d;
+    --cop-accent:#2563eb;
+    --cop-accent-strong:#93c5fd;
+    --cop-warm:#60a5fa;
     display:flex; flex-direction:column; height:100%;
     background:var(--cop-bg);
     border-left:1px solid var(--cop-border);
@@ -667,9 +667,9 @@ const copilotCSS = `
   .cop-msg-user { flex-direction:row-reverse; }
   .cop-msg-action { opacity:0.7; }
   .cop-avatar {
-    width:30px; height:30px; border-radius:10px; background:rgba(47,110,106,0.18);
-    color:#d8efed; font-size:0.625rem; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;
-    border:1px solid rgba(47,110,106,0.24);
+    width:30px; height:30px; border-radius:10px; background:rgba(37,99,235,0.18);
+    color:#dbeafe; font-size:0.625rem; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    border:1px solid rgba(37,99,235,0.24);
     box-shadow:0 10px 18px rgba(7,17,21,0.24);
   }
   .cop-avatar-action { background:rgba(77,179,138,0.14); border-color:rgba(77,179,138,0.22); font-size:0.75rem; }
@@ -679,8 +679,8 @@ const copilotCSS = `
     border:1px solid var(--cop-border);
   }
   .cop-msg-user .cop-bubble {
-    background:#17303a;
-    border:1px solid rgba(47,110,106,0.26);
+    background:#13284a;
+    border:1px solid rgba(37,99,235,0.26);
   }
   .cop-bubble-action {
     background:rgba(77,179,138,0.08) !important;
@@ -711,7 +711,7 @@ const copilotCSS = `
     padding:7px 12px; border-radius:999px; background:rgba(255,255,255,0.02);
     border:1px solid var(--cop-border); color:var(--cop-muted); font-size:0.7rem; font-weight:700; cursor:pointer; transition:all 0.15s; white-space:nowrap;
   }
-  .cop-sug:hover { border-color:var(--cop-accent); color:var(--cop-accent-strong); background:rgba(47,110,106,0.08); }
+  .cop-sug:hover { border-color:var(--cop-accent); color:var(--cop-accent-strong); background:rgba(37,99,235,0.08); }
   .cop-sug-action { border-color:rgba(77,179,138,0.24); color:#9fddc0; }
   .cop-sug-action:hover { border-color:rgba(77,179,138,0.42); background:rgba(77,179,138,0.1); }
   .cop-input {
@@ -722,14 +722,14 @@ const copilotCSS = `
     flex:1; padding:12px 14px; border-radius:16px; background:#0b1216; border:1px solid var(--cop-border);
     color:var(--cop-text); font-size:0.84rem; outline:none; transition:border-color 0.15s, box-shadow 0.15s;
   }
-  .cop-input input:focus { border-color:var(--cop-accent); box-shadow:0 0 0 3px rgba(47,110,106,0.12); }
+  .cop-input input:focus { border-color:var(--cop-accent); box-shadow:0 0 0 3px rgba(37,99,235,0.12); }
   .cop-input input::placeholder { color:var(--cop-soft); }
   .cop-input button {
     width:42px; height:42px; border-radius:14px; background:var(--cop-accent);
     border:none; color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.15s; flex-shrink:0;
     box-shadow:0 12px 20px rgba(10,29,34,0.26);
   }
-  .cop-input button:hover { background:#285e5a; transform:translateY(-1px); }
+  .cop-input button:hover { background:#1d4ed8; transform:translateY(-1px); }
   .cop-input button:disabled { background:#1a2a31; color:#5a6d76; cursor:not-allowed; box-shadow:none; }
 
   @media (max-width: 768px) {
