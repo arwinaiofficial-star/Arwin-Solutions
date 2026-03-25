@@ -42,7 +42,9 @@ interface PrepareData {
 }
 
 interface WorkflowStage {
-  id: ViewType;
+  id: string;
+  view: ViewType;
+  resumeStep?: number;
   label: string;
   shortLabel: string;
   description: string;
@@ -164,6 +166,7 @@ export default function DashboardPage() {
 
   // Shared state for cross-component communication
   const [jobCount, setJobCount] = useState(0);
+  const [matchedJobs, setMatchedJobs] = useState<JobResult[]>([]);
   const [trackedJobs, setTrackedJobs] = useState<TrackedJob[]>([]);
   const [coverLetterJob, setCoverLetterJob] = useState<JobResult | null>(null);
   const [coverLetterText, setCoverLetterText] = useState("");
@@ -239,6 +242,48 @@ export default function DashboardPage() {
     setActiveView("tailor");
   }, []);
 
+  const currentTrackedJob = coverLetterJob
+    ? trackedJobs.find((tracked) => tracked.title === coverLetterJob.title && tracked.company === coverLetterJob.company) || null
+    : null;
+
+  const logApplication = useCallback(async (job: JobResult) => {
+    const existing = trackedJobs.find((tracked) => tracked.title === job.title && tracked.company === job.company);
+
+    if (existing) {
+      if (existing.status !== "saved") {
+        addToast(`Already logged in ${existing.status}`, "info");
+        return;
+      }
+
+      const result = await applicationsApi.update(existing.id, { status: "applied" });
+      if (result.data) {
+        setTrackedJobs((prev) => prev.map((tracked) => tracked.id === existing.id ? { ...tracked, status: "applied" } : tracked));
+        addToast(`Logged "${job.title}" as applied`, "success");
+      } else {
+        addToast(result.error || "Failed to log application", "error");
+      }
+      return;
+    }
+
+    const created = await applicationsApi.create({
+      job_title: job.title,
+      company: job.company,
+      location: job.location,
+      job_url: job.url,
+      salary: job.salary,
+      source: job.source,
+      status: "applied",
+      description: job.description,
+    });
+
+    if (created.data) {
+      setTrackedJobs((prev) => [dbAppToTrackedJob(created.data!), ...prev]);
+      addToast(`Logged "${job.title}" as applied`, "success");
+    } else {
+      addToast(created.error || "Failed to log application", "error");
+    }
+  }, [addToast, trackedJobs]);
+
   // ── Copilot action handlers ──────────────────────────────────────────
   const handleCopilotNavigate = useCallback((view: string) => {
     if (view === "coverletter") {
@@ -294,6 +339,13 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const navigateWorkflowStage = useCallback((stage: WorkflowStage) => {
+    setActiveView(stage.view);
+    if (stage.view === "resume" && stage.resumeStep !== undefined) {
+      setTimeout(() => wizardHandleRef.current?.setStep(stage.resumeStep!), 100);
+    }
+  }, []);
+
   if (isLoading) {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#06080d", color: "#64748b" }}>
@@ -310,26 +362,40 @@ export default function DashboardPage() {
   const appCount = trackedJobs.filter(j => j.status !== "saved").length;
   const hasResume = Boolean(user.cvData && (user.cvData.skills?.length || user.cvData.experience?.length || user.cvData.summary?.trim()));
   const hasSelectedJob = Boolean(coverLetterJob);
+  const hasAppliedTarget = Boolean(currentTrackedJob && currentTrackedJob.status !== "saved");
   const workflowStages: WorkflowStage[] = [
-    { id: "home", label: "Command Center", shortLabel: "Home", description: "See your current objective and continue the workflow.", complete: hasResume || trackedJobs.length > 0 || hasSelectedJob },
-    { id: "resume", label: "1. Build Resume", shortLabel: "Resume", description: "Import your CV, fix gaps, and strengthen the base version.", complete: hasResume },
-    { id: "jobs", label: "2. Find Matches", shortLabel: "Matches", description: "Search, rank, and shortlist the strongest-fit jobs.", complete: jobCount > 0 || trackedJobs.length > 0 || hasSelectedJob },
-    { id: "tailor", label: "3. Tailor & Apply", shortLabel: "Tailor", description: "Use one selected job to tailor assets and prepare the application.", complete: hasSelectedJob },
-    { id: "tracker", label: "4. Track Pipeline", shortLabel: "Track", description: "Manage saved, applied, interview, and offer states.", complete: trackedJobs.length > 0 },
+    { id: "import", view: "resume", resumeStep: hasResume ? 1 : 0, label: "1. Import", shortLabel: "Import", description: "Upload your CV, parse it, and fill missing facts.", complete: hasResume },
+    { id: "improve", view: "resume", resumeStep: hasResume ? 5 : 1, label: "2. Strengthen", shortLabel: "Strengthen", description: "Improve resume quality, ATS baseline, and profile completeness.", complete: Boolean(user.cvGenerated) },
+    { id: "match", view: "jobs", label: "3. Match", shortLabel: "Match", description: "Show best-fit jobs ranked against the current resume.", complete: matchedJobs.length > 0 || hasSelectedJob },
+    { id: "tailor", view: "tailor", label: "4. Tailor", shortLabel: "Tailor", description: "Pick one job and tailor resume plus cover letter together.", complete: hasSelectedJob },
+    { id: "apply", view: hasSelectedJob ? "tailor" : "jobs", label: "5. Apply", shortLabel: "Apply", description: "Open the job, confirm the asset set, and log the application.", complete: hasAppliedTarget },
+    { id: "track", view: "tracker", label: "6. Track", shortLabel: "Track", description: "Move through interview, offer, rejection, and follow-up.", complete: trackedJobs.length > 0 },
   ];
-  const nextRecommendedView: ViewType = !hasResume
-    ? "resume"
-    : !hasSelectedJob
-      ? "jobs"
-      : "tailor";
-  const currentStage = workflowStages.find((stage) => stage.id === activeView) || workflowStages[0];
+  const nextRecommendedStage = !hasResume
+    ? workflowStages[0]
+    : !user.cvGenerated
+      ? workflowStages[1]
+      : !hasSelectedJob
+        ? workflowStages[2]
+        : !hasAppliedTarget
+          ? workflowStages[4]
+          : workflowStages[5];
+  const currentStage = activeView === "home"
+    ? null
+    : workflowStages.find((stage) => {
+      if (stage.view !== activeView) return false;
+      if (activeView !== "resume") return true;
+      if (stage.id === "import") return resumeStep <= 1;
+      if (stage.id === "improve") return resumeStep >= 2;
+      return false;
+    }) || workflowStages[0];
   const focusSummary = activeView === "home"
     ? "Guide users through one hiring pipeline instead of exposing disconnected tools."
-    : currentStage.description;
+    : currentStage?.description || workflowStages[0].description;
 
   const cmdActions = [
     { id: "home", label: "Open Command Center", icon: "🏠", action: () => setActiveView("home") },
-    { id: "resume", label: "Build Resume", icon: "📄", action: () => setActiveView("resume") },
+    { id: "resume", label: "Build Resume", icon: "📄", action: () => navigateWorkflowStage(workflowStages[0]) },
     { id: "jobs", label: "Find Matching Jobs", icon: "💼", action: () => setActiveView("jobs") },
     { id: "tailor", label: "Open Tailor Studio", icon: "✂️", action: () => setActiveView("tailor") },
     { id: "tracker", label: "Track Applications", icon: "📊", action: () => setActiveView("tracker") },
@@ -346,22 +412,22 @@ export default function DashboardPage() {
         {/* ── Sidebar ──────────────────────────────────────────── */}
         <aside className="ws-sidebar">
           <div className="ws-brand">
-            <div className="ws-logo" title="JobReady.ai">⚡</div>
+            <button className="ws-logo" title="JobReady.ai" onClick={() => setActiveView("home")}>⚡</button>
             <div>
               <strong>JobReady</strong>
               <span>Application OS</span>
             </div>
           </div>
           <div className="ws-stage-group">
-            {workflowStages.map((stage, index) => (
+            {workflowStages.map((stage) => (
               <button
                 key={stage.id}
-                className={`ws-stage-btn ${activeView === stage.id ? "ws-stage-active" : ""}`}
-                onClick={() => setActiveView(stage.id)}
+                className={`ws-stage-btn ${currentStage?.id === stage.id ? "ws-stage-active" : ""}`}
+                onClick={() => navigateWorkflowStage(stage)}
                 title={stage.description}
               >
                 <div className={`ws-stage-index ${stage.complete ? "ws-stage-complete" : ""}`}>
-                  {stage.id === "home" ? "•" : index}
+                  {stage.label.split(".")[0]}
                 </div>
                 <div className="ws-stage-copy">
                   <strong>{stage.shortLabel}</strong>
@@ -372,9 +438,9 @@ export default function DashboardPage() {
           </div>
           <div className="ws-rail-card">
             <span className="ws-rail-eyebrow">Current Objective</span>
-            <strong>{workflowStages.find((stage) => stage.id === nextRecommendedView)?.label}</strong>
-            <p>{workflowStages.find((stage) => stage.id === nextRecommendedView)?.description}</p>
-            <button className="ws-rail-cta" onClick={() => setActiveView(nextRecommendedView)}>Continue</button>
+            <strong>{nextRecommendedStage.label}</strong>
+            <p>{nextRecommendedStage.description}</p>
+            <button className="ws-rail-cta" onClick={() => navigateWorkflowStage(nextRecommendedStage)}>Continue</button>
           </div>
           <div style={{ flex: 1 }} />
           <div className="ws-sidebar-actions">
@@ -394,14 +460,14 @@ export default function DashboardPage() {
         <div className="ws-main">
           <div className="ws-header">
             <div className="ws-header-copy">
-              <span className="ws-header-kicker">{currentStage.label}</span>
-              <h1>{activeView === "home" ? "Run one clear hiring workflow" : currentStage.shortLabel}</h1>
+              <span className="ws-header-kicker">{activeView === "home" ? "Command Center" : currentStage?.label}</span>
+              <h1>{activeView === "home" ? "Run one clear hiring workflow" : currentStage?.shortLabel}</h1>
               <p>{focusSummary}</p>
             </div>
             <div className="ws-header-right">
               <div className="ws-focus-pill">
                 <span>{hasSelectedJob ? "Selected Job" : "Next Up"}</span>
-                <strong>{hasSelectedJob ? `${coverLetterJob?.title} · ${coverLetterJob?.company}` : workflowStages.find((stage) => stage.id === nextRecommendedView)?.shortLabel}</strong>
+                <strong>{hasSelectedJob ? `${coverLetterJob?.title} · ${coverLetterJob?.company}` : nextRecommendedStage.shortLabel}</strong>
               </div>
               <button className="ws-cmd-btn" onClick={() => setCmdOpen(true)} title="Command Palette (⌘K)">
                 <span>⌘K</span>
@@ -420,11 +486,14 @@ export default function DashboardPage() {
                 <WorkflowHome
                   user={user}
                   stages={workflowStages}
-                  nextRecommendedView={nextRecommendedView}
-                  jobCount={jobCount}
+                  nextRecommendedStage={nextRecommendedStage}
+                  matchedJobs={matchedJobs}
                   trackedJobs={trackedJobs}
                   selectedJob={coverLetterJob}
-                  onGoToStage={setActiveView}
+                  selectedJobStatus={currentTrackedJob?.status || null}
+                  onGoToStage={(view) => setActiveView(view)}
+                  onContinueStage={() => navigateWorkflowStage(nextRecommendedStage)}
+                  onOpenStage={navigateWorkflowStage}
                 />
               )}
               {activeView === "resume" && (
@@ -439,7 +508,11 @@ export default function DashboardPage() {
                 <JobBoard
                   key={user.cvData?.id || "jobs-empty"}
                   user={user}
+                  jobs={matchedJobs}
+                  selectedJob={coverLetterJob}
                   onSaveToTracker={saveToTracker}
+                  onSelectJob={setCoverLetterJob}
+                  onJobsChange={(jobs) => { setMatchedJobs(jobs); setJobCount(jobs.length); }}
                   onJobCountChange={setJobCount}
                   onOpenCoverLetter={openCoverLetter}
                   addToast={addToast}
@@ -452,6 +525,8 @@ export default function DashboardPage() {
                   cvData={user.cvData}
                   onNavigateToJobs={() => setActiveView("jobs")}
                   onSaveToTracker={saveToTracker}
+                  onLogApplication={logApplication}
+                  trackedJob={currentTrackedJob}
                   addToast={addToast}
                 />
               )}
@@ -521,25 +596,29 @@ export default function DashboardPage() {
 function WorkflowHome({
   user,
   stages,
-  nextRecommendedView,
-  jobCount,
+  nextRecommendedStage,
+  matchedJobs,
   trackedJobs,
   selectedJob,
+  selectedJobStatus,
   onGoToStage,
+  onContinueStage,
+  onOpenStage,
 }: {
   user: { cvGenerated?: boolean; cvData?: GeneratedCV | null; name: string };
   stages: WorkflowStage[];
-  nextRecommendedView: ViewType;
-  jobCount: number;
+  nextRecommendedStage: WorkflowStage;
+  matchedJobs: JobResult[];
   trackedJobs: TrackedJob[];
   selectedJob: JobResult | null;
+  selectedJobStatus: TrackedJob["status"] | null;
   onGoToStage: (view: ViewType) => void;
+  onContinueStage: () => void;
+  onOpenStage: (stage: WorkflowStage) => void;
 }) {
-  const actionLabel = nextRecommendedView === "resume"
-    ? "Build Resume"
-    : nextRecommendedView === "jobs"
-      ? "Find Matches"
-      : "Tailor for Selected Job";
+  const topMatches = [...matchedJobs]
+    .sort((a, b) => b.relevanceScore - a.relevanceScore)
+    .slice(0, 3);
 
   return (
     <div className="wf">
@@ -549,12 +628,12 @@ function WorkflowHome({
           <h2>Move one application forward at a time.</h2>
           <p>JobReady should always answer what to do next. Start from your current stage, then let the workspace carry job context through resume, tailoring, and tracking.</p>
         </div>
-        <button className="wf-primary" onClick={() => onGoToStage(nextRecommendedView)}>{actionLabel}</button>
+        <button className="wf-primary" onClick={onContinueStage}>Continue: {nextRecommendedStage.shortLabel}</button>
       </div>
 
       <div className="wf-grid">
-        {stages.filter((stage) => stage.id !== "settings").map((stage) => (
-          <button key={stage.id} className="wf-card" onClick={() => onGoToStage(stage.id)}>
+        {stages.map((stage) => (
+          <button key={stage.id} className="wf-card" onClick={() => onOpenStage(stage)}>
             <div className="wf-card-top">
               <span className={`wf-dot ${stage.complete ? "wf-dot-complete" : ""}`} />
               <strong>{stage.label}</strong>
@@ -574,17 +653,36 @@ function WorkflowHome({
 
         <div className="wf-panel">
           <span className="wf-panel-label">Match State</span>
-          <strong>{jobCount > 0 ? `${jobCount} matches ready` : "No ranked jobs yet"}</strong>
+          <strong>{matchedJobs.length > 0 ? `${matchedJobs.length} matches ready` : "No ranked jobs yet"}</strong>
           <p>{selectedJob ? `${selectedJob.title} at ${selectedJob.company} is the current target job.` : "Choose one target job and keep that context through tailoring and application prep."}</p>
           <button className="wf-secondary" onClick={() => onGoToStage(selectedJob ? "tailor" : "jobs")}>{selectedJob ? "Open Tailor Studio" : "Find Matches"}</button>
         </div>
 
         <div className="wf-panel">
           <span className="wf-panel-label">Pipeline State</span>
-          <strong>{trackedJobs.length > 0 ? `${trackedJobs.length} jobs in tracker` : "Tracker is empty"}</strong>
+          <strong>{selectedJobStatus ? `Target job is ${selectedJobStatus}` : trackedJobs.length > 0 ? `${trackedJobs.length} jobs in tracker` : "Tracker is empty"}</strong>
           <p>{trackedJobs.length > 0 ? "Use the tracker after every real apply event so outcomes stay measurable." : "Once you save or apply to a role, it should land in your pipeline automatically."}</p>
           <button className="wf-secondary" onClick={() => onGoToStage("tracker")}>Open Tracker</button>
         </div>
+      </div>
+
+      <div className="wf-panel">
+        <span className="wf-panel-label">Best Matches</span>
+        <strong>{topMatches.length > 0 ? "Best-fit roles ready to review" : "Search results will appear here"}</strong>
+        <p>{topMatches.length > 0 ? "Keep one target job in focus. The whole workspace should adapt around it." : "Once Match runs, the strongest roles should surface here with one-click routing into Tailor."}</p>
+        {topMatches.length > 0 ? (
+          <div className="wf-match-list">
+            {topMatches.map((job) => (
+              <button key={job.id} className="wf-match-item" onClick={() => { onGoToStage("jobs"); }}>
+                <div>
+                  <strong>{job.title}</strong>
+                  <span>{job.company} · {job.location}</span>
+                </div>
+                <span className="wf-match-score">{job.relevanceScore}%</span>
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -596,6 +694,8 @@ function TailorStudio({
   cvData,
   onNavigateToJobs,
   onSaveToTracker,
+  onLogApplication,
+  trackedJob,
   addToast,
 }: {
   job: JobResult | null;
@@ -603,6 +703,8 @@ function TailorStudio({
   cvData?: GeneratedCV | null;
   onNavigateToJobs: () => void;
   onSaveToTracker: (job: JobResult) => void;
+  onLogApplication: (job: JobResult) => void;
+  trackedJob: TrackedJob | null;
   addToast: (msg: string, type: Toast["type"]) => void;
 }) {
   if (!job) {
@@ -628,6 +730,9 @@ function TailorStudio({
         </div>
         <div className="ts-actions">
           <button className="wf-secondary" onClick={() => onSaveToTracker(job)}>Save to Tracker</button>
+          <button className="wf-secondary" onClick={() => onLogApplication(job)}>
+            {trackedJob?.status === "applied" || trackedJob?.status === "interview" || trackedJob?.status === "offer" ? "Already Logged" : "Log Application"}
+          </button>
           <a className="wf-primary wf-primary-link" href={job.url} target="_blank" rel="noopener noreferrer">Open Apply Link</a>
         </div>
       </div>
@@ -653,6 +758,11 @@ function TailorStudio({
               ? insights.missingKeywords.slice(0, 4).map((skill) => <span key={skill} className="prep-skill-tag prep-skill-missing">{skill}</span>)
               : <span className="ts-empty-copy">The current resume already covers the strongest signals we detected.</span>}
           </div>
+        </div>
+        <div className="ts-card">
+          <span className="wf-panel-label">Application State</span>
+          <strong>{trackedJob ? trackedJob.status.toUpperCase() : "NOT LOGGED"}</strong>
+          <p>{trackedJob ? "The selected target job already exists in your pipeline. Continue from here instead of re-entering context elsewhere." : "After you open the external job page, log the application here so the pipeline stays trustworthy."}</p>
         </div>
       </div>
 
@@ -1018,15 +1128,18 @@ Return ONLY valid JSON: {"matched": [...], "missing": [...], "score": number, "s
 // ─── Job Board ──────────────────────────────────────────────────────────────
 
 function JobBoard({
-  user, onSaveToTracker, onJobCountChange, onOpenCoverLetter, addToast,
+  user, jobs, selectedJob, onSaveToTracker, onSelectJob, onJobsChange, onJobCountChange, onOpenCoverLetter, addToast,
 }: {
   user: { cvData?: GeneratedCV | null; name: string; email: string };
+  jobs: JobResult[];
+  selectedJob: JobResult | null;
   onSaveToTracker: (job: JobResult) => void;
+  onSelectJob: (job: JobResult) => void;
+  onJobsChange: (jobs: JobResult[]) => void;
   onJobCountChange: (count: number) => void;
   onOpenCoverLetter: (job: JobResult, text: string) => void;
   addToast: (msg: string, type: Toast["type"]) => void;
 }) {
-  const [jobs, setJobs] = useState<JobResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [expandedJob, setExpandedJob] = useState<string | null>(null);
@@ -1058,7 +1171,7 @@ function JobBoard({
       if (r.ok) {
         const d = await r.json();
         const results = d.jobs || [];
-        setJobs(results);
+        onJobsChange(results);
         onJobCountChange(results.length);
       } else {
         addToast("Job search failed. Please try again.", "error");
@@ -1068,7 +1181,7 @@ function JobBoard({
     }
     setHasSearched(true);
     setIsSearching(false);
-  }, [addToast, locationInput, onJobCountChange, skillsInput]);
+  }, [addToast, locationInput, onJobCountChange, onJobsChange, skillsInput]);
 
   useEffect(() => {
     if (resumeSkills.trim() && !hasSearched) {
@@ -1123,6 +1236,17 @@ function JobBoard({
         </div>
       )}
 
+      {selectedJob && (
+        <div className="jb-target-banner">
+          <div>
+            <span className="wf-panel-label">Current Target Job</span>
+            <strong>{selectedJob.title} at {selectedJob.company}</strong>
+            <p>Keep one target role in focus, then move into Tailor to adapt your resume and cover letter around it.</p>
+          </div>
+          <button className="wf-secondary" onClick={() => onOpenCoverLetter(selectedJob, "")}>Open Tailor</button>
+        </div>
+      )}
+
       <div className="jb-results">
         {[...jobs].sort((a, b) => getMatchScore(b) - getMatchScore(a)).map(job => {
           const score = getMatchScore(job);
@@ -1150,8 +1274,11 @@ function JobBoard({
               <p className="jb-desc">{truncatedDesc}</p>
               {job.tags?.length ? <div className="jb-tags">{job.tags.slice(0, 8).map(t => <span key={t} className="jb-tag">{t}</span>)}</div> : null}
               <div className="jb-actions">
-                <button className="jb-prepare-btn" onClick={() => setPrepareJob(job)}>
+                <button className="jb-prepare-btn" onClick={() => { onSelectJob(job); setPrepareJob(job); }}>
                   🚀 Prepare to Apply
+                </button>
+                <button className={`jb-save-btn ${selectedJob?.id === job.id ? "jb-target-active" : ""}`} onClick={() => onSelectJob(job)}>
+                  {selectedJob?.id === job.id ? "Current Target" : "Set as Target"}
                 </button>
                 <a href={job.url} target="_blank" rel="noopener noreferrer" className="jb-apply-btn">Apply <ExternalLinkIcon size={12} /></a>
                 <button className="jb-save-btn" onClick={() => onSaveToTracker(job)}>Save</button>
@@ -1634,6 +1761,7 @@ const workspaceCSS = `
     background:linear-gradient(135deg,#38bdf8,#f97316);
     color:#fff; display:flex; align-items:center; justify-content:center;
     font-size:1.1rem; box-shadow:0 12px 28px rgba(15,23,42,0.35);
+    border:none; cursor:pointer;
   }
   .ws-brand strong { display:block; font-size:0.95rem; color:#f8fafc; letter-spacing:0.01em; }
   .ws-brand span { display:block; margin-top:2px; font-size:0.72rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.12em; }
@@ -1753,6 +1881,19 @@ const workspaceCSS = `
   }
   .wf-panel strong, .ts-card strong { display:block; margin:10px 0 8px; font-size:1rem; color:#f8fafc; }
   .wf-panel p, .ts-card p { margin:0 0 16px; color:#94a3b8; font-size:0.84rem; line-height:1.55; }
+  .wf-match-list { display:flex; flex-direction:column; gap:10px; margin-top:16px; }
+  .wf-match-item {
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:14px 16px; width:100%; border-radius:14px; border:1px solid #1e293b;
+    background:#0a1220; color:inherit; cursor:pointer; text-align:left; transition:all 0.18s ease;
+  }
+  .wf-match-item:hover { border-color:#38bdf8; transform:translateY(-1px); }
+  .wf-match-item strong { display:block; margin:0; font-size:0.88rem; color:#f8fafc; }
+  .wf-match-item span { display:block; font-size:0.76rem; color:#94a3b8; }
+  .wf-match-score {
+    padding:6px 10px; border-radius:999px; background:rgba(56,189,248,0.12);
+    border:1px solid rgba(56,189,248,0.22); color:#67e8f9; font-size:0.78rem; font-weight:700;
+  }
   .wf-secondary {
     display:inline-flex; align-items:center; justify-content:center;
     padding:10px 14px; border-radius:999px; border:1px solid #243244;
@@ -1903,6 +2044,14 @@ const workspaceCSS = `
   .jb-result-count { font-size:0.8125rem; color:#94a3b8; margin-bottom:12px; padding:10px 14px; background:#0a0c12; border-radius:8px; border:1px solid #1a1f2e; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
   .jb-result-count strong { color:#e2e8f0; }
   .jb-result-sources { color:#64748b; font-size:0.75rem; }
+  .jb-target-banner {
+    display:flex; align-items:flex-end; justify-content:space-between; gap:14px; flex-wrap:wrap;
+    margin-bottom:16px; padding:16px 18px; border-radius:16px;
+    background:linear-gradient(135deg, rgba(8,18,33,0.92), rgba(17,24,39,0.88));
+    border:1px solid rgba(56,189,248,0.14);
+  }
+  .jb-target-banner strong { display:block; margin:8px 0 6px; font-size:0.98rem; color:#f8fafc; }
+  .jb-target-banner p { margin:0; max-width:620px; color:#94a3b8; font-size:0.82rem; line-height:1.55; }
   .jb-results { display:flex; flex-direction:column; gap:10px; }
   .jb-card { background:#0c0e14; border:1px solid #1a1f2e; border-radius:10px; padding:16px; transition:border-color 0.2s; }
   .jb-card:hover { border-color:#2d3748; }
@@ -1932,6 +2081,7 @@ const workspaceCSS = `
   .jb-apply-btn:hover { background:rgba(34,197,94,0.1); }
   .jb-save-btn, .jb-detail-btn { padding:7px 14px; border-radius:8px; background:transparent; border:1px solid #1e293b; color:#94a3b8; font-size:0.75rem; cursor:pointer; transition:all 0.15s; }
   .jb-save-btn:hover, .jb-detail-btn:hover { border-color:#3b82f6; color:#60a5fa; }
+  .jb-target-active { border-color:#38bdf8; color:#67e8f9; background:rgba(56,189,248,0.08); }
   .jb-full-desc { margin-top:12px; padding-top:12px; border-top:1px solid #1a1f2e; }
   .jb-full-desc p { font-size:0.8125rem; color:#cbd5e1; line-height:1.6; white-space:pre-wrap; margin:0; }
 
