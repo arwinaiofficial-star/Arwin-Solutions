@@ -28,8 +28,10 @@ const STOP_WORDS = new Set([
   "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "in",
   "into", "is", "it", "of", "on", "or", "our", "the", "to", "with", "you",
   "your", "we", "will", "this", "that", "their", "they", "them", "about",
-  "across", "after", "all", "also", "any", "can", "have", "has", "if",
-  "more", "not", "per", "role", "team", "teams", "using", "within",
+  "across", "after", "all", "also", "any", "based", "can", "candidate",
+  "company", "contract", "designers", "director", "have", "has", "hiring",
+  "ideal", "if", "level", "looking", "more", "not", "per", "role", "strong",
+  "team", "teams", "using", "within", "work", "working", "worldwide",
 ]);
 
 function uniqueStrings(values: string[]): string[] {
@@ -60,7 +62,7 @@ export function tokenizeText(text: string): string[] {
   return uniqueStrings(
     normalizeText(text)
       .split(/\s+/)
-      .map((token) => token.replace(/^[^a-z0-9+#]+|[^a-z0-9+#]+$/g, ""))
+      .map((token) => stemToken(token.replace(/^[^a-z0-9+#]+|[^a-z0-9+#]+$/g, "")))
       .filter((token) => token.length >= 3 && !STOP_WORDS.has(token) && !/^\d+$/.test(token))
   );
 }
@@ -101,7 +103,21 @@ function phraseMatchRatio(phrase: string, jobText: string, jobTokens: Set<string
   if (phraseTokens.length === 0) return 0;
 
   const hits = phraseTokens.filter((token) => jobTokens.has(token)).length;
+  if (hits === 0) return 0;
+  if (hits === phraseTokens.length) return 1;
+  if (phraseTokens.length > 2 && hits >= 2) return 0.67;
   return hits / phraseTokens.length;
+}
+
+function stemToken(token: string): string {
+  if (token.length <= 4) return token;
+  if (token.endsWith("ies") && token.length > 5) return `${token.slice(0, -3)}y`;
+  if (token.endsWith("ing") && token.length > 6) return token.slice(0, -3);
+  if (token.endsWith("ers") && token.length > 6) return token.slice(0, -3);
+  if (token.endsWith("er") && token.length > 5) return token.slice(0, -2);
+  if (token.endsWith("ed") && token.length > 5) return token.slice(0, -2);
+  if (token.endsWith("s") && token.length > 5) return token.slice(0, -1);
+  return token;
 }
 
 function rankJobKeywords(job: JobMatchData): string[] {
@@ -140,7 +156,7 @@ export function computeResumeJobMatch(
   const jobTokens = new Set(tokenizeText(jobText));
   const resumeTokens = buildResumeTokenSet(safeResume);
 
-  const matchedSkills = skills.filter((skill) => phraseMatchRatio(skill, jobText, jobTokens) >= 0.6);
+  const matchedSkills = skills.filter((skill) => phraseMatchRatio(skill, jobText, jobTokens) >= 0.5);
   const titleTokens = tokenizeText(job.title);
   const rankedKeywords = rankJobKeywords(job).slice(0, 12);
   const matchedKeywords = rankedKeywords.filter((token) => resumeTokens.has(token));
