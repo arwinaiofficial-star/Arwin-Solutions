@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useAuth, GeneratedCV } from "@/context/AuthContext";
 import { resumeApi } from "@/lib/api/client";
+import { normalizeEducationRecord, normalizeEducationRecords } from "@/lib/resumeExtraction";
 import {
   CheckIcon,
   BriefcaseIcon,
@@ -1218,16 +1219,20 @@ function mergeEducationEntries(
 ): EducationEntry[] {
   const normalizedIncoming = incoming
     .map((item) => {
-      const education = item as Partial<EducationEntry>;
+      const education = normalizeEducationRecord(item);
+      if (!education) {
+        return null;
+      }
       return {
         id: uid(),
-        degree: typeof education.degree === "string" ? education.degree : "",
-        institution: typeof education.institution === "string" ? education.institution : "",
-        location: typeof education.location === "string" ? education.location : "",
-        graduationYear: typeof education.graduationYear === "string" ? education.graduationYear : "",
-        gpa: typeof education.gpa === "string" ? education.gpa : "",
+        degree: education.degree,
+        institution: education.institution,
+        location: education.location,
+        graduationYear: education.graduationYear,
+        gpa: education.gpa,
       };
     })
+    .filter((entry): entry is EducationEntry => Boolean(entry))
     .filter(isMeaningfulEducation);
 
   if (normalizedIncoming.length === 0) return current;
@@ -1251,6 +1256,14 @@ function mergeEducationEntries(
 }
 
 function mergeExtractedResumeData(current: ResumeData, extracted: Record<string, unknown>): ResumeData {
+  const normalizedEducation = normalizeEducationRecords(extracted.education);
+  const fallbackEducation = normalizedEducation.length === 0 ? normalizeEducationRecord(extracted) : null;
+  const nextEducation = normalizedEducation.length > 0
+    ? normalizedEducation
+    : fallbackEducation
+      ? [fallbackEducation]
+      : [];
+
   return {
     ...current,
     fullName: (extracted.fullName as string) || current.fullName,
@@ -1277,14 +1290,14 @@ function mergeExtractedResumeData(current: ResumeData, extracted: Record<string,
             : [""],
         }))
       : current.experiences,
-    education: Array.isArray(extracted.education)
-      ? (extracted.education as Array<Record<string, unknown>>).map((entry) => ({
+    education: nextEducation.length > 0
+      ? nextEducation.map((entry) => ({
           id: uid(),
-          degree: (entry.degree as string) || "",
-          institution: (entry.institution as string) || "",
-          location: (entry.location as string) || "",
-          graduationYear: (entry.graduationYear as string) || "",
-          gpa: (entry.gpa as string) || "",
+          degree: entry.degree,
+          institution: entry.institution,
+          location: entry.location,
+          graduationYear: entry.graduationYear,
+          gpa: entry.gpa,
         }))
       : current.education,
   };

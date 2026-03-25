@@ -191,8 +191,18 @@ Return ONLY valid JSON. No markdown, no code blocks, no explanation."""
 
 async def extract_cv_from_text(raw_text: str) -> dict:
     """Extract structured CV data from raw PDF/document text using LLM."""
-    # Use up to 8000 chars to capture education that often appears at the end
-    text_chunk = raw_text[:8000]
+    max_chars = 16000
+    if len(raw_text) <= max_chars:
+        text_chunk = raw_text
+    else:
+        head_chars = 9000
+        tail_chars = 7000
+        text_chunk = (
+            f"{raw_text[:head_chars]}\n\n"
+            "[... middle of resume omitted for length ...]\n\n"
+            f"{raw_text[-tail_chars:]}"
+        )
+
     messages = [
         {"role": "system", "content": EXTRACT_CV_PROMPT},
         {"role": "user", "content": f"Extract ALL data from this CV:\n\n{text_chunk}"},
@@ -221,7 +231,8 @@ Already collected: {collected_summary}
 Extract information from the user's message and return a JSON object with ONLY the fields you can extract.
 Possible fields: fullName, email, phone, location, linkedIn, summary, yearsOfExperience, skills (array), 
 experiences (array of objects with title, company, location, startDate, endDate, highlights),
-education_degree, education_institution, education_year.
+education (array of objects with degree, institution, location, graduationYear, gpa),
+education_degree, education_institution, education_location, education_year, education_gpa.
 
 Also include:
 - "understood_message": a brief confirmation of what you understood (1 sentence)

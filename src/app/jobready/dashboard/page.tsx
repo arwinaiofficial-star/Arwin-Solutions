@@ -592,11 +592,17 @@ export default function DashboardPage() {
                 </span>
               </button>
               <div className="ws-mobile-actions">
+                <button className="ws-side-icon" onClick={() => setCmdOpen(true)} title="Command Center">
+                  <HomeIcon size={18} />
+                </button>
                 <button className={`ws-side-icon ${copilotOpen ? "ws-side-icon-active" : ""}`} onClick={() => setCopilotOpen(p => !p)} title="AI Guide">
                   <BotIcon size={18} />
                 </button>
                 <button className={`ws-side-icon ${activeView === "settings" ? "ws-side-icon-active" : ""}`} onClick={() => setActiveView("settings")} title="Settings">
                   <SettingsIcon size={18} />
+                </button>
+                <button className="ws-side-icon" onClick={() => { logout(); router.push("/jobready"); }} title="Sign out">
+                  <LogoutIcon size={18} />
                 </button>
               </div>
             </div>
@@ -605,9 +611,14 @@ export default function DashboardPage() {
               <span className="ws-header-kicker">{hasSelectedJob ? "Selected Job" : "Next Up"}</span>
               <strong>{hasSelectedJob ? `${coverLetterJob?.title} · ${coverLetterJob?.company}` : nextRecommendedStage.shortLabel}</strong>
               <p>{focusSummary}</p>
-              <button className="ws-rail-cta" onClick={() => navigateWorkflowStage(nextRecommendedStage)}>
-                Continue
-              </button>
+              <div className="ws-mobile-objective-actions">
+                <button className="ws-rail-cta" onClick={() => navigateWorkflowStage(nextRecommendedStage)}>
+                  Continue
+                </button>
+                <button className="wf-secondary" onClick={() => setActiveView("settings")}>
+                  Account
+                </button>
+              </div>
             </div>
 
             <div className="ws-mobile-stage-strip">
@@ -2151,6 +2162,7 @@ const workspaceCSS = `
     letter-spacing:0.14em; text-transform:uppercase; color:var(--ws-muted);
   }
   .ws-mobile-actions { display:flex; gap:8px; }
+  .ws-mobile-objective-actions { display:flex; gap:8px; flex-wrap:wrap; }
   .ws-mobile-objective {
     padding:16px; border-radius:20px;
     background:
@@ -2623,6 +2635,7 @@ const workspaceCSS = `
     }
     .ws-main { min-height:auto; }
     .ws-header { display:none; }
+    .ws-mobile-topbar { align-items:flex-start; }
     .ws-content {
       display:block;
       overflow:visible;
@@ -2637,6 +2650,9 @@ const workspaceCSS = `
       width: 100% !important; z-index: 30; border-left: none;
     }
     .ws-user-pill span { display: none; }
+    .ws-mobile-actions { gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+    .ws-mobile-actions .ws-side-icon { width:40px; height:40px; }
+    .ws-mobile-objective-actions > * { flex:1; }
     .wf-grid, .wf-panel-grid, .ts-grid { grid-template-columns: 1fr; }
     .wf-hero, .ts-hero { padding: 22px 18px; }
     .wf-hero h2, .ts-empty h2, .ts-hero h2 { font-size: 1.45rem; }
@@ -2681,9 +2697,14 @@ const workspaceCSS = `
   /* ─── Mobile: Phone ─── */
   @media (max-width: 480px) {
     .ws-mobile-shell { padding: 10px 10px 0; }
+    .ws-mobile-brand { min-width:0; }
+    .ws-mobile-brand-copy { min-width:0; }
     .ws-mobile-objective { padding: 14px; }
     .ws-mobile-objective strong { font-size: 0.92rem; }
     .ws-mobile-objective p { font-size: 0.76rem; }
+    .ws-mobile-actions { max-width: 188px; }
+    .ws-mobile-objective-actions { flex-direction:column; }
+    .ws-mobile-objective-actions > * { width:100%; justify-content:center; }
     .ws-stage-btn { padding: 10px; min-width: 188px; flex-basis: 188px; min-height: 78px; }
     .ws-panel { padding: 10px; }
     .wf-hero, .ts-hero, .ts-empty { padding: 18px 14px; }

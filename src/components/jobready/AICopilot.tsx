@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { BotIcon, SearchIcon, SendIcon, SparklesIcon, XIcon } from "@/components/icons/Icons";
 import { resumeApi } from "@/lib/api/client";
+import { normalizeEducationRecord, normalizeEducationRecords } from "@/lib/resumeExtraction";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -42,25 +43,13 @@ const contextLabels: Record<string, string> = {
 };
 
 function normalizeEducationUpdates(parsed: Record<string, unknown>): Record<string, unknown>[] {
-  if (Array.isArray(parsed.education)) {
-    return parsed.education.filter(
-      (entry): entry is Record<string, unknown> => Boolean(entry && typeof entry === "object")
-    );
+  const normalizedEducation = normalizeEducationRecords(parsed.education);
+  if (normalizedEducation.length > 0) {
+    return normalizedEducation.map((entry) => ({ ...entry }));
   }
 
-  const degree = typeof parsed.education_degree === "string" ? parsed.education_degree.trim() : "";
-  const institution = typeof parsed.education_institution === "string" ? parsed.education_institution.trim() : "";
-  const graduationYear = typeof parsed.education_year === "string" ? parsed.education_year.trim() : "";
-
-  if (!degree && !institution && !graduationYear) return [];
-
-  return [{
-    degree,
-    institution,
-    graduationYear,
-    location: "",
-    gpa: "",
-  }];
+  const normalizedSingle = normalizeEducationRecord(parsed);
+  return normalizedSingle ? [{ ...normalizedSingle }] : [];
 }
 
 function buildResumeFillActions(parsed: unknown): CopilotAction[] {
