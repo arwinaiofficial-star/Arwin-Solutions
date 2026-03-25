@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit, getClientIP } from "@/lib/rateLimit";
 import logger from "@/lib/logger";
+import { scoreJobForSearch, splitSkillInput } from "@/lib/jobMatch";
 
 const MAX_SKILL_LENGTH = 50;
 const MAX_SKILLS_COUNT = 20;
 const API_TIMEOUT_MS = 10000;
+const MAX_DESCRIPTION_LENGTH = 1200;
 
 // Adzuna API credentials
 const ADZUNA_APP_ID = process.env.ADZUNA_APP_ID || "";
@@ -94,7 +96,7 @@ async function fetchAdzunaJobs(skills: string[], location: string): Promise<Job[
         title: job.title,
         company: job.company?.display_name || "Company",
         location: job.location?.display_name || "India",
-        description: stripHtml(job.description).slice(0, 300),
+        description: stripHtml(job.description).slice(0, MAX_DESCRIPTION_LENGTH),
         url: job.redirect_url,
         source: "Adzuna",
         salary,
@@ -193,7 +195,7 @@ async function fetchJSearchJobs(skills: string[], location: string): Promise<Job
         title: job.job_title,
         company: job.employer_name || "Company",
         location: locationStr,
-        description: stripHtml(job.job_description).slice(0, 300),
+        description: stripHtml(job.job_description).slice(0, MAX_DESCRIPTION_LENGTH),
         url: job.job_apply_link,
         source: "JSearch",
         salary,
@@ -249,7 +251,7 @@ async function fetchRemotiveJobs(skills: string[]): Promise<Job[]> {
       title: job.title,
       company: job.company_name,
       location: job.candidate_required_location || "Remote",
-      description: stripHtml(job.description).slice(0, 300),
+      description: stripHtml(job.description).slice(0, MAX_DESCRIPTION_LENGTH),
       url: job.url,
       source: "Remotive",
       salary: job.salary || undefined,
@@ -293,37 +295,6 @@ function formatDate(dateStr: string): string {
   }
 }
 
-function scoreJob(job: Job, skills: string[], preferences: string): number {
-  let score = 0;
-  const jobText = `${job.title} ${job.description} ${job.tags?.join(" ") || ""}`.toLowerCase();
-  const prefLower = preferences.toLowerCase();
-
-  for (const skill of skills) {
-    if (jobText.includes(skill.toLowerCase().trim())) {
-      score += 10;
-    }
-  }
-
-  const prefWords = prefLower.split(/\s+/).filter((w) => w.length > 3);
-  for (const word of prefWords) {
-    if (jobText.includes(word)) score += 5;
-  }
-
-  if (prefLower.includes("remote") && job.location.toLowerCase().includes("remote")) {
-    score += 15;
-  }
-
-  // Boost jobs with salary info
-  if (job.salary) score += 5;
-
-  // Boost jobs with apply links
-  if (job.url && !job.url.includes("naukri.com") && !job.url.includes("linkedin.com/jobs")) {
-    score += 3; // direct apply links get a small boost
-  }
-
-  return score;
-}
-
 // ─── Route Handler ──────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
@@ -353,8 +324,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Skills are required" }, { status: 400 });
     }
 
-    const skillArray = skills
-      .split(",")
+    const skillArray = splitSkillInput(skills)
       .map((s: string) => s.trim())
       .filter((s: string) => s.length > 0 && s.length <= MAX_SKILL_LENGTH)
       .slice(0, MAX_SKILLS_COUNT);
@@ -377,7 +347,7 @@ export async function POST(request: NextRequest) {
     // Score and sort
     const scoredJobs = allJobs.map((job) => ({
       ...job,
-      relevanceScore: scoreJob(job, skillArray, preferences || ""),
+      relevanceScore: scoreJobForSearch(job, skillArray, preferences || "", locationStr),
     }));
 
     scoredJobs.sort((a, b) => b.relevanceScore - a.relevanceScore);

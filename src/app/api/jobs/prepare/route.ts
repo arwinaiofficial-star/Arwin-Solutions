@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import logger from "@/lib/logger";
 import { fetchBackend } from "@/lib/api/backend";
+import { buildSafeCoverLetterSnippet, computeResumeJobMatch, ResumeMatchData } from "@/lib/jobMatch";
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,7 +45,7 @@ Job Description: ${jobDescription?.slice(0, 1000) || "Not available"}`,
       const data = await response.json();
 
       // Parse the LLM response into structured tips
-      const tips = parseApplicationTips(data.reply, cvData, jobTitle, jobDescription || "");
+      const tips = parseApplicationTips(data.reply, cvData, jobTitle, jobDescription || "", jobCompany || "");
 
       return NextResponse.json({ success: true, ...tips });
     }
@@ -66,80 +67,62 @@ Job Description: ${jobDescription?.slice(0, 1000) || "Not available"}`,
 
 function parseApplicationTips(
   aiResponse: string,
-  cvData: { skills?: string[]; experience?: { title: string; company: string }[]; personalInfo?: { name: string } },
+  cvData: ResumeMatchData,
   jobTitle: string,
   jobDescription: string,
+  jobCompany: string,
 ) {
-  const cvSkills = (cvData.skills || []).map((s: string) => s.toLowerCase());
-  const descLower = (jobTitle + " " + jobDescription).toLowerCase();
-
-  const matchedSkills = cvData.skills?.filter((s: string) => descLower.includes(s.toLowerCase())) || [];
-  const missingSkills = cvData.skills?.filter((s: string) => !descLower.includes(s.toLowerCase())).slice(0, 3) || [];
+  const insights = computeResumeJobMatch(cvData, {
+    title: jobTitle,
+    description: jobDescription,
+  });
 
   return {
     aiTips: aiResponse,
-    matchedSkills,
-    missingSkills,
-    matchScore: cvSkills.length > 0
-      ? Math.round((matchedSkills.length / cvSkills.length) * 100)
-      : 0,
-    coverLetterSnippet: generateCoverLetterSnippet(cvData, jobTitle),
+    matchedSkills: insights.matchedSkills,
+    missingSkills: insights.missingKeywords,
+    matchScore: insights.matchScore,
+    coverLetterSnippet: generateCoverLetterSnippet(cvData, jobTitle, jobCompany),
   };
 }
 
 function generateLocalTips(
-  cvData: { skills?: string[]; experience?: { title: string; company: string }[]; personalInfo?: { name: string }; summary?: string },
+  cvData: ResumeMatchData,
   jobTitle: string,
   jobDescription: string,
   company: string,
 ) {
-  const cvSkills = (cvData.skills || []).map((s: string) => s.toLowerCase());
-  const descLower = (jobTitle + " " + jobDescription).toLowerCase();
-
-  const matchedSkills = cvData.skills?.filter((s: string) => descLower.includes(s.toLowerCase())) || [];
-  const missingSkills = cvData.skills?.filter((s: string) => !descLower.includes(s.toLowerCase())).slice(0, 3) || [];
+  const insights = computeResumeJobMatch(cvData, {
+    title: jobTitle,
+    description: jobDescription,
+  });
 
   const tips = [
-    matchedSkills.length > 0
-      ? `Your skills in ${matchedSkills.slice(0, 3).join(", ")} are directly relevant to this role.`
+    insights.matchedSkills.length > 0
+      ? `Your background in ${insights.matchedSkills.slice(0, 3).join(", ")} maps directly to this role.`
       : "Consider highlighting transferable skills in your application.",
     `Tailor your resume summary to emphasize your fit for the ${jobTitle} position.`,
     company ? `Research ${company}'s recent projects and mention them in your cover letter.` : "",
+    insights.missingKeywords.length > 0
+      ? `Address missing job keywords like ${insights.missingKeywords.slice(0, 3).join(", ")} where you can support them honestly.`
+      : "",
     "Quantify your achievements with specific metrics where possible.",
     "Follow up within a week of applying to show genuine interest.",
   ].filter(Boolean);
 
   return {
     aiTips: tips.join("\n\n"),
-    matchedSkills,
-    missingSkills,
-    matchScore: cvSkills.length > 0
-      ? Math.round((matchedSkills.length / cvSkills.length) * 100)
-      : 0,
-    coverLetterSnippet: generateCoverLetterSnippet(cvData, jobTitle),
+    matchedSkills: insights.matchedSkills,
+    missingSkills: insights.missingKeywords,
+    matchScore: insights.matchScore,
+    coverLetterSnippet: generateCoverLetterSnippet(cvData, jobTitle, company),
   };
 }
 
 function generateCoverLetterSnippet(
-  cvData: { personalInfo?: { name: string }; skills?: string[]; experience?: { title: string; company: string }[] },
+  cvData: ResumeMatchData,
   jobTitle: string,
+  company: string,
 ) {
-  const name = cvData.personalInfo?.name || "the candidate";
-  const topSkills = (cvData.skills || []).slice(0, 3).join(", ");
-  const latestRole = cvData.experience?.[0];
-
-  let snippet = `Dear Hiring Manager,\n\nI am writing to express my interest in the ${jobTitle} position.`;
-
-  if (latestRole) {
-    snippet += ` With my experience as ${latestRole.title} at ${latestRole.company}`;
-  }
-
-  if (topSkills) {
-    snippet += `, and expertise in ${topSkills}`;
-  }
-
-  snippet += `, I am confident I can make a meaningful contribution to your team.\n\n`;
-  snippet += `I would welcome the opportunity to discuss how my background aligns with your needs.\n\nBest regards,\n${name}`;
-
-  return snippet;
+  return buildSafeCoverLetterSnippet(cvData, jobTitle, company);
 }

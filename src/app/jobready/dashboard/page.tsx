@@ -12,6 +12,7 @@ import {
   SettingsIcon, XIcon, SendIcon,
 } from "@/components/icons/Icons";
 import { authApi, resumeApi, jobPrepareApi, applicationsApi, JobApplicationData } from "@/lib/api/client";
+import { buildSafeCoverLetterSnippet, computeResumeJobMatch } from "@/lib/jobMatch";
 
 type ViewType = "resume" | "jobs" | "tracker" | "settings" | "coverletter";
 
@@ -38,6 +39,75 @@ interface PrepareData {
   missingSkills: string[];
   matchScore: number;
   coverLetterSnippet: string;
+}
+
+function buildFallbackPrepareData(job: JobResult, cvData: GeneratedCV | null | undefined): PrepareData {
+  const insights = computeResumeJobMatch(cvData, job);
+
+  return {
+    aiTips: [
+      insights.matchedSkills.length > 0
+        ? `Lead with your strongest overlap: ${insights.matchedSkills.slice(0, 3).join(", ")}.`
+        : `Lead with adjacent experience that supports a move into the ${job.title} role.`,
+      `Rewrite your summary so the first line clearly targets ${job.title}.`,
+      insights.missingKeywords.length > 0
+        ? `Address missing keywords like ${insights.missingKeywords.slice(0, 3).join(", ")} only where you can support them truthfully.`
+        : "Quantify outcomes in your most relevant bullets to strengthen the application.",
+    ].filter(Boolean).join("\n"),
+    matchedSkills: insights.matchedSkills,
+    missingSkills: insights.missingKeywords,
+    matchScore: insights.matchScore,
+    coverLetterSnippet: buildSafeCoverLetterSnippet(cvData, job.title, job.company),
+  };
+}
+
+function mergePrepareData(job: JobResult, cvData: GeneratedCV | null | undefined, prepareData: PrepareData): PrepareData {
+  if (!cvData) return prepareData;
+
+  const fallback = buildFallbackPrepareData(job, cvData);
+  const coverLetterSnippet = isPlaceholderCoverLetter(prepareData.coverLetterSnippet)
+    ? fallback.coverLetterSnippet
+    : prepareData.coverLetterSnippet;
+
+  return {
+    ...prepareData,
+    matchedSkills: prepareData.matchedSkills.length > 0
+      ? prepareData.matchedSkills
+      : fallback.matchedSkills,
+    missingSkills: prepareData.missingSkills.length > 0
+      ? prepareData.missingSkills
+      : fallback.missingSkills,
+    matchScore: Math.max(prepareData.matchScore, fallback.matchScore),
+    coverLetterSnippet,
+  };
+}
+
+function isPlaceholderCoverLetter(text: string): boolean {
+  const normalized = text.trim().toLowerCase();
+  return !normalized ||
+    normalized.includes("[your name]") ||
+    normalized.includes("the candidate") ||
+    normalized.includes("dear hiring manager");
+}
+
+function buildResumeFacts(cvData?: GeneratedCV | null): string {
+  if (!cvData) return "No resume facts available.";
+
+  const latestExperience = cvData.experience
+    ?.slice(0, 3)
+    .map((entry) => {
+      const highlights = (entry.highlights || []).filter(Boolean).slice(0, 3).join(" | ");
+      return `${entry.title} at ${entry.company}${highlights ? `: ${highlights}` : ""}`;
+    })
+    .join("\n");
+
+  return [
+    `Name: ${cvData.personalInfo?.name || "Not provided"}`,
+    `Location: ${cvData.personalInfo?.location || "Not provided"}`,
+    `Summary: ${cvData.summary || "Not provided"}`,
+    `Skills: ${(cvData.skills || []).join(", ") || "Not provided"}`,
+    `Experience:\n${latestExperience || "Not provided"}`,
+  ].join("\n");
 }
 
 // ─── DB ↔ Frontend mappers ───────────────────────────────────────────────────
@@ -304,6 +374,7 @@ export default function DashboardPage() {
               )}
               {activeView === "jobs" && (
                 <JobBoard
+                  key={user.cvData?.id || "jobs-empty"}
                   user={user}
                   onSaveToTracker={saveToTracker}
                   onJobCountChange={setJobCount}
@@ -327,6 +398,7 @@ export default function DashboardPage() {
               )}
               {activeView === "coverletter" && (
                 <CoverLetterGenerator
+                  key={`${coverLetterJob?.id || "blank"}:${coverLetterText ? "prefill" : "empty"}`}
                   job={coverLetterJob}
                   initialText={coverLetterText}
                   cvData={user.cvData}
@@ -416,22 +488,12 @@ function PrepareModal({
           cvData: (cvData as unknown as Record<string, unknown>) || { skills: [], experience: [] },
         });
         if (result.data) {
-          setData(result.data);
+          setData(mergePrepareData(job, cvData, result.data));
         } else {
-          const skills = cvData?.skills || [];
-          const desc = `${job.title} ${job.description}`.toLowerCase();
-          const matched = skills.filter(s => desc.includes(s.toLowerCase()));
-          const missing = skills.filter(s => !desc.includes(s.toLowerCase())).slice(0, 3);
-          setData({
-            aiTips: "Tailor your resume to match this role. Highlight relevant experience and quantify your achievements.",
-            matchedSkills: matched,
-            missingSkills: missing,
-            matchScore: skills.length > 0 ? Math.round((matched.length / skills.length) * 100) : 0,
-            coverLetterSnippet: `Dear Hiring Manager,\n\nI am writing to express my interest in the ${job.title} position at ${job.company}.\n\nWith my experience in ${matched.slice(0, 3).join(", ") || "relevant technologies"}, I am confident I can contribute meaningfully to your team.\n\nI would welcome the opportunity to discuss how my background aligns with your needs.\n\nBest regards,\n${cvData?.personalInfo?.name || "Your Name"}`,
-          });
+          setData(buildFallbackPrepareData(job, cvData));
         }
       } catch {
-        setData(null);
+        setData(buildFallbackPrepareData(job, cvData));
       }
       setLoading(false);
     };
@@ -440,20 +502,25 @@ function PrepareModal({
 
   // ── Per-Job Resume Tailoring ──
   const tailorResume = async () => {
-    if (!cvData) return;
+    if (!cvData) {
+      addToast("Save your resume first so tailoring has real source data.", "error");
+      return;
+    }
     setIsTailoring(true);
     try {
       const result = await resumeApi.chat(
-        `Tailor this resume for the following job. Return a JSON object with two keys: "summary" (a 2-3 sentence professional summary tailored for this role) and "skills" (an array of skills reordered/augmented to match this job).
+        `Tailor this resume for the following job. Return a JSON object with two keys: "summary" (a factual 2-3 sentence professional summary tailored for this role) and "skills" (an array of existing resume skills reordered by relevance, plus only directly supported adjacent keywords already evidenced by the resume).
 
 Job: ${job.title} at ${job.company}
 Job Description: ${job.description?.slice(0, 2000) || "Not provided"}
 
-Current Resume:
-Name: ${cvData.personalInfo?.name}
-Summary: ${cvData.summary}
-Skills: ${cvData.skills?.join(", ")}
-Experience: ${cvData.experience?.map(e => `${e.title} at ${e.company}: ${e.highlights?.join("; ")}`).join(" | ")}
+Resume Facts:
+${buildResumeFacts(cvData)}
+
+Rules:
+- Use only facts present in the resume facts above.
+- Do not invent years of experience, tools, companies, metrics, or placeholders.
+- Keep the summary concise and ATS-friendly.
 
 Return ONLY valid JSON: {"summary": "...", "skills": ["skill1", "skill2", ...]}`,
         "chat",
@@ -468,7 +535,9 @@ Return ONLY valid JSON: {"summary": "...", "skills": ["skill1", "skill2", ...]}`
           setTailoredSummary(result.data.reply);
         }
       }
-    } catch { /* silent */ }
+    } catch {
+      addToast("Tailoring failed. Please try again.", "error");
+    }
     setIsTailoring(false);
   };
 
@@ -478,13 +547,16 @@ Return ONLY valid JSON: {"summary": "...", "skills": ["skill1", "skill2", ...]}`
     if (tailoredSummary) updated.summary = tailoredSummary;
     if (tailoredSkills) updated.skills = tailoredSkills;
     saveGeneratedCV(updated);
-    resumeApi.save(updated as unknown as Record<string, unknown>, "tailored").catch(() => {});
+    resumeApi.save(updated as unknown as Record<string, unknown>, "final").catch(() => {});
     addToast(`Resume tailored for ${job.title} at ${job.company}`, "success");
   };
 
   // ── ATS Keyword Gap Analysis ──
   const analyzeAtsKeywords = async () => {
-    if (!cvData) return;
+    if (!cvData) {
+      addToast("Save your resume first so ATS analysis can run.", "error");
+      return;
+    }
     setIsAnalyzingAts(true);
     try {
       const result = await resumeApi.chat(
@@ -493,9 +565,8 @@ Return ONLY valid JSON: {"summary": "...", "skills": ["skill1", "skill2", ...]}`
 Job: ${job.title} at ${job.company}
 Job Description: ${job.description?.slice(0, 2000) || "Not provided"}
 
-Resume Skills: ${cvData.skills?.join(", ")}
-Resume Summary: ${cvData.summary}
-Resume Experience: ${cvData.experience?.map(e => `${e.title}: ${e.highlights?.join("; ")}`).join(" | ")}
+Resume Facts:
+${buildResumeFacts(cvData)}
 
 Return ONLY valid JSON: {"matched": [...], "missing": [...], "score": number, "suggestions": [...]}`,
         "chat",
@@ -504,17 +575,35 @@ Return ONLY valid JSON: {"matched": [...], "missing": [...], "score": number, "s
         try {
           const cleaned = result.data.reply.replace(/^```(?:json)?\s*/m, "").replace(/\s*```\s*$/m, "").trim();
           const parsed = JSON.parse(cleaned);
+          const fallback = buildFallbackPrepareData(job, cvData);
           setAtsKeywords({
-            matched: parsed.matched || [],
-            missing: parsed.missing || [],
-            score: parsed.score || 0,
-            suggestions: parsed.suggestions || [],
+            matched: Array.isArray(parsed.matched) && parsed.matched.length > 0 ? parsed.matched : fallback.matchedSkills,
+            missing: Array.isArray(parsed.missing) && parsed.missing.length > 0 ? parsed.missing : fallback.missingSkills,
+            score: typeof parsed.score === "number" ? Math.max(parsed.score, fallback.matchScore) : fallback.matchScore,
+            suggestions: Array.isArray(parsed.suggestions) && parsed.suggestions.length > 0
+              ? parsed.suggestions
+              : fallback.aiTips.split("\n"),
           });
         } catch {
-          setAtsKeywords({ matched: [], missing: [], score: 0, suggestions: [result.data.reply] });
+          const fallback = buildFallbackPrepareData(job, cvData);
+          setAtsKeywords({
+            matched: fallback.matchedSkills,
+            missing: fallback.missingSkills,
+            score: fallback.matchScore,
+            suggestions: [result.data.reply],
+          });
         }
       }
-    } catch { /* silent */ }
+    } catch {
+      const fallback = buildFallbackPrepareData(job, cvData);
+      setAtsKeywords({
+        matched: fallback.matchedSkills,
+        missing: fallback.missingSkills,
+        score: fallback.matchScore,
+        suggestions: fallback.aiTips.split("\n"),
+      });
+      addToast("ATS analysis fallback loaded.", "info");
+    }
     setIsAnalyzingAts(false);
   };
 
@@ -729,37 +818,62 @@ function JobBoard({
   const [hasSearched, setHasSearched] = useState(false);
   const [expandedJob, setExpandedJob] = useState<string | null>(null);
   const [prepareJob, setPrepareJob] = useState<JobResult | null>(null);
-  const skills = user.cvData?.skills?.join(", ") || "";
-  const loc = user.cvData?.personalInfo?.location || "";
-  const [skillsInput, setSkillsInput] = useState(skills);
-  const [locationInput, setLocationInput] = useState(loc);
+  const autoSearchTimerRef = useRef<number | null>(null);
+  const resumeSkills = user.cvData?.skills?.join(", ") || "";
+  const resumeLocation = user.cvData?.personalInfo?.location || "";
+  const hasResumeContext = Boolean(
+    user.cvData && (
+      user.cvData.skills?.length ||
+      user.cvData.summary?.trim() ||
+      user.cvData.experience?.length
+    )
+  );
+  const [skillsInput, setSkillsInput] = useState(resumeSkills);
+  const [locationInput, setLocationInput] = useState(resumeLocation);
 
-  useEffect(() => { if (skills && !hasSearched) handleSearch(); }, []); // eslint-disable-line
-
-  const handleSearch = async () => {
-    if (!skillsInput.trim()) return;
+  const handleSearch = useCallback(async (override?: { skills?: string; location?: string }) => {
+    const nextSkills = (override?.skills ?? skillsInput).trim();
+    const nextLocation = (override?.location ?? locationInput).trim();
+    if (!nextSkills) return;
     setIsSearching(true);
     try {
       const r = await fetch("/api/jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ skills: skillsInput, location: locationInput, preferences: locationInput }),
+        body: JSON.stringify({ skills: nextSkills, location: nextLocation, preferences: nextLocation }),
       });
       if (r.ok) {
         const d = await r.json();
         const results = d.jobs || [];
         setJobs(results);
         onJobCountChange(results.length);
+      } else {
+        addToast("Job search failed. Please try again.", "error");
       }
-    } catch { /* */ }
+    } catch {
+      addToast("Job search failed. Please check your connection and try again.", "error");
+    }
     setHasSearched(true);
     setIsSearching(false);
-  };
+  }, [addToast, locationInput, onJobCountChange, skillsInput]);
+
+  useEffect(() => {
+    if (resumeSkills.trim() && !hasSearched) {
+      autoSearchTimerRef.current = window.setTimeout(() => {
+        void handleSearch({ skills: resumeSkills, location: resumeLocation });
+      }, 0);
+    }
+    return () => {
+      if (autoSearchTimerRef.current !== null) {
+        window.clearTimeout(autoSearchTimerRef.current);
+      }
+    };
+  }, [handleSearch, hasSearched, resumeLocation, resumeSkills]);
 
   const getMatchScore = (job: JobResult) => {
-    if (!user.cvData?.skills?.length) return 0;
-    const desc = `${job.title} ${job.description} ${job.tags?.join(" ") || ""}`.toLowerCase();
-    return Math.round((user.cvData.skills.filter(s => desc.includes(s.toLowerCase())).length / user.cvData.skills.length) * 100);
+    if (!user.cvData) return job.relevanceScore || 0;
+    const localScore = computeResumeJobMatch(user.cvData, job).matchScore;
+    return Math.max(localScore, job.relevanceScore || 0);
   };
 
   return (
@@ -775,12 +889,12 @@ function JobBoard({
           <label>Location</label>
           <input value={locationInput} onChange={e => setLocationInput(e.target.value)} placeholder="India" onKeyDown={e => e.key === "Enter" && handleSearch()} />
         </div>
-        <button className="jb-search-btn" onClick={handleSearch} disabled={isSearching}>
+        <button className="jb-search-btn" onClick={() => { void handleSearch(); }} disabled={isSearching}>
           {isSearching ? "Searching..." : "Search"}
         </button>
       </div>
 
-      {!hasSearched && !skills && (
+      {!hasSearched && !hasResumeContext && !skillsInput.trim() && (
         <div className="jb-empty">
           <BriefcaseIcon size={40} color="#475569" />
           <p style={{ fontWeight: 600, marginBottom: 4 }}>No resume detected</p>
@@ -1005,19 +1119,27 @@ function CoverLetterGenerator({
   const [isGenerating, setIsGenerating] = useState(false);
   const [jobTitle, setJobTitle] = useState(job?.title || "");
   const [company, setCompany] = useState(job?.company || "");
-  const textRef = useRef<HTMLTextAreaElement>(null);
 
   const generateLetter = async () => {
     if (!jobTitle.trim()) { addToast("Enter a job title first", "error"); return; }
     setIsGenerating(true);
     try {
       const result = await resumeApi.chat(
-        `Write a professional, personalized cover letter for a ${jobTitle} position at ${company || "the company"}. Use my resume data to tailor it. Be specific about skills and experience. Keep it concise (3-4 paragraphs). Do not use placeholders — write the actual letter.`,
+        `Write a professional, personalized cover letter for a ${jobTitle} position at ${company || "the company"}.
+
+Use only the factual resume data below. If a detail is missing, omit it. Do not invent years of experience, tools, metrics, employers, or placeholders like [Your Name]. Keep it concise at 3-4 short paragraphs and sign with the candidate's real name if available.
+
+Resume Facts:
+${buildResumeFacts(cvData)}`,
         "chat",
         { ...(cvData as unknown as Record<string, unknown> || {}), task: "cover_letter", jobTitle, company },
       );
       if (result.data?.reply) {
-        setText(result.data.reply);
+        const cleaned = result.data.reply
+          .replace(/\[Your Name\]/gi, cvData?.personalInfo?.name || "")
+          .replace(/\[Company Name\]/gi, company)
+          .trim();
+        setText(cleaned);
         addToast("Cover letter generated!", "success");
       } else {
         addToast("Failed to generate. Try again.", "error");
@@ -1069,7 +1191,6 @@ function CoverLetterGenerator({
 
       <div className="cl-editor">
         <textarea
-          ref={textRef}
           value={text}
           onChange={e => setText(e.target.value)}
           placeholder="Your cover letter will appear here. You can also write or paste one manually."

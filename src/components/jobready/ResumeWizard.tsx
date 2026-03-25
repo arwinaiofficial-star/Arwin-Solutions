@@ -296,52 +296,25 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
           setUploadError("Could not fully extract your CV. Raw text was loaded into the summary — please fill in the details manually.");
           setStep(1);
         } else {
-          setData(prev => ({
-            ...prev,
-            fullName: (ext.fullName as string) || prev.fullName,
-            email: (ext.email as string) || prev.email,
-            phone: (ext.phone as string) || prev.phone,
-            location: (ext.location as string) || prev.location,
-            linkedIn: (ext.linkedIn as string) || prev.linkedIn,
-            portfolio: (ext.portfolio as string) || prev.portfolio,
-            summary: (ext.summary as string) || prev.summary,
-            skills: Array.isArray(ext.skills) ? (ext.skills as string[]) : prev.skills,
-            experiences: ((ext.experiences as Array<Record<string, unknown>>)?.map(e => ({
-              id: uid(), title: (e.title as string) || "", company: (e.company as string) || "",
-              location: (e.location as string) || "", startDate: (e.startDate as string) || "",
-              endDate: (e.endDate as string) || "", current: (e.endDate as string)?.toLowerCase() === "present",
-              highlights: Array.isArray(e.highlights) ? (e.highlights as string[]) : [""],
-            }))) || prev.experiences,
-            education: ((ext.education as Array<Record<string, unknown>>)?.map(e => ({
-              id: uid(), degree: (e.degree as string) || "", institution: (e.institution as string) || "",
-              location: (e.location as string) || "", graduationYear: (e.graduationYear as string) || "",
-              gpa: (e.gpa as string) || "",
-            }))) || prev.education,
-          }));
+          const extractedData = mergeExtractedResumeData(data, ext);
           // Smart routing: go to preview if we have enough data, else first gap
-          const hasName = !!((ext.fullName as string) || data.fullName);
-          const hasExp = Array.isArray(ext.experiences) && (ext.experiences as unknown[]).length > 0;
-          const hasSkills = Array.isArray(ext.skills) && (ext.skills as string[]).length > 0;
+          const hasName = Boolean(extractedData.fullName.trim());
+          const hasExp = extractedData.experiences.some(hasMeaningfulExperience);
+          const hasSkills = extractedData.skills.length > 0;
 
           if (hasName && (hasExp || hasSkills)) {
-            // Rich extraction — go straight to preview for review
-            // Add empty entries if needed so user can add missing sections from preview
-            setData(prev => {
-              const updated = { ...prev };
-              if (updated.experiences.length === 0) updated.experiences = [{ id: uid(), title: "", company: "", location: "", startDate: "", endDate: "", current: false, highlights: [""] }];
-              if (updated.education.length === 0) updated.education = [{ id: uid(), degree: "", institution: "", location: "", graduationYear: "", gpa: "" }];
-              return updated;
-            });
-            // Small delay to let state settle, then save and go to preview
-            setTimeout(() => {
-              saveCV("final");
-              setStep(5);
-            }, 100);
+            const hydratedData = ensureEditableSections(extractedData);
+            setData(hydratedData);
+            await saveCV("final", hydratedData);
+            setStep(5);
           } else if (!hasName) {
+            setData(extractedData);
             setStep(1); // Need personal info
           } else if (!hasExp) {
+            setData(extractedData);
             setStep(2); // Need experience
           } else {
+            setData(extractedData);
             setStep(4); // Need skills
           }
         }
@@ -403,8 +376,9 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
 
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
-  const saveCV = useCallback(async (status: "draft" | "final" = "final") => {
-    const cv = liveCV;
+  const saveCV = useCallback(async (status: "draft" | "final" = "final", sourceData?: ResumeData) => {
+    const nextData = sourceData || data;
+    const cv = buildCVFromData(nextData);
     setSaveStatus("saving");
     setSaveError(null);
     try {
@@ -416,7 +390,12 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
         return;
       }
       saveGeneratedCV(cv, { markGenerated: status === "final" });
-      updateProfile({ name: data.fullName, phone: data.phone, skills: data.skills });
+      updateProfile({
+        name: nextData.fullName,
+        phone: nextData.phone,
+        location: nextData.location,
+        skills: nextData.skills,
+      });
       setSaveError(null);
       setSaveStatus("saved");
       // Reset indicator after 3s
@@ -425,7 +404,7 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
       setSaveError("Unable to save your resume right now.");
       setSaveStatus("error");
     }
-  }, [liveCV, data, saveGeneratedCV, updateProfile]);
+  }, [data, saveGeneratedCV, updateProfile]);
 
   // Auto-save draft when user changes steps (debounced)
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1109,6 +1088,86 @@ function mergeEducationEntries(
   });
 
   return dedupedIncoming.length > 0 ? [...current, ...dedupedIncoming] : current;
+}
+
+function mergeExtractedResumeData(current: ResumeData, extracted: Record<string, unknown>): ResumeData {
+  return {
+    ...current,
+    fullName: (extracted.fullName as string) || current.fullName,
+    email: (extracted.email as string) || current.email,
+    phone: (extracted.phone as string) || current.phone,
+    location: (extracted.location as string) || current.location,
+    linkedIn: (extracted.linkedIn as string) || current.linkedIn,
+    portfolio: (extracted.portfolio as string) || current.portfolio,
+    summary: (extracted.summary as string) || current.summary,
+    skills: Array.isArray(extracted.skills)
+      ? Array.from(new Set((extracted.skills as string[]).map((skill) => skill.trim()).filter(Boolean)))
+      : current.skills,
+    experiences: Array.isArray(extracted.experiences)
+      ? (extracted.experiences as Array<Record<string, unknown>>).map((entry) => ({
+          id: uid(),
+          title: (entry.title as string) || "",
+          company: (entry.company as string) || "",
+          location: (entry.location as string) || "",
+          startDate: (entry.startDate as string) || "",
+          endDate: (entry.endDate as string) || "",
+          current: normalizeDateValue(entry.endDate as string) === "present",
+          highlights: Array.isArray(entry.highlights)
+            ? (entry.highlights as string[]).map((item) => item.trim()).filter(Boolean)
+            : [""],
+        }))
+      : current.experiences,
+    education: Array.isArray(extracted.education)
+      ? (extracted.education as Array<Record<string, unknown>>).map((entry) => ({
+          id: uid(),
+          degree: (entry.degree as string) || "",
+          institution: (entry.institution as string) || "",
+          location: (entry.location as string) || "",
+          graduationYear: (entry.graduationYear as string) || "",
+          gpa: (entry.gpa as string) || "",
+        }))
+      : current.education,
+  };
+}
+
+function hasMeaningfulExperience(entry: ExperienceEntry): boolean {
+  return Boolean(
+    entry.title.trim() ||
+    entry.company.trim() ||
+    entry.highlights.some((highlight) => highlight.trim())
+  );
+}
+
+function ensureEditableSections(data: ResumeData): ResumeData {
+  return {
+    ...data,
+    experiences: data.experiences.length > 0
+      ? data.experiences
+      : [{
+          id: uid(),
+          title: "",
+          company: "",
+          location: "",
+          startDate: "",
+          endDate: "",
+          current: false,
+          highlights: [""],
+        }],
+    education: data.education.length > 0
+      ? data.education
+      : [{
+          id: uid(),
+          degree: "",
+          institution: "",
+          location: "",
+          graduationYear: "",
+          gpa: "",
+        }],
+  };
+}
+
+function normalizeDateValue(value: string | undefined): string {
+  return (value || "").trim().toLowerCase();
 }
 
 function buildCVFromData(data: {
