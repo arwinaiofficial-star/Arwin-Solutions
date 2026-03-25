@@ -512,6 +512,56 @@ export default function DashboardPage() {
 
         {/* ── Main Area ────────────────────────────────────────── */}
         <div className="ws-main">
+          <div className="ws-mobile-shell">
+            <div className="ws-mobile-topbar">
+              <button className="ws-mobile-brand" title="JobReady.ai" onClick={() => setActiveView("home")}>
+                <span className="ws-logo ws-mobile-logo">⚡</span>
+                <span className="ws-mobile-brand-copy">
+                  <strong>JobReady</strong>
+                  <em>{activeView === "home" ? "Command Center" : currentStage?.shortLabel || "Workflow"}</em>
+                </span>
+              </button>
+              <div className="ws-mobile-actions">
+                <button className={`ws-side-icon ${copilotOpen ? "ws-side-icon-active" : ""}`} onClick={() => setCopilotOpen(p => !p)} title="AI Guide">
+                  <span style={{ fontSize: 18 }}>🤖</span>
+                </button>
+                <button className={`ws-side-icon ${activeView === "settings" ? "ws-side-icon-active" : ""}`} onClick={() => setActiveView("settings")} title="Settings">
+                  <SettingsIcon size={18} />
+                </button>
+              </div>
+            </div>
+
+            <div className="ws-mobile-objective">
+              <span className="ws-header-kicker">{hasSelectedJob ? "Selected Job" : "Next Up"}</span>
+              <strong>{hasSelectedJob ? `${coverLetterJob?.title} · ${coverLetterJob?.company}` : nextRecommendedStage.shortLabel}</strong>
+              <p>{focusSummary}</p>
+              <button className="ws-rail-cta" onClick={() => navigateWorkflowStage(nextRecommendedStage)}>
+                Continue
+              </button>
+            </div>
+
+            <div className="ws-mobile-stage-strip">
+              {workflowStages.map((stage) => (
+                <button
+                  key={`mobile-${stage.id}`}
+                  className={`ws-stage-btn ws-stage-btn-mobile ws-stage-${stage.status} ${currentStage?.id === stage.id ? "ws-stage-active" : ""}`}
+                  onClick={() => navigateWorkflowStage(stage)}
+                  title={stage.description}
+                  disabled={!stage.unlocked}
+                >
+                  <div className={`ws-stage-index ${stage.complete ? "ws-stage-complete" : ""}`}>
+                    {stage.label.split(".")[0]}
+                  </div>
+                  <div className="ws-stage-copy">
+                    <strong>{stage.shortLabel}</strong>
+                    <span>{stage.label}</span>
+                    <em>{stage.complete ? stage.evidence : stage.blocker || stage.evidence}</em>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="ws-header">
             <div className="ws-header-copy">
               <span className="ws-header-kicker">{activeView === "home" ? "Command Center" : currentStage?.label}</span>
@@ -2007,6 +2057,48 @@ const workspaceCSS = `
   }
   .ws-side-icon:hover { border-color:var(--ws-border-strong); color:#f8fafc; }
   .ws-side-icon-active { background:#0f2025; color:var(--ws-accent-strong); border-color:rgba(92,163,168,0.3); }
+  .ws-mobile-shell { display:none; }
+  .ws-mobile-topbar { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .ws-mobile-brand {
+    display:flex; align-items:center; gap:10px; padding:0;
+    background:none; border:none; color:inherit; cursor:pointer;
+  }
+  .ws-mobile-logo { width:38px; height:38px; border-radius:13px; font-size:0.95rem; }
+  .ws-mobile-brand-copy strong { display:block; font-size:0.92rem; color:#f8fafc; letter-spacing:0.01em; }
+  .ws-mobile-brand-copy em {
+    display:block; margin-top:2px; font-style:normal; font-size:0.68rem;
+    letter-spacing:0.14em; text-transform:uppercase; color:var(--ws-muted);
+  }
+  .ws-mobile-actions { display:flex; gap:8px; }
+  .ws-mobile-objective {
+    padding:16px; border-radius:20px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.02), transparent 20%),
+      linear-gradient(135deg, rgba(18,30,36,0.98), rgba(24,39,49,0.9));
+    border:1px solid rgba(92,163,168,0.14);
+    box-shadow:0 16px 28px rgba(4,10,14,0.22);
+  }
+  .ws-mobile-objective strong {
+    display:block; margin:8px 0 6px; font-size:1rem; color:#f8fafc; letter-spacing:-0.02em;
+    line-height:1.3;
+  }
+  .ws-mobile-objective p { margin:0 0 14px; color:var(--ws-muted); font-size:0.82rem; line-height:1.55; }
+  .ws-mobile-stage-strip {
+    display:flex; gap:8px; overflow-x:auto; padding-bottom:2px;
+    scroll-snap-type:x proximity;
+  }
+  .ws-mobile-stage-strip::-webkit-scrollbar { display:none; }
+  .ws-stage-btn-mobile {
+    width:auto; min-width:max-content; flex:0 0 auto; scroll-snap-align:start;
+    align-items:center; gap:10px; padding:10px 12px; border-radius:14px;
+    background:rgba(12,23,28,0.92);
+  }
+  .ws-stage-btn-mobile .ws-stage-index {
+    width:24px; height:24px; border-radius:999px; font-size:0.68rem;
+  }
+  .ws-stage-btn-mobile .ws-stage-copy strong { font-size:0.76rem; white-space:nowrap; }
+  .ws-stage-btn-mobile .ws-stage-copy span,
+  .ws-stage-btn-mobile .ws-stage-copy em { display:none; }
 
   /* Main Area */
   .ws-main { flex:1; display:flex; flex-direction:column; min-width:0; }
@@ -2424,47 +2516,42 @@ const workspaceCSS = `
   .sp-btn-outline { padding:10px 18px; border-radius:999px; background:transparent; border:1px solid var(--ws-border); color:var(--ws-muted); font-size:0.8125rem; cursor:pointer; }
   .sp-btn-outline:hover { border-color:var(--ws-accent); color:var(--ws-accent-strong); }
 
-  /* ─── Mobile: Tablet ─── */
-  @media (max-width: 768px) {
-    .ws { flex-direction: column; }
-    .ws-sidebar {
-      width: 100%; height: auto; flex-direction: column;
-      border-right: none; border-bottom: 1px solid var(--ws-border);
-      padding: 12px; gap: 12px;
+  /* ─── Mobile / Tablet Shell ─── */
+  @media (max-width: 900px) {
+    .ws {
+      display:block;
+      height:auto;
+      min-height:100dvh;
+      overflow-y:auto;
+      overflow-x:hidden;
     }
-    .ws-brand { padding: 8px 10px 8px; }
-    .ws-stage-group {
-      display: flex;
-      overflow-x: auto;
-      gap: 10px;
-      padding-bottom: 4px;
-      scroll-snap-type: x proximity;
+    .ws-sidebar { display:none; }
+    .ws-mobile-shell {
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      position:sticky;
+      top:0;
+      z-index:12;
+      padding:12px 12px 0;
+      background:linear-gradient(180deg, rgba(9,17,21,0.98), rgba(9,17,21,0.9), rgba(9,17,21,0.72), transparent);
+      backdrop-filter:blur(18px);
     }
-    .ws-stage-group::-webkit-scrollbar { display: none; }
-    .ws-stage-btn {
-      min-height: 84px;
-      min-width: 220px;
-      flex: 0 0 220px;
-      scroll-snap-align: start;
+    .ws-main { min-height:auto; }
+    .ws-header { display:none; }
+    .ws-content {
+      display:block;
+      overflow:visible;
     }
-    .ws-rail-card { display: none; }
-    .ws-sidebar-actions { justify-content: flex-end; }
-    .ws-main { min-height: 0; }
+    .ws-panel {
+      overflow:visible;
+      padding:16px 12px 18px;
+    }
+    .ws-statusbar { display:none; }
     .ws-copilot {
       position: fixed; top: 0; right: 0; bottom: 0; left: 0;
       width: 100% !important; z-index: 30; border-left: none;
     }
-    .ws-header {
-      padding: 18px 16px 14px;
-      flex-direction: column;
-      align-items: stretch;
-    }
-    .ws-header-copy h1 { font-size: 1.35rem; }
-    .ws-header-right {
-      justify-content: space-between;
-    }
-    .ws-focus-pill { min-width: 0; flex: 1; }
-    .ws-panel { padding: 16px; }
     .ws-user-pill span { display: none; }
     .wf-grid, .wf-panel-grid, .ts-grid { grid-template-columns: 1fr; }
     .wf-hero, .ts-hero { padding: 22px 18px; }
@@ -2509,13 +2596,13 @@ const workspaceCSS = `
 
   /* ─── Mobile: Phone ─── */
   @media (max-width: 480px) {
+    .ws-mobile-shell { padding: 10px 10px 0; }
+    .ws-mobile-objective { padding: 14px; }
+    .ws-mobile-objective strong { font-size: 0.92rem; }
+    .ws-mobile-objective p { font-size: 0.76rem; }
     .ws-stage-btn { padding: 10px; min-width: 188px; flex-basis: 188px; min-height: 78px; }
     .ws-panel { padding: 10px; }
-    .ws-statusbar { height: auto; padding: 8px 12px; flex-direction: column; align-items: flex-start; gap: 4px; }
-    .ws-status-right { flex-wrap: wrap; }
     .wf-hero, .ts-hero, .ts-empty { padding: 18px 14px; }
-    .ws-focus-pill, .ws-user-pill, .ws-cmd-btn { width: 100%; justify-content: center; }
-    .ws-header-right { flex-direction: column; align-items: stretch; }
     .wf-card, .wf-panel, .ts-card, .jb-search, .sp-card { border-radius: 18px; }
 
     /* Job Board phone */
