@@ -13,6 +13,7 @@ import {
 } from "@/components/icons/Icons";
 import { authApi, resumeApi, jobPrepareApi, applicationsApi, JobApplicationData } from "@/lib/api/client";
 import { buildSafeCoverLetterSnippet, computeResumeJobMatch } from "@/lib/jobMatch";
+import { computeJobReadyWorkflow, type WorkflowStage } from "@/lib/jobreadyWorkflow";
 
 type ViewType = "home" | "resume" | "jobs" | "tailor" | "tracker" | "settings";
 
@@ -41,14 +42,12 @@ interface PrepareData {
   coverLetterSnippet: string;
 }
 
-interface WorkflowStage {
-  id: string;
-  view: ViewType;
-  resumeStep?: number;
-  label: string;
-  shortLabel: string;
-  description: string;
-  complete: boolean;
+interface WorkflowDraftState {
+  atsBaselineComplete: boolean;
+  targetJob: JobResult | null;
+  coverLetterText: string;
+  coverLetterJobId: string | null;
+  tailoredResumeJobId: string | null;
 }
 
 function buildFallbackPrepareData(job: JobResult, cvData: GeneratedCV | null | undefined): PrepareData {
@@ -170,9 +169,48 @@ export default function DashboardPage() {
   const [trackedJobs, setTrackedJobs] = useState<TrackedJob[]>([]);
   const [coverLetterJob, setCoverLetterJob] = useState<JobResult | null>(null);
   const [coverLetterText, setCoverLetterText] = useState("");
+  const [coverLetterJobId, setCoverLetterJobId] = useState<string | null>(null);
+  const [tailoredResumeJobId, setTailoredResumeJobId] = useState<string | null>(null);
+  const [atsBaselineComplete, setAtsBaselineComplete] = useState(false);
   const [resumeStep, setResumeStep] = useState(0);
   const [resumeData, setResumeData] = useState<Record<string, unknown>>({});
   const wizardHandleRef = useRef<ResumeWizardHandle | null>(null);
+
+  const restoreWorkflowDraft = useCallback((draft: Partial<WorkflowDraftState>) => {
+    setAtsBaselineComplete(Boolean(draft.atsBaselineComplete));
+    setCoverLetterJob(draft.targetJob || null);
+    setCoverLetterText(draft.coverLetterText || "");
+    setCoverLetterJobId(draft.coverLetterJobId || null);
+    setTailoredResumeJobId(draft.tailoredResumeJobId || null);
+  }, []);
+
+  useEffect(() => {
+    if (!user?.id || typeof window === "undefined") return;
+
+    const raw = window.localStorage.getItem(`jobready_workflow_${user.id}`);
+    if (!raw) return;
+
+    try {
+      const parsed = JSON.parse(raw) as Partial<WorkflowDraftState>;
+      const frame = window.requestAnimationFrame(() => restoreWorkflowDraft(parsed));
+      return () => window.cancelAnimationFrame(frame);
+    } catch {
+      window.localStorage.removeItem(`jobready_workflow_${user.id}`);
+    }
+  }, [restoreWorkflowDraft, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id || typeof window === "undefined") return;
+
+    const draftState: WorkflowDraftState = {
+      atsBaselineComplete,
+      targetJob: coverLetterJob,
+      coverLetterText,
+      coverLetterJobId,
+      tailoredResumeJobId,
+    };
+    window.localStorage.setItem(`jobready_workflow_${user.id}`, JSON.stringify(draftState));
+  }, [atsBaselineComplete, coverLetterJob, coverLetterJobId, coverLetterText, tailoredResumeJobId, user?.id]);
 
   // Update tracked jobs in DB
   const updateTrackedJobs = useCallback((jobs: TrackedJob[]) => {
@@ -236,11 +274,26 @@ export default function DashboardPage() {
     }
   }, [addToast, trackedJobs]);
 
-  const openCoverLetter = useCallback((job: JobResult, text: string) => {
+  const selectTargetJob = useCallback((job: JobResult, options?: { coverLetter?: string; openTailor?: boolean }) => {
+    const isNewTarget = coverLetterJob?.id !== job.id;
     setCoverLetterJob(job);
-    setCoverLetterText(text);
-    setActiveView("tailor");
-  }, []);
+
+    if (typeof options?.coverLetter === "string") {
+      setCoverLetterText(options.coverLetter);
+      setCoverLetterJobId(job.id);
+    } else if (isNewTarget) {
+      setCoverLetterText("");
+      setCoverLetterJobId(null);
+    }
+
+    if (options?.openTailor) {
+      setActiveView("tailor");
+    }
+  }, [coverLetterJob?.id]);
+
+  const openCoverLetter = useCallback((job: JobResult, text: string) => {
+    selectTargetJob(job, { coverLetter: text, openTailor: true });
+  }, [selectTargetJob]);
 
   const currentTrackedJob = coverLetterJob
     ? trackedJobs.find((tracked) => tracked.title === coverLetterJob.title && tracked.company === coverLetterJob.company) || null
@@ -340,11 +393,15 @@ export default function DashboardPage() {
   }, []);
 
   const navigateWorkflowStage = useCallback((stage: WorkflowStage) => {
+    if (!stage.unlocked) {
+      addToast(stage.blocker || `Finish the previous stage before opening ${stage.shortLabel}.`, "info");
+      return;
+    }
     setActiveView(stage.view);
     if (stage.view === "resume" && stage.resumeStep !== undefined) {
       setTimeout(() => wizardHandleRef.current?.setStep(stage.resumeStep!), 100);
     }
-  }, []);
+  }, [addToast]);
 
   if (isLoading) {
     return (
@@ -360,35 +417,30 @@ export default function DashboardPage() {
 
   const completionPct = user.cvGenerated ? 100 : user.cvData ? 60 : 0;
   const appCount = trackedJobs.filter(j => j.status !== "saved").length;
-  const hasResume = Boolean(user.cvData && (user.cvData.skills?.length || user.cvData.experience?.length || user.cvData.summary?.trim()));
+  const workflow = computeJobReadyWorkflow({
+    savedResume: user.cvData,
+    resumeDraft: resumeData,
+    atsBaselineComplete,
+    matchedJobsCount: matchedJobs.length,
+    selectedJob: coverLetterJob,
+    trackedTarget: currentTrackedJob,
+    trackedJobsCount: trackedJobs.length,
+    coverLetterText,
+    coverLetterJobId,
+    tailoredResumeJobId,
+  });
+  const workflowStages: WorkflowStage[] = workflow.stages;
+  const nextRecommendedStage = workflow.nextRecommendedStage;
   const hasSelectedJob = Boolean(coverLetterJob);
-  const hasAppliedTarget = Boolean(currentTrackedJob && currentTrackedJob.status !== "saved");
-  const workflowStages: WorkflowStage[] = [
-    { id: "import", view: "resume", resumeStep: hasResume ? 1 : 0, label: "1. Import", shortLabel: "Import", description: "Upload your CV, parse it, and fill missing facts.", complete: hasResume },
-    { id: "improve", view: "resume", resumeStep: hasResume ? 5 : 1, label: "2. Strengthen", shortLabel: "Strengthen", description: "Improve resume quality, ATS baseline, and profile completeness.", complete: Boolean(user.cvGenerated) },
-    { id: "match", view: "jobs", label: "3. Match", shortLabel: "Match", description: "Show best-fit jobs ranked against the current resume.", complete: matchedJobs.length > 0 || hasSelectedJob },
-    { id: "tailor", view: "tailor", label: "4. Tailor", shortLabel: "Tailor", description: "Pick one job and tailor resume plus cover letter together.", complete: hasSelectedJob },
-    { id: "apply", view: hasSelectedJob ? "tailor" : "jobs", label: "5. Apply", shortLabel: "Apply", description: "Open the job, confirm the asset set, and log the application.", complete: hasAppliedTarget },
-    { id: "track", view: "tracker", label: "6. Track", shortLabel: "Track", description: "Move through interview, offer, rejection, and follow-up.", complete: trackedJobs.length > 0 },
-  ];
-  const nextRecommendedStage = !hasResume
-    ? workflowStages[0]
-    : !user.cvGenerated
-      ? workflowStages[1]
-      : !hasSelectedJob
-        ? workflowStages[2]
-        : !hasAppliedTarget
-          ? workflowStages[4]
-          : workflowStages[5];
+  const hasAppliedTarget = workflow.hasAppliedTarget;
+  const tailorComplete = workflow.tailorComplete;
   const currentStage = activeView === "home"
     ? null
-    : workflowStages.find((stage) => {
-      if (stage.view !== activeView) return false;
-      if (activeView !== "resume") return true;
-      if (stage.id === "import") return resumeStep <= 1;
-      if (stage.id === "improve") return resumeStep >= 2;
-      return false;
-    }) || workflowStages[0];
+    : activeView === "resume"
+      ? workflowStages.find((stage) => stage.id === (resumeStep <= 1 ? "import" : "improve")) || workflowStages[0]
+      : activeView === "tailor"
+        ? workflowStages.find((stage) => stage.id === (tailorComplete && !hasAppliedTarget ? "apply" : "tailor")) || workflowStages[0]
+        : workflowStages.find((stage) => stage.view === activeView) || workflowStages[0];
   const focusSummary = activeView === "home"
     ? "Guide users through one hiring pipeline instead of exposing disconnected tools."
     : currentStage?.description || workflowStages[0].description;
@@ -396,9 +448,9 @@ export default function DashboardPage() {
   const cmdActions = [
     { id: "home", label: "Open Command Center", icon: "🏠", action: () => setActiveView("home") },
     { id: "resume", label: "Build Resume", icon: "📄", action: () => navigateWorkflowStage(workflowStages[0]) },
-    { id: "jobs", label: "Find Matching Jobs", icon: "💼", action: () => setActiveView("jobs") },
-    { id: "tailor", label: "Open Tailor Studio", icon: "✂️", action: () => setActiveView("tailor") },
-    { id: "tracker", label: "Track Applications", icon: "📊", action: () => setActiveView("tracker") },
+    { id: "jobs", label: "Find Matching Jobs", icon: "💼", action: () => navigateWorkflowStage(workflowStages[2]) },
+    { id: "tailor", label: "Open Tailor Studio", icon: "✂️", action: () => navigateWorkflowStage(workflowStages[3]) },
+    { id: "tracker", label: "Track Applications", icon: "📊", action: () => navigateWorkflowStage(workflowStages[5]) },
     { id: "settings", label: "Settings & Profile", icon: "⚙", action: () => setActiveView("settings") },
     { id: "copilot", label: copilotOpen ? "Hide AI Copilot" : "Show AI Copilot", icon: "🤖", action: () => setCopilotOpen(p => !p) },
     { id: "download", label: "Download Resume as PDF", icon: "📥", action: () => { setActiveView("resume"); addToast("Navigate to Resume Preview to download PDF", "info"); } },
@@ -422,9 +474,10 @@ export default function DashboardPage() {
             {workflowStages.map((stage) => (
               <button
                 key={stage.id}
-                className={`ws-stage-btn ${currentStage?.id === stage.id ? "ws-stage-active" : ""}`}
+                className={`ws-stage-btn ws-stage-${stage.status} ${currentStage?.id === stage.id ? "ws-stage-active" : ""}`}
                 onClick={() => navigateWorkflowStage(stage)}
                 title={stage.description}
+                disabled={!stage.unlocked}
               >
                 <div className={`ws-stage-index ${stage.complete ? "ws-stage-complete" : ""}`}>
                   {stage.label.split(".")[0]}
@@ -432,6 +485,7 @@ export default function DashboardPage() {
                 <div className="ws-stage-copy">
                   <strong>{stage.shortLabel}</strong>
                   <span>{stage.label}</span>
+                  <em>{stage.complete ? stage.evidence : stage.blocker || stage.evidence}</em>
                 </div>
               </button>
             ))}
@@ -491,9 +545,9 @@ export default function DashboardPage() {
                   trackedJobs={trackedJobs}
                   selectedJob={coverLetterJob}
                   selectedJobStatus={currentTrackedJob?.status || null}
-                  onGoToStage={(view) => setActiveView(view)}
                   onContinueStage={() => navigateWorkflowStage(nextRecommendedStage)}
                   onOpenStage={navigateWorkflowStage}
+                  onSelectJob={selectTargetJob}
                 />
               )}
               {activeView === "resume" && (
@@ -501,6 +555,7 @@ export default function DashboardPage() {
                   onNavigateToSearch={() => setActiveView("jobs")}
                   onStepChange={setResumeStep}
                   onDataChange={(d) => setResumeData(d as unknown as Record<string, unknown>)}
+                  onATSComplete={() => setAtsBaselineComplete(true)}
                   handleRef={(h) => { wizardHandleRef.current = h; }}
                 />
               )}
@@ -511,10 +566,11 @@ export default function DashboardPage() {
                   jobs={matchedJobs}
                   selectedJob={coverLetterJob}
                   onSaveToTracker={saveToTracker}
-                  onSelectJob={setCoverLetterJob}
+                  onSelectJob={selectTargetJob}
                   onJobsChange={(jobs) => { setMatchedJobs(jobs); setJobCount(jobs.length); }}
                   onJobCountChange={setJobCount}
                   onOpenCoverLetter={openCoverLetter}
+                  onTailoredResumeApplied={(jobId) => setTailoredResumeJobId(jobId)}
                   addToast={addToast}
                 />
               )}
@@ -526,6 +582,11 @@ export default function DashboardPage() {
                   onNavigateToJobs={() => setActiveView("jobs")}
                   onSaveToTracker={saveToTracker}
                   onLogApplication={logApplication}
+                  onTailoredResumeApplied={(jobId) => setTailoredResumeJobId(jobId)}
+                  onCoverLetterChange={(text, jobId) => {
+                    setCoverLetterText(text);
+                    setCoverLetterJobId(jobId);
+                  }}
                   trackedJob={currentTrackedJob}
                   addToast={addToast}
                 />
@@ -601,9 +662,9 @@ function WorkflowHome({
   trackedJobs,
   selectedJob,
   selectedJobStatus,
-  onGoToStage,
   onContinueStage,
   onOpenStage,
+  onSelectJob,
 }: {
   user: { cvGenerated?: boolean; cvData?: GeneratedCV | null; name: string };
   stages: WorkflowStage[];
@@ -612,13 +673,14 @@ function WorkflowHome({
   trackedJobs: TrackedJob[];
   selectedJob: JobResult | null;
   selectedJobStatus: TrackedJob["status"] | null;
-  onGoToStage: (view: ViewType) => void;
   onContinueStage: () => void;
   onOpenStage: (stage: WorkflowStage) => void;
+  onSelectJob: (job: JobResult, options?: { coverLetter?: string; openTailor?: boolean }) => void;
 }) {
   const topMatches = [...matchedJobs]
     .sort((a, b) => b.relevanceScore - a.relevanceScore)
     .slice(0, 3);
+  const stageMap = new Map(stages.map((stage) => [stage.id, stage]));
 
   return (
     <div className="wf">
@@ -633,12 +695,16 @@ function WorkflowHome({
 
       <div className="wf-grid">
         {stages.map((stage) => (
-          <button key={stage.id} className="wf-card" onClick={() => onOpenStage(stage)}>
+          <button key={stage.id} className={`wf-card wf-card-${stage.status}`} onClick={() => onOpenStage(stage)}>
             <div className="wf-card-top">
               <span className={`wf-dot ${stage.complete ? "wf-dot-complete" : ""}`} />
               <strong>{stage.label}</strong>
             </div>
             <p>{stage.description}</p>
+            <div className="wf-card-meta">
+              <span className={`wf-stage-status wf-stage-${stage.status}`}>{stage.status.replace("_", " ")}</span>
+              <span>{stage.complete ? stage.evidence : stage.blocker || stage.evidence}</span>
+            </div>
           </button>
         ))}
       </div>
@@ -648,21 +714,21 @@ function WorkflowHome({
           <span className="wf-panel-label">Resume State</span>
           <strong>{user.cvGenerated ? "Base resume is ready" : "Resume still needs setup"}</strong>
           <p>{user.cvData?.summary ? user.cvData.summary : "Upload a CV or build your profile manually so the rest of the workflow has real data to work with."}</p>
-          <button className="wf-secondary" onClick={() => onGoToStage("resume")}>{user.cvGenerated ? "Improve Resume" : "Start Resume"}</button>
+          <button className="wf-secondary" onClick={() => onOpenStage(stageMap.get(user.cvGenerated ? "improve" : "import") || stages[0])}>{user.cvGenerated ? "Improve Resume" : "Start Resume"}</button>
         </div>
 
         <div className="wf-panel">
           <span className="wf-panel-label">Match State</span>
           <strong>{matchedJobs.length > 0 ? `${matchedJobs.length} matches ready` : "No ranked jobs yet"}</strong>
           <p>{selectedJob ? `${selectedJob.title} at ${selectedJob.company} is the current target job.` : "Choose one target job and keep that context through tailoring and application prep."}</p>
-          <button className="wf-secondary" onClick={() => onGoToStage(selectedJob ? "tailor" : "jobs")}>{selectedJob ? "Open Tailor Studio" : "Find Matches"}</button>
+          <button className="wf-secondary" onClick={() => onOpenStage(stageMap.get(selectedJob ? "tailor" : "match") || stages[0])}>{selectedJob ? "Open Tailor Studio" : "Find Matches"}</button>
         </div>
 
         <div className="wf-panel">
           <span className="wf-panel-label">Pipeline State</span>
           <strong>{selectedJobStatus ? `Target job is ${selectedJobStatus}` : trackedJobs.length > 0 ? `${trackedJobs.length} jobs in tracker` : "Tracker is empty"}</strong>
           <p>{trackedJobs.length > 0 ? "Use the tracker after every real apply event so outcomes stay measurable." : "Once you save or apply to a role, it should land in your pipeline automatically."}</p>
-          <button className="wf-secondary" onClick={() => onGoToStage("tracker")}>Open Tracker</button>
+          <button className="wf-secondary" onClick={() => onOpenStage(stageMap.get("track") || stages[stages.length - 1])}>Open Tracker</button>
         </div>
       </div>
 
@@ -673,7 +739,7 @@ function WorkflowHome({
         {topMatches.length > 0 ? (
           <div className="wf-match-list">
             {topMatches.map((job) => (
-              <button key={job.id} className="wf-match-item" onClick={() => { onGoToStage("jobs"); }}>
+              <button key={job.id} className="wf-match-item" onClick={() => { onSelectJob(job, { openTailor: true }); }}>
                 <div>
                   <strong>{job.title}</strong>
                   <span>{job.company} · {job.location}</span>
@@ -695,6 +761,8 @@ function TailorStudio({
   onNavigateToJobs,
   onSaveToTracker,
   onLogApplication,
+  onTailoredResumeApplied,
+  onCoverLetterChange,
   trackedJob,
   addToast,
 }: {
@@ -704,9 +772,16 @@ function TailorStudio({
   onNavigateToJobs: () => void;
   onSaveToTracker: (job: JobResult) => void;
   onLogApplication: (job: JobResult) => void;
+  onTailoredResumeApplied: (jobId: string) => void;
+  onCoverLetterChange: (text: string, jobId: string) => void;
   trackedJob: TrackedJob | null;
   addToast: (msg: string, type: Toast["type"]) => void;
 }) {
+  const { saveGeneratedCV } = useAuth();
+  const [tailoredSummary, setTailoredSummary] = useState<string | null>(null);
+  const [tailoredSkills, setTailoredSkills] = useState<string[] | null>(null);
+  const [isTailoring, setIsTailoring] = useState(false);
+
   if (!job) {
     return (
       <div className="ts-empty">
@@ -720,6 +795,62 @@ function TailorStudio({
 
   const insights = computeResumeJobMatch(cvData, job);
 
+  const tailorResume = async () => {
+    if (!cvData) {
+      addToast("Save your resume first so tailoring has real source data.", "error");
+      return;
+    }
+
+    setIsTailoring(true);
+    try {
+      const result = await resumeApi.chat(
+        `Tailor this resume for the following job. Return a JSON object with two keys: "summary" (a factual 2-3 sentence professional summary tailored for this role) and "skills" (an array of existing resume skills reordered by relevance, plus only directly supported adjacent keywords already evidenced by the resume).
+
+Job: ${job.title} at ${job.company}
+Job Description: ${job.description?.slice(0, 2000) || "Not provided"}
+
+Resume Facts:
+${buildResumeFacts(cvData)}
+
+Rules:
+- Use only facts present in the resume facts above.
+- Do not invent years of experience, tools, companies, metrics, or placeholders.
+- Keep the summary concise and ATS-friendly.
+
+Return ONLY valid JSON: {"summary": "...", "skills": ["skill1", "skill2", ...]}`,
+        "chat",
+      );
+
+      if (result.data?.reply) {
+        const cleaned = result.data.reply.replace(/^```(?:json)?\s*/m, "").replace(/\s*```\s*$/m, "").trim();
+        try {
+          const parsed = JSON.parse(cleaned);
+          setTailoredSummary(parsed.summary || null);
+          setTailoredSkills(Array.isArray(parsed.skills) ? parsed.skills : null);
+        } catch {
+          setTailoredSummary(result.data.reply);
+          setTailoredSkills(null);
+        }
+      }
+    } catch {
+      addToast("Tailoring failed. Please try again.", "error");
+    }
+    setIsTailoring(false);
+  };
+
+  const applyTailoredResume = async () => {
+    if (!cvData) return;
+
+    const updated = { ...cvData };
+    if (tailoredSummary) updated.summary = tailoredSummary;
+    if (tailoredSkills) updated.skills = tailoredSkills;
+
+    saveGeneratedCV(updated);
+    await resumeApi.save(updated as unknown as Record<string, unknown>, "final").catch(() => {});
+    onTailoredResumeApplied(job.id);
+    addToast(`Resume tailored for ${job.title}`, "success");
+  };
+
   return (
     <div className="ts">
       <div className="ts-hero">
@@ -730,7 +861,7 @@ function TailorStudio({
         </div>
         <div className="ts-actions">
           <button className="wf-secondary" onClick={() => onSaveToTracker(job)}>Save to Tracker</button>
-          <button className="wf-secondary" onClick={() => onLogApplication(job)}>
+          <button className="wf-secondary" onClick={() => onLogApplication(job)} disabled={trackedJob?.status === "applied" || trackedJob?.status === "interview" || trackedJob?.status === "offer"}>
             {trackedJob?.status === "applied" || trackedJob?.status === "interview" || trackedJob?.status === "offer" ? "Already Logged" : "Log Application"}
           </button>
           <a className="wf-primary wf-primary-link" href={job.url} target="_blank" rel="noopener noreferrer">Open Apply Link</a>
@@ -766,11 +897,30 @@ function TailorStudio({
         </div>
       </div>
 
+      <div className="ts-card">
+        <span className="wf-panel-label">Tailored Resume</span>
+        <strong>{tailoredSummary ? "Tailored resume draft ready" : "Tailor this resume for the target job"}</strong>
+        <p>{tailoredSummary ? "Review the tailored summary and apply it to your resume version before moving to Apply." : "This stage is only complete when a tailored resume version exists for the selected job."}</p>
+        {tailoredSummary && (
+          <div className="prep-tailor-text" style={{ marginBottom: 12 }}>{tailoredSummary}</div>
+        )}
+        {tailoredSkills && tailoredSkills.length > 0 && (
+          <div className="prep-skill-tags" style={{ marginBottom: 12 }}>
+            {tailoredSkills.map((skill) => <span key={skill} className="prep-skill-tag prep-skill-matched">{skill}</span>)}
+          </div>
+        )}
+        <div className="ts-actions">
+          <button className="wf-primary" onClick={tailorResume} disabled={isTailoring}>{isTailoring ? "Tailoring..." : tailoredSummary ? "Regenerate Tailoring" : "Tailor Resume"}</button>
+          {tailoredSummary && <button className="wf-secondary" onClick={applyTailoredResume}>Apply Tailored Resume</button>}
+        </div>
+      </div>
+
       <CoverLetterGenerator
         key={`${job.id}:${initialText ? "prefill" : "empty"}`}
         job={job}
         initialText={initialText}
         cvData={cvData}
+        onTextChange={(text) => onCoverLetterChange(text, job.id)}
         addToast={addToast}
       />
     </div>
@@ -780,13 +930,14 @@ function TailorStudio({
 // ─── Prepare to Apply Modal ─────────────────────────────────────────────────
 
 function PrepareModal({
-  job, cvData, onClose, onSaveToTracker, onOpenCoverLetter, addToast,
+  job, cvData, onClose, onSaveToTracker, onOpenCoverLetter, onTailoredResumeApplied, addToast,
 }: {
   job: JobResult;
   cvData: GeneratedCV | null | undefined;
   onClose: () => void;
   onSaveToTracker: (job: JobResult) => void;
   onOpenCoverLetter: (job: JobResult, text: string) => void;
+  onTailoredResumeApplied: (jobId: string) => void;
   addToast: (msg: string, type: Toast["type"]) => void;
 }) {
   const { saveGeneratedCV } = useAuth();
@@ -871,6 +1022,7 @@ Return ONLY valid JSON: {"summary": "...", "skills": ["skill1", "skill2", ...]}`
     if (tailoredSkills) updated.skills = tailoredSkills;
     saveGeneratedCV(updated);
     resumeApi.save(updated as unknown as Record<string, unknown>, "final").catch(() => {});
+    onTailoredResumeApplied(job.id);
     addToast(`Resume tailored for ${job.title} at ${job.company}`, "success");
   };
 
@@ -1128,16 +1280,17 @@ Return ONLY valid JSON: {"matched": [...], "missing": [...], "score": number, "s
 // ─── Job Board ──────────────────────────────────────────────────────────────
 
 function JobBoard({
-  user, jobs, selectedJob, onSaveToTracker, onSelectJob, onJobsChange, onJobCountChange, onOpenCoverLetter, addToast,
+  user, jobs, selectedJob, onSaveToTracker, onSelectJob, onJobsChange, onJobCountChange, onOpenCoverLetter, onTailoredResumeApplied, addToast,
 }: {
   user: { cvData?: GeneratedCV | null; name: string; email: string };
   jobs: JobResult[];
   selectedJob: JobResult | null;
   onSaveToTracker: (job: JobResult) => void;
-  onSelectJob: (job: JobResult) => void;
+  onSelectJob: (job: JobResult, options?: { coverLetter?: string; openTailor?: boolean }) => void;
   onJobsChange: (jobs: JobResult[]) => void;
   onJobCountChange: (count: number) => void;
   onOpenCoverLetter: (job: JobResult, text: string) => void;
+  onTailoredResumeApplied: (jobId: string) => void;
   addToast: (msg: string, type: Toast["type"]) => void;
 }) {
   const [isSearching, setIsSearching] = useState(false);
@@ -1300,6 +1453,7 @@ function JobBoard({
           onClose={() => setPrepareJob(null)}
           onSaveToTracker={onSaveToTracker}
           onOpenCoverLetter={onOpenCoverLetter}
+          onTailoredResumeApplied={onTailoredResumeApplied}
           addToast={addToast}
         />
       )}
@@ -1448,17 +1602,22 @@ function Tracker({
 // ─── Cover Letter Generator ─────────────────────────────────────────────────
 
 function CoverLetterGenerator({
-  job, initialText, cvData, addToast,
+  job, initialText, cvData, onTextChange, addToast,
 }: {
   job: JobResult | null;
   initialText: string;
   cvData?: GeneratedCV | null;
+  onTextChange?: (text: string) => void;
   addToast: (msg: string, type: Toast["type"]) => void;
 }) {
   const [text, setText] = useState(initialText || "");
   const [isGenerating, setIsGenerating] = useState(false);
   const [jobTitle, setJobTitle] = useState(job?.title || "");
   const [company, setCompany] = useState(job?.company || "");
+
+  useEffect(() => {
+    onTextChange?.(text);
+  }, [onTextChange, text]);
 
   const generateLetter = async () => {
     if (!jobTitle.trim()) { addToast("Enter a job title first", "error"); return; }
@@ -1772,11 +1931,16 @@ const workspaceCSS = `
     background:transparent; color:#cbd5e1; cursor:pointer; transition:all 0.18s ease;
   }
   .ws-stage-btn:hover { background:rgba(15,23,42,0.72); border-color:#1e293b; transform:translateX(2px); }
+  .ws-stage-btn:disabled { cursor:not-allowed; opacity:0.72; }
+  .ws-stage-btn:disabled:hover { transform:none; }
   .ws-stage-active {
     background:linear-gradient(180deg, rgba(15,23,42,0.92), rgba(11,17,32,0.92));
     border-color:rgba(56,189,248,0.28);
     box-shadow:inset 0 1px 0 rgba(255,255,255,0.04), 0 12px 24px rgba(2,8,23,0.24);
   }
+  .ws-stage-locked { opacity:0.6; }
+  .ws-stage-ready .ws-stage-index { border-color:rgba(56,189,248,0.24); color:#67e8f9; }
+  .ws-stage-in_progress .ws-stage-index { border-color:rgba(249,115,22,0.28); color:#fb923c; }
   .ws-stage-index {
     width:28px; height:28px; border-radius:10px; flex-shrink:0;
     display:flex; align-items:center; justify-content:center;
@@ -1788,6 +1952,7 @@ const workspaceCSS = `
   }
   .ws-stage-copy strong { display:block; font-size:0.84rem; color:#f8fafc; }
   .ws-stage-copy span { display:block; margin-top:3px; font-size:0.74rem; color:#64748b; line-height:1.4; }
+  .ws-stage-copy em { display:block; margin-top:8px; font-size:0.7rem; font-style:normal; color:#94a3b8; line-height:1.45; }
   .ws-rail-card {
     padding:16px; border-radius:18px;
     background:linear-gradient(180deg, rgba(8,15,29,0.95), rgba(10,14,22,0.95));
@@ -1867,9 +2032,21 @@ const workspaceCSS = `
     transition:transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
   }
   .wf-card:hover { transform:translateY(-2px); border-color:#334155; background:#0f131d; }
+  .wf-card-locked { opacity:0.72; }
   .wf-card-top { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
   .wf-card strong { font-size:0.92rem; color:#f8fafc; }
   .wf-card p { margin:0; color:#94a3b8; font-size:0.84rem; line-height:1.55; }
+  .wf-card-meta { margin-top:12px; display:flex; flex-direction:column; gap:8px; }
+  .wf-card-meta span:last-child { color:#94a3b8; font-size:0.76rem; line-height:1.45; }
+  .wf-stage-status {
+    display:inline-flex; align-items:center; width:max-content; padding:4px 10px;
+    border-radius:999px; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.1em;
+    border:1px solid #243244; color:#cbd5e1; background:#0a1220;
+  }
+  .wf-stage-complete { color:#4ade80; border-color:rgba(34,197,94,0.3); background:rgba(34,197,94,0.08); }
+  .wf-stage-in_progress { color:#fb923c; border-color:rgba(249,115,22,0.28); background:rgba(249,115,22,0.08); }
+  .wf-stage-ready { color:#67e8f9; border-color:rgba(56,189,248,0.28); background:rgba(56,189,248,0.08); }
+  .wf-stage-locked { color:#94a3b8; border-color:#243244; background:#0b1020; }
   .wf-dot {
     width:10px; height:10px; border-radius:999px; background:#334155;
     box-shadow:0 0 0 4px rgba(51,65,85,0.18);
@@ -1901,6 +2078,7 @@ const workspaceCSS = `
     text-decoration:none; transition:all 0.18s ease;
   }
   .wf-secondary:hover { border-color:#38bdf8; color:#f8fafc; }
+  .wf-secondary:disabled { opacity:0.6; cursor:not-allowed; }
 
   /* Tailor Studio */
   .ts { display:flex; flex-direction:column; gap:18px; max-width:1120px; }

@@ -70,12 +70,13 @@ interface ResumeWizardProps {
   onNavigateToSearch?: () => void;
   onStepChange?: (step: number) => void;
   onDataChange?: (data: ResumeData) => void;
+  onATSComplete?: (result: { score: number | null; feedback: string[] }) => void;
   handleRef?: (handle: ResumeWizardHandle) => void;
 }
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 
-export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataChange, handleRef }: ResumeWizardProps) {
+export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataChange, onATSComplete, handleRef }: ResumeWizardProps) {
   const { user, saveGeneratedCV, updateProfile } = useAuth();
   const [step, setStepRaw] = useState(0);
   const [data, setData] = useState<ResumeData>({
@@ -470,10 +471,14 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
           const parsed = JSON.parse(cleaned);
           setAtsScore(parsed.score || null);
           setAtsFeedback(parsed.feedback || []);
+          onATSComplete?.({ score: parsed.score || null, feedback: parsed.feedback || [] });
         } catch {
           const match = result.data.reply.match(/(\d{1,3})/);
-          setAtsScore(match ? parseInt(match[1]) : 70);
-          setAtsFeedback([result.data.reply]);
+          const score = match ? parseInt(match[1]) : 70;
+          const feedback = [result.data.reply];
+          setAtsScore(score);
+          setAtsFeedback(feedback);
+          onATSComplete?.({ score, feedback });
         }
       }
     } catch { /* silent */ }
