@@ -7,14 +7,14 @@ import ResumeWizard, { ResumeWizardHandle } from "@/components/jobready/ResumeWi
 import AICopilot from "@/components/jobready/AICopilot";
 import CommandPalette from "@/components/jobready/CommandPalette";
 import {
-  LogoutIcon, SearchIcon, DocumentIcon,
+  LogoutIcon, SearchIcon,
   LocationIcon, ExternalLinkIcon, BriefcaseIcon,
-  SettingsIcon, XIcon, SendIcon,
+  SettingsIcon, XIcon,
 } from "@/components/icons/Icons";
 import { authApi, resumeApi, jobPrepareApi, applicationsApi, JobApplicationData } from "@/lib/api/client";
 import { buildSafeCoverLetterSnippet, computeResumeJobMatch } from "@/lib/jobMatch";
 
-type ViewType = "resume" | "jobs" | "tracker" | "settings" | "coverletter";
+type ViewType = "home" | "resume" | "jobs" | "tailor" | "tracker" | "settings";
 
 interface JobResult {
   id: string; title: string; company: string; location: string;
@@ -39,6 +39,14 @@ interface PrepareData {
   missingSkills: string[];
   matchScore: number;
   coverLetterSnippet: string;
+}
+
+interface WorkflowStage {
+  id: ViewType;
+  label: string;
+  shortLabel: string;
+  description: string;
+  complete: boolean;
 }
 
 function buildFallbackPrepareData(job: JobResult, cvData: GeneratedCV | null | undefined): PrepareData {
@@ -149,7 +157,7 @@ function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id
 export default function DashboardPage() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const router = useRouter();
-  const [activeView, setActiveView] = useState<ViewType>("resume");
+  const [activeView, setActiveView] = useState<ViewType>("home");
   const [copilotOpen, setCopilotOpen] = useState(true);
   const [cmdOpen, setCmdOpen] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -228,12 +236,16 @@ export default function DashboardPage() {
   const openCoverLetter = useCallback((job: JobResult, text: string) => {
     setCoverLetterJob(job);
     setCoverLetterText(text);
-    setActiveView("coverletter");
+    setActiveView("tailor");
   }, []);
 
   // ── Copilot action handlers ──────────────────────────────────────────
   const handleCopilotNavigate = useCallback((view: string) => {
-    if (["resume", "jobs", "tracker", "settings", "coverletter"].includes(view)) {
+    if (view === "coverletter") {
+      setActiveView("tailor");
+      return;
+    }
+    if (["home", "resume", "jobs", "tracker", "settings", "tailor"].includes(view)) {
       setActiveView(view as ViewType);
     }
   }, []);
@@ -296,24 +308,35 @@ export default function DashboardPage() {
 
   const completionPct = user.cvGenerated ? 100 : user.cvData ? 60 : 0;
   const appCount = trackedJobs.filter(j => j.status !== "saved").length;
+  const hasResume = Boolean(user.cvData && (user.cvData.skills?.length || user.cvData.experience?.length || user.cvData.summary?.trim()));
+  const hasSelectedJob = Boolean(coverLetterJob);
+  const workflowStages: WorkflowStage[] = [
+    { id: "home", label: "Command Center", shortLabel: "Home", description: "See your current objective and continue the workflow.", complete: hasResume || trackedJobs.length > 0 || hasSelectedJob },
+    { id: "resume", label: "1. Build Resume", shortLabel: "Resume", description: "Import your CV, fix gaps, and strengthen the base version.", complete: hasResume },
+    { id: "jobs", label: "2. Find Matches", shortLabel: "Matches", description: "Search, rank, and shortlist the strongest-fit jobs.", complete: jobCount > 0 || trackedJobs.length > 0 || hasSelectedJob },
+    { id: "tailor", label: "3. Tailor & Apply", shortLabel: "Tailor", description: "Use one selected job to tailor assets and prepare the application.", complete: hasSelectedJob },
+    { id: "tracker", label: "4. Track Pipeline", shortLabel: "Track", description: "Manage saved, applied, interview, and offer states.", complete: trackedJobs.length > 0 },
+  ];
+  const nextRecommendedView: ViewType = !hasResume
+    ? "resume"
+    : !hasSelectedJob
+      ? "jobs"
+      : "tailor";
+  const currentStage = workflowStages.find((stage) => stage.id === activeView) || workflowStages[0];
+  const focusSummary = activeView === "home"
+    ? "Guide users through one hiring pipeline instead of exposing disconnected tools."
+    : currentStage.description;
 
   const cmdActions = [
-    { id: "resume", label: "Go to Resume Builder", icon: "📄", action: () => setActiveView("resume") },
-    { id: "jobs", label: "Search for Jobs", icon: "💼", action: () => setActiveView("jobs") },
-    { id: "tracker", label: "Application Tracker", icon: "📊", action: () => setActiveView("tracker") },
+    { id: "home", label: "Open Command Center", icon: "🏠", action: () => setActiveView("home") },
+    { id: "resume", label: "Build Resume", icon: "📄", action: () => setActiveView("resume") },
+    { id: "jobs", label: "Find Matching Jobs", icon: "💼", action: () => setActiveView("jobs") },
+    { id: "tailor", label: "Open Tailor Studio", icon: "✂️", action: () => setActiveView("tailor") },
+    { id: "tracker", label: "Track Applications", icon: "📊", action: () => setActiveView("tracker") },
     { id: "settings", label: "Settings & Profile", icon: "⚙", action: () => setActiveView("settings") },
-    { id: "coverletter", label: "Cover Letter Generator", icon: "✉️", action: () => { setCoverLetterJob(null); setCoverLetterText(""); setActiveView("coverletter"); } },
     { id: "copilot", label: copilotOpen ? "Hide AI Copilot" : "Show AI Copilot", icon: "🤖", action: () => setCopilotOpen(p => !p) },
     { id: "download", label: "Download Resume as PDF", icon: "📥", action: () => { setActiveView("resume"); addToast("Navigate to Resume Preview to download PDF", "info"); } },
     { id: "logout", label: "Sign Out", icon: "🚪", action: () => { logout(); router.push("/jobready"); } },
-  ];
-
-  const sidebarItems: { id: ViewType; icon: React.ReactNode; label: string }[] = [
-    { id: "resume", icon: <DocumentIcon size={20} />, label: "Resume" },
-    { id: "jobs", icon: <BriefcaseIcon size={20} />, label: "Jobs" },
-    { id: "tracker", icon: <SearchIcon size={20} />, label: "Tracker" },
-    { id: "coverletter", icon: <SendIcon size={16} />, label: "Cover Letter" },
-    { id: "settings", icon: <SettingsIcon size={20} />, label: "Settings" },
   ];
 
   return (
@@ -322,35 +345,64 @@ export default function DashboardPage() {
       <div className="ws">
         {/* ── Sidebar ──────────────────────────────────────────── */}
         <aside className="ws-sidebar">
-          <div className="ws-logo" title="JobReady.ai">⚡</div>
-          {sidebarItems.map(item => (
-            <button key={item.id} className={`ws-side-btn ${activeView === item.id ? "ws-side-active" : ""}`}
-              onClick={() => setActiveView(item.id)} title={item.label}>
-              {item.icon}
-            </button>
-          ))}
+          <div className="ws-brand">
+            <div className="ws-logo" title="JobReady.ai">⚡</div>
+            <div>
+              <strong>JobReady</strong>
+              <span>Application OS</span>
+            </div>
+          </div>
+          <div className="ws-stage-group">
+            {workflowStages.map((stage, index) => (
+              <button
+                key={stage.id}
+                className={`ws-stage-btn ${activeView === stage.id ? "ws-stage-active" : ""}`}
+                onClick={() => setActiveView(stage.id)}
+                title={stage.description}
+              >
+                <div className={`ws-stage-index ${stage.complete ? "ws-stage-complete" : ""}`}>
+                  {stage.id === "home" ? "•" : index}
+                </div>
+                <div className="ws-stage-copy">
+                  <strong>{stage.shortLabel}</strong>
+                  <span>{stage.label}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+          <div className="ws-rail-card">
+            <span className="ws-rail-eyebrow">Current Objective</span>
+            <strong>{workflowStages.find((stage) => stage.id === nextRecommendedView)?.label}</strong>
+            <p>{workflowStages.find((stage) => stage.id === nextRecommendedView)?.description}</p>
+            <button className="ws-rail-cta" onClick={() => setActiveView(nextRecommendedView)}>Continue</button>
+          </div>
           <div style={{ flex: 1 }} />
-          <button className={`ws-side-btn ${copilotOpen ? "ws-side-active" : ""}`}
-            onClick={() => setCopilotOpen(p => !p)} title="AI Copilot">
-            <span style={{ fontSize: 18 }}>🤖</span>
-          </button>
-          <button className="ws-side-btn" onClick={() => { logout(); router.push("/jobready"); }} title="Sign out">
-            <LogoutIcon size={18} />
-          </button>
+          <div className="ws-sidebar-actions">
+            <button className={`ws-side-icon ${activeView === "settings" ? "ws-side-icon-active" : ""}`} onClick={() => setActiveView("settings")} title="Settings">
+              <SettingsIcon size={18} />
+            </button>
+            <button className={`ws-side-icon ${copilotOpen ? "ws-side-icon-active" : ""}`} onClick={() => setCopilotOpen(p => !p)} title="AI Guide">
+              <span style={{ fontSize: 18 }}>🤖</span>
+            </button>
+            <button className="ws-side-icon" onClick={() => { logout(); router.push("/jobready"); }} title="Sign out">
+              <LogoutIcon size={18} />
+            </button>
+          </div>
         </aside>
 
         {/* ── Main Area ────────────────────────────────────────── */}
         <div className="ws-main">
-          {/* Tab Bar */}
-          <div className="ws-tabbar">
-            <div className="ws-tabs">
-              {sidebarItems.filter(i => i.id === activeView).map(i => (
-                <div key={i.id} className="ws-tab ws-tab-active">
-                  {i.icon}<span>{i.label}</span>
-                </div>
-              ))}
+          <div className="ws-header">
+            <div className="ws-header-copy">
+              <span className="ws-header-kicker">{currentStage.label}</span>
+              <h1>{activeView === "home" ? "Run one clear hiring workflow" : currentStage.shortLabel}</h1>
+              <p>{focusSummary}</p>
             </div>
-            <div className="ws-tabbar-right">
+            <div className="ws-header-right">
+              <div className="ws-focus-pill">
+                <span>{hasSelectedJob ? "Selected Job" : "Next Up"}</span>
+                <strong>{hasSelectedJob ? `${coverLetterJob?.title} · ${coverLetterJob?.company}` : workflowStages.find((stage) => stage.id === nextRecommendedView)?.shortLabel}</strong>
+              </div>
               <button className="ws-cmd-btn" onClick={() => setCmdOpen(true)} title="Command Palette (⌘K)">
                 <span>⌘K</span>
               </button>
@@ -364,6 +416,17 @@ export default function DashboardPage() {
           {/* Content */}
           <div className="ws-content">
             <div className="ws-panel">
+              {activeView === "home" && (
+                <WorkflowHome
+                  user={user}
+                  stages={workflowStages}
+                  nextRecommendedView={nextRecommendedView}
+                  jobCount={jobCount}
+                  trackedJobs={trackedJobs}
+                  selectedJob={coverLetterJob}
+                  onGoToStage={setActiveView}
+                />
+              )}
               {activeView === "resume" && (
                 <ResumeWizard
                   onNavigateToSearch={() => setActiveView("jobs")}
@@ -382,6 +445,16 @@ export default function DashboardPage() {
                   addToast={addToast}
                 />
               )}
+              {activeView === "tailor" && (
+                <TailorStudio
+                  job={coverLetterJob}
+                  initialText={coverLetterText}
+                  cvData={user.cvData}
+                  onNavigateToJobs={() => setActiveView("jobs")}
+                  onSaveToTracker={saveToTracker}
+                  addToast={addToast}
+                />
+              )}
               {activeView === "tracker" && (
                 <Tracker
                   trackedJobs={trackedJobs}
@@ -393,15 +466,6 @@ export default function DashboardPage() {
                 <SettingsPanel
                   user={user}
                   onEditResume={() => setActiveView("resume")}
-                  addToast={addToast}
-                />
-              )}
-              {activeView === "coverletter" && (
-                <CoverLetterGenerator
-                  key={`${coverLetterJob?.id || "blank"}:${coverLetterText ? "prefill" : "empty"}`}
-                  job={coverLetterJob}
-                  initialText={coverLetterText}
-                  cvData={user.cvData}
                   addToast={addToast}
                 />
               )}
@@ -451,6 +515,155 @@ export default function DashboardPage() {
       <CommandPalette isOpen={cmdOpen} onClose={() => setCmdOpen(false)} actions={cmdActions} />
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </>
+  );
+}
+
+function WorkflowHome({
+  user,
+  stages,
+  nextRecommendedView,
+  jobCount,
+  trackedJobs,
+  selectedJob,
+  onGoToStage,
+}: {
+  user: { cvGenerated?: boolean; cvData?: GeneratedCV | null; name: string };
+  stages: WorkflowStage[];
+  nextRecommendedView: ViewType;
+  jobCount: number;
+  trackedJobs: TrackedJob[];
+  selectedJob: JobResult | null;
+  onGoToStage: (view: ViewType) => void;
+}) {
+  const actionLabel = nextRecommendedView === "resume"
+    ? "Build Resume"
+    : nextRecommendedView === "jobs"
+      ? "Find Matches"
+      : "Tailor for Selected Job";
+
+  return (
+    <div className="wf">
+      <div className="wf-hero">
+        <div>
+          <span className="wf-eyebrow">Guided Workflow</span>
+          <h2>Move one application forward at a time.</h2>
+          <p>JobReady should always answer what to do next. Start from your current stage, then let the workspace carry job context through resume, tailoring, and tracking.</p>
+        </div>
+        <button className="wf-primary" onClick={() => onGoToStage(nextRecommendedView)}>{actionLabel}</button>
+      </div>
+
+      <div className="wf-grid">
+        {stages.filter((stage) => stage.id !== "settings").map((stage) => (
+          <button key={stage.id} className="wf-card" onClick={() => onGoToStage(stage.id)}>
+            <div className="wf-card-top">
+              <span className={`wf-dot ${stage.complete ? "wf-dot-complete" : ""}`} />
+              <strong>{stage.label}</strong>
+            </div>
+            <p>{stage.description}</p>
+          </button>
+        ))}
+      </div>
+
+      <div className="wf-panel-grid">
+        <div className="wf-panel">
+          <span className="wf-panel-label">Resume State</span>
+          <strong>{user.cvGenerated ? "Base resume is ready" : "Resume still needs setup"}</strong>
+          <p>{user.cvData?.summary ? user.cvData.summary : "Upload a CV or build your profile manually so the rest of the workflow has real data to work with."}</p>
+          <button className="wf-secondary" onClick={() => onGoToStage("resume")}>{user.cvGenerated ? "Improve Resume" : "Start Resume"}</button>
+        </div>
+
+        <div className="wf-panel">
+          <span className="wf-panel-label">Match State</span>
+          <strong>{jobCount > 0 ? `${jobCount} matches ready` : "No ranked jobs yet"}</strong>
+          <p>{selectedJob ? `${selectedJob.title} at ${selectedJob.company} is the current target job.` : "Choose one target job and keep that context through tailoring and application prep."}</p>
+          <button className="wf-secondary" onClick={() => onGoToStage(selectedJob ? "tailor" : "jobs")}>{selectedJob ? "Open Tailor Studio" : "Find Matches"}</button>
+        </div>
+
+        <div className="wf-panel">
+          <span className="wf-panel-label">Pipeline State</span>
+          <strong>{trackedJobs.length > 0 ? `${trackedJobs.length} jobs in tracker` : "Tracker is empty"}</strong>
+          <p>{trackedJobs.length > 0 ? "Use the tracker after every real apply event so outcomes stay measurable." : "Once you save or apply to a role, it should land in your pipeline automatically."}</p>
+          <button className="wf-secondary" onClick={() => onGoToStage("tracker")}>Open Tracker</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TailorStudio({
+  job,
+  initialText,
+  cvData,
+  onNavigateToJobs,
+  onSaveToTracker,
+  addToast,
+}: {
+  job: JobResult | null;
+  initialText: string;
+  cvData?: GeneratedCV | null;
+  onNavigateToJobs: () => void;
+  onSaveToTracker: (job: JobResult) => void;
+  addToast: (msg: string, type: Toast["type"]) => void;
+}) {
+  if (!job) {
+    return (
+      <div className="ts-empty">
+        <span className="wf-eyebrow">Tailor Studio</span>
+        <h2>Select one target job first.</h2>
+        <p>Tailoring should happen around a single chosen opportunity. Pick a role from the Match stage, then JobReady can carry that context through ATS guidance, cover letter generation, and application tracking.</p>
+        <button className="wf-primary" onClick={onNavigateToJobs}>Open Match Stage</button>
+      </div>
+    );
+  }
+
+  const insights = computeResumeJobMatch(cvData, job);
+
+  return (
+    <div className="ts">
+      <div className="ts-hero">
+        <div>
+          <span className="wf-eyebrow">Selected Job</span>
+          <h2>{job.title}</h2>
+          <p>{job.company} · {job.location} · {job.source}</p>
+        </div>
+        <div className="ts-actions">
+          <button className="wf-secondary" onClick={() => onSaveToTracker(job)}>Save to Tracker</button>
+          <a className="wf-primary wf-primary-link" href={job.url} target="_blank" rel="noopener noreferrer">Open Apply Link</a>
+        </div>
+      </div>
+
+      <div className="ts-grid">
+        <div className="ts-card">
+          <span className="wf-panel-label">Match Overview</span>
+          <strong>{insights.matchScore}% current fit</strong>
+          <p>Use this as the job-focused workspace. The goal is to make one target application better, not jump between tools.</p>
+        </div>
+        <div className="ts-card">
+          <span className="wf-panel-label">Matched Skills</span>
+          <div className="prep-skill-tags">
+            {insights.matchedSkills.length > 0
+              ? insights.matchedSkills.slice(0, 4).map((skill) => <span key={skill} className="prep-skill-tag prep-skill-matched">{skill}</span>)
+              : <span className="ts-empty-copy">Run the Match stage and prepare flow to deepen tailoring.</span>}
+          </div>
+        </div>
+        <div className="ts-card">
+          <span className="wf-panel-label">Keywords To Address</span>
+          <div className="prep-skill-tags">
+            {insights.missingKeywords.length > 0
+              ? insights.missingKeywords.slice(0, 4).map((skill) => <span key={skill} className="prep-skill-tag prep-skill-missing">{skill}</span>)
+              : <span className="ts-empty-copy">The current resume already covers the strongest signals we detected.</span>}
+          </div>
+        </div>
+      </div>
+
+      <CoverLetterGenerator
+        key={`${job.id}:${initialText ? "prefill" : "empty"}`}
+        job={job}
+        initialText={initialText}
+        cvData={cvData}
+        addToast={addToast}
+      />
+    </div>
   );
 }
 
@@ -674,7 +887,7 @@ Return ONLY valid JSON: {"matched": [...], "missing": [...], "score": number, "s
                       <div className="prep-skill-tags">
                         {data.missingSkills.map(s => <span key={s} className="prep-skill-tag prep-skill-missing">{s}</span>)}
                       </div>
-                      <p className="prep-skill-note">These skills weren&apos;t found in the job description.</p>
+                      <p className="prep-skill-note">These keywords look weak or missing in your current resume.</p>
                     </div>
                   )}
                 </div>
@@ -1400,25 +1613,96 @@ function SettingsPanel({
 
 const workspaceCSS = `
   * { box-sizing: border-box; }
-  .ws { display:flex; height:100vh; background:#06080d; color:#e2e8f0; font-family:'Inter','SF Pro',system-ui,sans-serif; overflow:hidden; }
+  .ws { display:flex; height:100vh; background:
+      radial-gradient(circle at top left, rgba(56,189,248,0.1), transparent 30%),
+      radial-gradient(circle at top right, rgba(249,115,22,0.08), transparent 28%),
+      #06080d;
+    color:#e2e8f0; font-family:'Inter','SF Pro',system-ui,sans-serif; overflow:hidden; }
 
   /* Sidebar */
-  .ws-sidebar { width:56px; background:#0a0c12; border-right:1px solid #1a1f2e; display:flex; flex-direction:column; align-items:center; padding:12px 0; gap:4px; flex-shrink:0; z-index:10; }
-  .ws-logo { font-size:1.25rem; margin-bottom:12px; cursor:default; }
-  .ws-side-btn { width:40px; height:40px; border:none; border-radius:8px; background:transparent; color:#64748b; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.15s; position:relative; }
-  .ws-side-btn:hover { color:#e2e8f0; background:#111827; }
-  .ws-side-active { color:#3b82f6 !important; background:#131a2b !important; }
-  .ws-side-active::before { content:''; position:absolute; left:0; top:8px; bottom:8px; width:3px; border-radius:0 3px 3px 0; background:#3b82f6; }
+  .ws-sidebar {
+    width:248px; background:rgba(8,10,16,0.92); backdrop-filter:blur(16px);
+    border-right:1px solid #1a1f2e; display:flex; flex-direction:column;
+    padding:18px 14px; gap:18px; flex-shrink:0; z-index:10;
+  }
+  .ws-brand {
+    display:flex; align-items:center; gap:12px; padding:10px 12px 14px;
+    border-bottom:1px solid rgba(30,41,59,0.8);
+  }
+  .ws-logo {
+    width:40px; height:40px; border-radius:14px;
+    background:linear-gradient(135deg,#38bdf8,#f97316);
+    color:#fff; display:flex; align-items:center; justify-content:center;
+    font-size:1.1rem; box-shadow:0 12px 28px rgba(15,23,42,0.35);
+  }
+  .ws-brand strong { display:block; font-size:0.95rem; color:#f8fafc; letter-spacing:0.01em; }
+  .ws-brand span { display:block; margin-top:2px; font-size:0.72rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.12em; }
+  .ws-stage-group { display:flex; flex-direction:column; gap:8px; }
+  .ws-stage-btn {
+    width:100%; display:flex; align-items:flex-start; gap:12px; text-align:left;
+    padding:12px; border-radius:14px; border:1px solid transparent;
+    background:transparent; color:#cbd5e1; cursor:pointer; transition:all 0.18s ease;
+  }
+  .ws-stage-btn:hover { background:rgba(15,23,42,0.72); border-color:#1e293b; transform:translateX(2px); }
+  .ws-stage-active {
+    background:linear-gradient(180deg, rgba(15,23,42,0.92), rgba(11,17,32,0.92));
+    border-color:rgba(56,189,248,0.28);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.04), 0 12px 24px rgba(2,8,23,0.24);
+  }
+  .ws-stage-index {
+    width:28px; height:28px; border-radius:10px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    background:#111827; border:1px solid #1e293b; color:#94a3b8;
+    font-size:0.78rem; font-weight:700;
+  }
+  .ws-stage-complete {
+    background:rgba(34,197,94,0.12); border-color:rgba(34,197,94,0.3); color:#4ade80;
+  }
+  .ws-stage-copy strong { display:block; font-size:0.84rem; color:#f8fafc; }
+  .ws-stage-copy span { display:block; margin-top:3px; font-size:0.74rem; color:#64748b; line-height:1.4; }
+  .ws-rail-card {
+    padding:16px; border-radius:18px;
+    background:linear-gradient(180deg, rgba(8,15,29,0.95), rgba(10,14,22,0.95));
+    border:1px solid #1e293b;
+  }
+  .ws-rail-eyebrow, .wf-eyebrow, .ws-header-kicker, .wf-panel-label {
+    display:inline-block; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.14em; color:#94a3b8;
+  }
+  .ws-rail-card strong { display:block; margin-top:10px; font-size:0.95rem; color:#f8fafc; }
+  .ws-rail-card p { margin:8px 0 14px; font-size:0.78rem; color:#94a3b8; line-height:1.55; }
+  .ws-rail-cta, .wf-primary, .wf-primary-link {
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    padding:10px 16px; border:none; border-radius:999px;
+    background:linear-gradient(135deg,#38bdf8,#f97316); color:#fff;
+    font-size:0.82rem; font-weight:700; cursor:pointer; text-decoration:none;
+    box-shadow:0 14px 28px rgba(14,116,144,0.24); transition:transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+  }
+  .ws-rail-cta:hover, .wf-primary:hover, .wf-primary-link:hover { transform:translateY(-1px); box-shadow:0 18px 34px rgba(14,116,144,0.3); }
+  .ws-sidebar-actions { display:flex; gap:8px; }
+  .ws-side-icon {
+    width:42px; height:42px; border-radius:12px; border:1px solid #1e293b;
+    background:#0b1020; color:#94a3b8; cursor:pointer; display:flex;
+    align-items:center; justify-content:center; transition:all 0.18s ease;
+  }
+  .ws-side-icon:hover { border-color:#334155; color:#f8fafc; }
+  .ws-side-icon-active { background:#0f172a; color:#38bdf8; border-color:rgba(56,189,248,0.28); }
 
   /* Main Area */
   .ws-main { flex:1; display:flex; flex-direction:column; min-width:0; }
-
-  /* Tab Bar */
-  .ws-tabbar { display:flex; align-items:center; justify-content:space-between; background:#0a0c12; border-bottom:1px solid #1a1f2e; padding:0 16px; height:40px; flex-shrink:0; }
-  .ws-tabs { display:flex; gap:2px; }
-  .ws-tab { display:flex; align-items:center; gap:6px; padding:8px 16px; font-size:0.75rem; color:#94a3b8; border-bottom:2px solid transparent; }
-  .ws-tab-active { color:#e2e8f0; border-bottom-color:#3b82f6; }
-  .ws-tabbar-right { display:flex; align-items:center; gap:10px; }
+  .ws-header {
+    display:flex; align-items:flex-start; justify-content:space-between; gap:16px;
+    padding:24px 28px 18px; border-bottom:1px solid #1a1f2e;
+    background:linear-gradient(180deg, rgba(8,10,16,0.82), rgba(8,10,16,0.55));
+  }
+  .ws-header-copy h1 { margin:8px 0 6px; font-size:1.8rem; line-height:1.1; letter-spacing:-0.03em; color:#f8fafc; }
+  .ws-header-copy p { margin:0; max-width:720px; color:#94a3b8; font-size:0.92rem; line-height:1.55; }
+  .ws-header-right { display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:flex-end; }
+  .ws-focus-pill {
+    min-width:220px; padding:12px 14px; border-radius:16px;
+    background:rgba(15,23,42,0.72); border:1px solid #1e293b;
+  }
+  .ws-focus-pill span { display:block; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.14em; color:#64748b; }
+  .ws-focus-pill strong { display:block; margin-top:5px; font-size:0.82rem; color:#f8fafc; line-height:1.4; }
   .ws-cmd-btn { padding:4px 10px; border-radius:6px; background:#111827; border:1px solid #1e293b; color:#64748b; font-size:0.6875rem; font-family:monospace; font-weight:600; cursor:pointer; transition:all 0.15s; }
   .ws-cmd-btn:hover { border-color:#3b82f6; color:#60a5fa; }
   .ws-user-pill { display:flex; align-items:center; gap:6px; padding:4px 10px 4px 4px; border-radius:6px; background:#111827; }
@@ -1427,8 +1711,8 @@ const workspaceCSS = `
 
   /* Content */
   .ws-content { flex:1; display:flex; overflow:hidden; }
-  .ws-panel { flex:1; overflow-y:auto; padding:24px 32px; min-width:0; }
-  .ws-copilot { width:320px; flex-shrink:0; }
+  .ws-panel { flex:1; overflow-y:auto; padding:28px; min-width:0; }
+  .ws-copilot { width:320px; flex-shrink:0; border-left:1px solid #1a1f2e; background:rgba(8,10,16,0.84); }
 
   /* Status Bar */
   .ws-statusbar { display:flex; justify-content:space-between; padding:0 16px; height:28px; align-items:center; background:#0a0c12; border-top:1px solid #1a1f2e; font-size:0.6875rem; font-family:'JetBrains Mono','Fira Code',monospace; color:#475569; flex-shrink:0; }
@@ -1437,6 +1721,65 @@ const workspaceCSS = `
   .ws-status-dot { width:8px; height:8px; border-radius:50%; }
   .ws-dot-green { background:#22c55e; box-shadow:0 0 6px rgba(34,197,94,0.4); }
   .ws-dot-blue { background:#3b82f6; box-shadow:0 0 6px rgba(59,130,246,0.4); }
+
+  /* Workflow Home */
+  .wf { display:flex; flex-direction:column; gap:22px; max-width:1120px; }
+  .wf-hero {
+    display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap;
+    padding:24px; border-radius:24px;
+    background:linear-gradient(135deg, rgba(12,20,37,0.96), rgba(17,24,39,0.88));
+    border:1px solid rgba(56,189,248,0.12);
+  }
+  .wf-hero h2 { margin:10px 0 8px; font-size:2rem; line-height:1.05; letter-spacing:-0.04em; color:#f8fafc; max-width:560px; }
+  .wf-hero p { margin:0; max-width:640px; color:#94a3b8; font-size:0.95rem; line-height:1.6; }
+  .wf-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+  .wf-card {
+    padding:18px; border-radius:18px; text-align:left; cursor:pointer;
+    background:#0c0e14; border:1px solid #1a1f2e; color:inherit;
+    transition:transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+  }
+  .wf-card:hover { transform:translateY(-2px); border-color:#334155; background:#0f131d; }
+  .wf-card-top { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .wf-card strong { font-size:0.92rem; color:#f8fafc; }
+  .wf-card p { margin:0; color:#94a3b8; font-size:0.84rem; line-height:1.55; }
+  .wf-dot {
+    width:10px; height:10px; border-radius:999px; background:#334155;
+    box-shadow:0 0 0 4px rgba(51,65,85,0.18);
+  }
+  .wf-dot-complete { background:#22c55e; box-shadow:0 0 0 4px rgba(34,197,94,0.16); }
+  .wf-panel-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+  .wf-panel, .ts-card {
+    padding:18px; border-radius:18px; background:#0c0e14; border:1px solid #1a1f2e;
+  }
+  .wf-panel strong, .ts-card strong { display:block; margin:10px 0 8px; font-size:1rem; color:#f8fafc; }
+  .wf-panel p, .ts-card p { margin:0 0 16px; color:#94a3b8; font-size:0.84rem; line-height:1.55; }
+  .wf-secondary {
+    display:inline-flex; align-items:center; justify-content:center;
+    padding:10px 14px; border-radius:999px; border:1px solid #243244;
+    background:#0a1220; color:#cbd5e1; font-size:0.8rem; font-weight:600; cursor:pointer;
+    text-decoration:none; transition:all 0.18s ease;
+  }
+  .wf-secondary:hover { border-color:#38bdf8; color:#f8fafc; }
+
+  /* Tailor Studio */
+  .ts { display:flex; flex-direction:column; gap:18px; max-width:1120px; }
+  .ts-empty {
+    padding:28px; border-radius:24px; background:#0c0e14; border:1px solid #1a1f2e;
+    text-align:left;
+  }
+  .ts-empty h2 { margin:10px 0 8px; font-size:1.8rem; letter-spacing:-0.03em; color:#f8fafc; }
+  .ts-empty p { margin:0 0 18px; max-width:720px; color:#94a3b8; line-height:1.6; }
+  .ts-hero {
+    display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;
+    padding:22px 24px; border-radius:24px;
+    background:linear-gradient(135deg, rgba(11,18,32,0.98), rgba(18,25,40,0.9));
+    border:1px solid rgba(56,189,248,0.12);
+  }
+  .ts-hero h2 { margin:8px 0 6px; font-size:1.8rem; line-height:1.08; letter-spacing:-0.03em; color:#f8fafc; }
+  .ts-hero p { margin:0; color:#94a3b8; font-size:0.9rem; }
+  .ts-actions { display:flex; gap:10px; flex-wrap:wrap; }
+  .ts-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+  .ts-empty-copy { color:#64748b; font-size:0.78rem; line-height:1.5; }
 
   /* Toast */
   .toast-container { position:fixed; top:16px; right:16px; z-index:200; display:flex; flex-direction:column; gap:8px; }
@@ -1683,23 +2026,35 @@ const workspaceCSS = `
   @media (max-width: 768px) {
     .ws { flex-direction: column; }
     .ws-sidebar {
-      width: 100%; height: 52px; flex-direction: row;
-      border-right: none; border-top: 1px solid #1a1f2e;
-      order: 2; justify-content: space-around; padding: 0;
-      position: fixed; bottom: 0; left: 0; z-index: 20;
-      background: #0a0c12;
+      width: 100%; height: auto; flex-direction: column;
+      border-right: none; border-bottom: 1px solid #1a1f2e;
+      padding: 12px; gap: 12px;
     }
-    .ws-logo { display: none; }
-    .ws-side-active::before { display: none; }
-    .ws-main { order: 1; height: calc(100vh - 52px); }
+    .ws-brand { padding: 8px 10px 12px; }
+    .ws-stage-group { display: grid; grid-template-columns: 1fr 1fr; }
+    .ws-stage-btn { min-height: 72px; }
+    .ws-rail-card { display: none; }
+    .ws-sidebar-actions { justify-content: flex-end; }
+    .ws-main { min-height: 0; }
     .ws-copilot {
-      position: fixed; top: 0; right: 0; bottom: 52px; left: 0;
+      position: fixed; top: 0; right: 0; bottom: 0; left: 0;
       width: 100% !important; z-index: 30; border-left: none;
     }
-    .ws-panel { padding: 12px; }
+    .ws-header {
+      padding: 18px 16px 14px;
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .ws-header-copy h1 { font-size: 1.35rem; }
+    .ws-header-right {
+      justify-content: space-between;
+    }
+    .ws-focus-pill { min-width: 0; flex: 1; }
+    .ws-panel { padding: 16px; }
     .ws-user-pill span { display: none; }
-    .ws-header { padding: 12px 16px; }
-    .ws-header h2 { font-size: 1rem; }
+    .wf-grid, .wf-panel-grid, .ts-grid { grid-template-columns: 1fr; }
+    .wf-hero, .ts-hero { padding: 20px 18px; }
+    .wf-hero h2, .ts-empty h2, .ts-hero h2 { font-size: 1.45rem; }
 
     /* Job Board mobile */
     .jb-search { flex-direction: column; gap: 8px; }
@@ -1732,9 +2087,12 @@ const workspaceCSS = `
 
   /* ─── Mobile: Phone ─── */
   @media (max-width: 480px) {
-    .ws-sidebar button { padding: 8px; }
-    .ws-sidebar button svg { width: 18px; height: 18px; }
+    .ws-stage-group { grid-template-columns: 1fr; }
+    .ws-stage-btn { padding: 10px; }
     .ws-panel { padding: 8px; }
+    .ws-statusbar { height: auto; padding: 8px 12px; flex-direction: column; align-items: flex-start; gap: 4px; }
+    .ws-status-right { flex-wrap: wrap; }
+    .wf-hero, .ts-hero, .ts-empty { padding: 18px 14px; }
 
     /* Job Board phone */
     .jb-card { padding: 12px; }
