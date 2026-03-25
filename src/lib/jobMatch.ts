@@ -52,7 +52,7 @@ function uniqueStrings(values: string[]): string[] {
 export function normalizeText(text: string): string {
   return text
     .toLowerCase()
-    .replace(/[_/]+/g, " ")
+    .replace(/[_/-]+/g, " ")
     .replace(/[^a-z0-9+#.\-\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
