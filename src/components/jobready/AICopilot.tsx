@@ -653,7 +653,7 @@ const copilotCSS = `
     background:#0d1829;
   }
   .cop-header-left { display:flex; align-items:center; gap:10px; font-size:0.84rem; font-weight:700; color:var(--cop-text); letter-spacing:0.01em; flex-wrap:wrap; }
-  .cop-dot { width:8px; height:8px; border-radius:50%; background:var(--cop-accent-strong); box-shadow:0 0 10px rgba(123,196,200,0.42); }
+  .cop-dot { width:8px; height:8px; border-radius:50%; background:var(--cop-accent-strong); box-shadow:0 0 10px rgba(147,197,253,0.42); }
   .cop-context {
     font-size:0.62rem; color:var(--cop-muted); background:rgba(255,255,255,0.03);
     padding:4px 8px; border-radius:999px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase;
@@ -705,7 +705,9 @@ const copilotCSS = `
   .cop-suggestions {
     display:flex; flex-wrap:wrap; gap:8px; padding:12px 18px 14px;
     border-top:1px solid rgba(255,255,255,0.03);
-    background:#0d161b;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.012), transparent 40%),
+      #0d1829;
   }
   .cop-sug {
     padding:7px 12px; border-radius:999px; background:rgba(255,255,255,0.02);
@@ -716,10 +718,12 @@ const copilotCSS = `
   .cop-sug-action:hover { border-color:rgba(37,99,235,0.42); background:rgba(37,99,235,0.1); }
   .cop-input {
     display:flex; gap:10px; padding:14px 18px 18px; border-top:1px solid var(--cop-border);
-    background:#0d161b;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.012), transparent 40%),
+      #0d1829;
   }
   .cop-input input {
-    flex:1; padding:12px 14px; border-radius:16px; background:#0b1216; border:1px solid var(--cop-border);
+    flex:1; padding:12px 14px; border-radius:16px; background:#0a1627; border:1px solid rgba(96,165,250,0.16);
     color:var(--cop-text); font-size:0.84rem; outline:none; transition:border-color 0.15s, box-shadow 0.15s;
   }
   .cop-input input:focus { border-color:var(--cop-accent); box-shadow:0 0 0 3px rgba(37,99,235,0.12); }

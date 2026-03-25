@@ -1494,8 +1494,9 @@ const wizardStyles = `
     padding: 56px 28px;
     border-radius: 28px;
     background:
+      radial-gradient(circle at top left, rgba(37,99,235,0.16), transparent 36%),
       linear-gradient(180deg, rgba(255,255,255,0.024), transparent 22%),
-      linear-gradient(135deg, rgba(16,26,32,0.98), rgba(20,32,40,0.92));
+      linear-gradient(135deg, rgba(15,27,45,0.98), rgba(19,36,58,0.92));
     border: 1px solid var(--rw-border);
   }
   .rw-start-icon {
