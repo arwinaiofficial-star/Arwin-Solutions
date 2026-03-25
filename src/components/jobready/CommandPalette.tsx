@@ -75,14 +75,14 @@ const cmdCSS = `
   .cmd { width:100%; max-width:520px; background:#0d1519; border:1px solid #203038; border-radius:18px; overflow:hidden; box-shadow:0 24px 70px rgba(0,0,0,0.48); animation:cmd-in 0.15s ease; }
   @keyframes cmd-in { from{opacity:0;transform:scale(0.96) translateY(-8px)} to{opacity:1;transform:scale(1) translateY(0)} }
   .cmd-search { display:flex; align-items:center; gap:10px; padding:16px 18px; border-bottom:1px solid #203038; }
-  .cmd-search span { color:#9ed5cf; font-size:0.8125rem; font-weight:700; width:28px; height:28px; background:#132127; border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .cmd-search span { color:#93c5fd; font-size:0.8125rem; font-weight:700; width:28px; height:28px; background:#10203a; border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
   .cmd-search input { flex:1; background:none; border:none; color:#e2e8f0; font-size:0.9375rem; outline:none; }
   .cmd-search input::placeholder { color:#475569; }
   .cmd-list { max-height:320px; overflow-y:auto; padding:8px; }
   .cmd-empty { padding:20px; text-align:center; color:#475569; font-size:0.8125rem; }
   .cmd-item { display:flex; align-items:center; gap:12px; width:100%; padding:11px 12px; border:none; background:none; color:#cbd5e1; font-size:0.8125rem; cursor:pointer; border-radius:12px; transition:all 0.1s; text-align:left; }
   .cmd-item:hover { background:#132026; color:#f1f5f9; }
-  .cmd-icon { width:30px; height:30px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:#132127; color:#9ed5cf; border:1px solid #203038; flex-shrink:0; }
+  .cmd-icon { width:30px; height:30px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:#10203a; color:#93c5fd; border:1px solid #223a61; flex-shrink:0; }
   .cmd-label { flex:1; }
   .cmd-shortcut { font-size:0.6875rem; color:#475569; background:#111827; padding:2px 8px; border-radius:4px; font-family:monospace; }
 `;

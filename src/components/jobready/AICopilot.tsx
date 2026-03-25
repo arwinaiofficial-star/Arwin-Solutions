@@ -633,13 +633,13 @@ export default function AICopilot({
 
 const copilotCSS = `
   .cop {
-    --cop-bg:#0a1317;
-    --cop-panel:#101a20;
-    --cop-panel-2:#142028;
-    --cop-border:#22323c;
-    --cop-text:#e7edf0;
-    --cop-muted:#8fa2ab;
-    --cop-soft:#627983;
+    --cop-bg:#07111f;
+    --cop-panel:#0f1b2d;
+    --cop-panel-2:#13243a;
+    --cop-border:rgba(148,163,184,0.14);
+    --cop-text:#e8eefc;
+    --cop-muted:#9eb0cb;
+    --cop-soft:#7084a3;
     --cop-accent:#2563eb;
     --cop-accent-strong:#93c5fd;
     --cop-warm:#60a5fa;
@@ -650,7 +650,7 @@ const copilotCSS = `
   .cop-header {
     display:flex; align-items:center; justify-content:space-between; padding:16px 18px;
     border-bottom:1px solid var(--cop-border);
-    background:#0d161b;
+    background:#0d1829;
   }
   .cop-header-left { display:flex; align-items:center; gap:10px; font-size:0.84rem; font-weight:700; color:var(--cop-text); letter-spacing:0.01em; flex-wrap:wrap; }
   .cop-dot { width:8px; height:8px; border-radius:50%; background:var(--cop-accent-strong); box-shadow:0 0 10px rgba(123,196,200,0.42); }
@@ -672,7 +672,7 @@ const copilotCSS = `
     border:1px solid rgba(37,99,235,0.24);
     box-shadow:0 10px 18px rgba(7,17,21,0.24);
   }
-  .cop-avatar-action { background:rgba(77,179,138,0.14); border-color:rgba(77,179,138,0.22); font-size:0.75rem; }
+  .cop-avatar-action { background:rgba(37,99,235,0.14); border-color:rgba(37,99,235,0.22); font-size:0.75rem; }
   .cop-bubble { padding:12px 14px; border-radius:16px; max-width:88%; box-shadow:0 10px 20px rgba(4,10,14,0.16); }
   .cop-msg-ai .cop-bubble {
     background:var(--cop-panel);
@@ -683,13 +683,13 @@ const copilotCSS = `
     border:1px solid rgba(37,99,235,0.26);
   }
   .cop-bubble-action {
-    background:rgba(77,179,138,0.08) !important;
-    border:1px solid rgba(77,179,138,0.24) !important;
+    background:rgba(37,99,235,0.08) !important;
+    border:1px solid rgba(37,99,235,0.24) !important;
     padding:8px 12px !important;
     box-shadow:none !important;
   }
   .cop-bubble p { margin:0; font-size:0.83rem; color:#d3dde1; line-height:1.6; white-space:pre-wrap; }
-  .cop-bubble-action p { font-size:0.75rem; color:#9fddc0; font-style:italic; }
+  .cop-bubble-action p { font-size:0.75rem; color:#bfdbfe; font-style:italic; }
   .cop-time { font-size:0.625rem; color:var(--cop-soft); margin-top:6px; display:block; }
   .cop-typing { display:flex; gap:4px; padding:14px !important; }
   .cop-typing span { width:6px; height:6px; border-radius:50%; background:var(--cop-soft); animation:cop-bounce 1.2s infinite; }
@@ -698,10 +698,10 @@ const copilotCSS = `
   @keyframes cop-bounce { 0%,80%,100%{transform:scale(0.7)} 40%{transform:scale(1.1)} }
   .cop-inline-actions { display:flex; flex-wrap:wrap; gap:8px; padding:0 40px; }
   .cop-action-btn {
-    padding:7px 12px; border-radius:999px; background:rgba(77,179,138,0.08);
-    border:1px solid rgba(77,179,138,0.24); color:#9fddc0; font-size:0.7rem; font-weight:700; cursor:pointer; transition:all 0.15s;
+    padding:7px 12px; border-radius:999px; background:rgba(37,99,235,0.08);
+    border:1px solid rgba(37,99,235,0.24); color:#bfdbfe; font-size:0.7rem; font-weight:700; cursor:pointer; transition:all 0.15s;
   }
-  .cop-action-btn:hover { background:rgba(77,179,138,0.14); border-color:rgba(77,179,138,0.42); }
+  .cop-action-btn:hover { background:rgba(37,99,235,0.14); border-color:rgba(37,99,235,0.42); }
   .cop-suggestions {
     display:flex; flex-wrap:wrap; gap:8px; padding:12px 18px 14px;
     border-top:1px solid rgba(255,255,255,0.03);
@@ -712,8 +712,8 @@ const copilotCSS = `
     border:1px solid var(--cop-border); color:var(--cop-muted); font-size:0.7rem; font-weight:700; cursor:pointer; transition:all 0.15s; white-space:nowrap;
   }
   .cop-sug:hover { border-color:var(--cop-accent); color:var(--cop-accent-strong); background:rgba(37,99,235,0.08); }
-  .cop-sug-action { border-color:rgba(77,179,138,0.24); color:#9fddc0; }
-  .cop-sug-action:hover { border-color:rgba(77,179,138,0.42); background:rgba(77,179,138,0.1); }
+  .cop-sug-action { border-color:rgba(37,99,235,0.24); color:#bfdbfe; }
+  .cop-sug-action:hover { border-color:rgba(37,99,235,0.42); background:rgba(37,99,235,0.1); }
   .cop-input {
     display:flex; gap:10px; padding:14px 18px 18px; border-top:1px solid var(--cop-border);
     background:#0d161b;

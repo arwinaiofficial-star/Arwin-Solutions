@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, type ReactNode } from "react";
 import { useAuth, GeneratedCV, WorkExperience, Education } from "@/context/AuthContext";
 import { resumeApi, chatSessionApi } from "@/lib/api/client";
 import {
@@ -30,7 +30,7 @@ interface Message {
 
 interface EntryCard {
   id: string;
-  icon: string;
+  icon: ReactNode;
   title: string;
   description: string;
 }
@@ -71,19 +71,19 @@ const REQUIRED_FIELDS = [
 const ENTRY_CARDS: EntryCard[] = [
   {
     id: "upload",
-    icon: "📄",
+    icon: <DocumentIcon size={20} />,
     title: "I already have a CV",
     description: "Upload your PDF and I'll enhance it into a professional ATS-friendly format",
   },
   {
     id: "linkedin",
-    icon: "🔗",
+    icon: <SearchIcon size={20} />,
     title: "Import from LinkedIn",
     description: "Share your LinkedIn profile and I'll build your CV from your professional data",
   },
   {
     id: "scratch",
-    icon: "✨",
+    icon: <BotIcon size={20} />,
     title: "Create from scratch",
     description: "Just tell me about yourself naturally — I'll handle the formatting and structure",
   },
@@ -251,7 +251,7 @@ export default function AgenticChat({ onNavigateToSearch }: AgenticChatProps) {
 
   const handleFileUpload = async (file: File) => {
     setIsUploading(true);
-    addMsg("user", `📄 Uploaded: ${file.name}`);
+    addMsg("user", `Uploaded: ${file.name}`);
     addMsg("bot", "Processing your CV... I'm extracting and structuring your information.");
 
     try {
@@ -557,7 +557,7 @@ export default function AgenticChat({ onNavigateToSearch }: AgenticChatProps) {
 
     setIsGenerating(false);
     setPhase("complete");
-    addMsg("bot", "✅ Your ATS-optimized resume is ready! Review it below and either accept it or make changes.");
+    addMsg("bot", "Your ATS-optimized resume is ready. Review it below and either accept it or make changes.");
     setShowPreview(true);
   };
 
@@ -565,7 +565,7 @@ export default function AgenticChat({ onNavigateToSearch }: AgenticChatProps) {
     if (!generatedCV) return;
     setCvAccepted(true);
     resumeApi.save(generatedCV as unknown as Record<string, unknown>, "final").catch(() => {});
-    addMsg("bot", "🎉 Resume saved! You can download it as PDF or search for matching jobs.");
+    addMsg("bot", "Resume saved. You can download it as PDF or search for matching jobs.");
   };
 
   const downloadPDF = () => {
@@ -837,14 +837,14 @@ const chatStyles = `
     background: #111318;
   }
   .rc-header-left { display: flex; align-items: center; gap: 10px; }
-  .rc-bot-dot { width: 10px; height: 10px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px rgba(34, 197, 94, 0.4); }
+  .rc-bot-dot { width: 10px; height: 10px; border-radius: 50%; background: #60a5fa; box-shadow: 0 0 6px rgba(96, 165, 250, 0.4); }
   .rc-header-title { display: block; font-size: 0.875rem; font-weight: 600; color: #f1f5f9; }
   .rc-header-sub { display: block; font-size: 0.6875rem; color: #64748b; }
   .rc-ready-badge {
     display: inline-flex; align-items: center; gap: 4px;
     padding: 4px 10px; border-radius: 12px;
     font-size: 0.6875rem; font-weight: 600;
-    background: rgba(34, 197, 94, 0.1); color: #22c55e;
+    background: rgba(37, 99, 235, 0.1); color: #60a5fa;
   }
 
   /* Progress */
