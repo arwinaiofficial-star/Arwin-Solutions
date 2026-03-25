@@ -5,14 +5,21 @@ import { useAuth, GeneratedCV } from "@/context/AuthContext";
 import { resumeApi } from "@/lib/api/client";
 import {
   CheckIcon,
-  UserIcon,
   BriefcaseIcon,
+  UserIcon,
   UploadIcon,
   DownloadIcon,
   SearchIcon,
   ArrowRightIcon,
   PlusIcon,
   XIcon,
+  ChatIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  SparklesIcon,
+  ResetIcon,
+  DocumentIcon,
+  AlertIcon,
 } from "@/components/icons/Icons";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -56,12 +63,14 @@ type ResumeTheme = "classic" | "modern" | "minimal";
 
 export interface ResumeWizardHandle {
   triggerUpload: () => void;
+  openStoryComposer: () => void;
   setStep: (s: number) => void;
   setField: (field: string, value: unknown) => void;
   enhanceExperience: () => void;
   generateSummary: () => void;
   runATS: () => void;
   downloadPDF: () => void;
+  resetResume: () => Promise<void>;
   getStep: () => number;
   getData: () => ResumeData;
 }
@@ -71,31 +80,25 @@ interface ResumeWizardProps {
   onStepChange?: (step: number) => void;
   onDataChange?: (data: ResumeData) => void;
   onATSComplete?: (result: { score: number | null; feedback: string[] }) => void;
+  onReset?: () => void;
   handleRef?: (handle: ResumeWizardHandle) => void;
 }
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 
-export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataChange, onATSComplete, handleRef }: ResumeWizardProps) {
-  const { user, saveGeneratedCV, updateProfile } = useAuth();
+export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataChange, onATSComplete, onReset, handleRef }: ResumeWizardProps) {
+  const { user, saveGeneratedCV, updateProfile, clearGeneratedCV } = useAuth();
   const [step, setStepRaw] = useState(0);
-  const [data, setData] = useState<ResumeData>({
-    fullName: user?.name || "",
-    email: user?.email || "",
-    phone: user?.phone || "",
-    location: "",
-    linkedIn: "",
-    portfolio: "",
-    summary: "",
-    skills: [],
-    experiences: [],
-    education: [],
-  });
+  const [data, setData] = useState<ResumeData>(createInitialResumeData(user));
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isEnhancing, setIsEnhancing] = useState<string | null>(null);
   const [uploadFileName, setUploadFileName] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [storyMode, setStoryMode] = useState(false);
+  const [storyInput, setStoryInput] = useState("");
+  const [isStoryImporting, setIsStoryImporting] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cvLoadedRef = useRef(false);
 
@@ -194,6 +197,20 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
     });
   }, []);
 
+  const resetLocalState = useCallback(() => {
+    cvLoadedRef.current = false;
+    setUploadError(null);
+    setUploadFileName(null);
+    setSaveError(null);
+    setSaveStatus("idle");
+    setStoryMode(false);
+    setStoryInput("");
+    setAtsScore(null);
+    setAtsFeedback([]);
+    setData(createInitialResumeData(user));
+    setStep(0);
+  }, [user, setStep]);
+
   const addExperience = () => {
     setData(prev => ({
       ...prev,
@@ -278,6 +295,53 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
     updateField("skills", data.skills.filter(s => s !== skill));
   };
 
+  async function applyImportedData(
+    extracted: Record<string, unknown> | null,
+    rawText?: string
+  ) {
+    if (extracted) {
+      const hasParseError = extracted.parse_error === true;
+
+      if (hasParseError && rawText) {
+        setData(prev => ({ ...prev, summary: rawText.slice(0, 500) }));
+        setUploadError("Could not fully structure the import. Raw text was loaded into the summary so you can refine it manually.");
+        setStep(1);
+        return;
+      }
+
+      const extractedData = mergeExtractedResumeData(data, extracted);
+      const hasName = Boolean(extractedData.fullName.trim());
+      const hasExp = extractedData.experiences.some(hasMeaningfulExperience);
+      const hasSkills = extractedData.skills.length > 0;
+
+      if (hasName && (hasExp || hasSkills)) {
+        const hydratedData = ensureEditableSections(extractedData);
+        setData(hydratedData);
+        await saveCV("final", hydratedData);
+        setStep(5);
+      } else if (!hasName) {
+        setData(extractedData);
+        setStep(1);
+      } else if (!hasExp) {
+        setData(extractedData);
+        setStep(2);
+      } else {
+        setData(extractedData);
+        setStep(4);
+      }
+      return;
+    }
+
+    if (rawText) {
+      setData(prev => ({ ...prev, summary: rawText.slice(0, 500) }));
+      setUploadError("AI extraction is unavailable. Your text was loaded into the summary. Please fill in the structured fields manually.");
+      setStep(1);
+      return;
+    }
+
+    setUploadError("I couldn't extract usable resume details from that input. Please try again or start from scratch.");
+  }
+
   // ─── Upload Handler ─────────────────────────────────────────────────────
 
   const handleUpload = async (file: File) => {
@@ -287,42 +351,11 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
 
     try {
       const result = await resumeApi.uploadCV(file);
-
-      if (result.data?.extractedData) {
-        const ext = result.data.extractedData as Record<string, unknown>;
-        const hasParseError = ext.parse_error === true;
-
-        if (hasParseError && result.data.rawText) {
-          setData(prev => ({ ...prev, summary: result.data!.rawText.slice(0, 500) }));
-          setUploadError("Could not fully extract your CV. Raw text was loaded into the summary — please fill in the details manually.");
-          setStep(1);
-        } else {
-          const extractedData = mergeExtractedResumeData(data, ext);
-          // Smart routing: go to preview if we have enough data, else first gap
-          const hasName = Boolean(extractedData.fullName.trim());
-          const hasExp = extractedData.experiences.some(hasMeaningfulExperience);
-          const hasSkills = extractedData.skills.length > 0;
-
-          if (hasName && (hasExp || hasSkills)) {
-            const hydratedData = ensureEditableSections(extractedData);
-            setData(hydratedData);
-            await saveCV("final", hydratedData);
-            setStep(5);
-          } else if (!hasName) {
-            setData(extractedData);
-            setStep(1); // Need personal info
-          } else if (!hasExp) {
-            setData(extractedData);
-            setStep(2); // Need experience
-          } else {
-            setData(extractedData);
-            setStep(4); // Need skills
-          }
-        }
-      } else if (result.data?.rawText) {
-        setData(prev => ({ ...prev, summary: result.data!.rawText.slice(0, 500) }));
-        setUploadError("AI extraction is unavailable. Your CV text was loaded into the summary. Please fill in the structured fields manually.");
-        setStep(1);
+      if (result.data?.extractedData || result.data?.rawText) {
+        await applyImportedData(
+          (result.data?.extractedData as Record<string, unknown> | null) || null,
+          result.data?.rawText,
+        );
       } else {
         setUploadError(result.error || "Failed to process file. Please try a different file or start from scratch.");
         setUploadFileName(null);
@@ -334,6 +367,50 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
 
     setIsUploading(false);
   };
+
+  async function handleStoryImport() {
+    const narrative = storyInput.trim();
+    if (!narrative) return;
+
+    setIsStoryImporting(true);
+    setUploadError(null);
+    setUploadFileName("Story import");
+
+    try {
+      const result = await resumeApi.chat(narrative, "extract_cv", { raw_text: narrative });
+      const extracted = parseExtractedResumePayload(result.data);
+      await applyImportedData(extracted, narrative);
+      if (extracted) {
+        setStoryMode(false);
+      }
+    } catch {
+      setUploadError("I couldn't read that story right now. Please try again or fill the details manually.");
+    }
+
+    setIsStoryImporting(false);
+  }
+
+  const resetResume = useCallback(async () => {
+    if (typeof window !== "undefined" && !window.confirm("Reset your saved resume data and start again from scratch?")) {
+      return;
+    }
+
+    setIsResetting(true);
+    setUploadError(null);
+    const result = await resumeApi.reset();
+
+    if (result.error) {
+      setUploadError(result.error);
+      setIsResetting(false);
+      return;
+    }
+
+    clearGeneratedCV();
+    updateProfile({ phone: "", location: "" });
+    resetLocalState();
+    onReset?.();
+    setIsResetting(false);
+  }, [clearGeneratedCV, onReset, resetLocalState, updateProfile]);
 
   // ─── AI Enhance ─────────────────────────────────────────────────────────
 
@@ -377,7 +454,7 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
 
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
-  const saveCV = useCallback(async (status: "draft" | "final" = "final", sourceData?: ResumeData) => {
+  async function saveCV(status: "draft" | "final" = "final", sourceData?: ResumeData) {
     const nextData = sourceData || data;
     const cv = buildCVFromData(nextData);
     setSaveStatus("saving");
@@ -405,7 +482,7 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
       setSaveError("Unable to save your resume right now.");
       setSaveStatus("error");
     }
-  }, [data, saveGeneratedCV, updateProfile]);
+  }
 
   // Auto-save draft when user changes steps (debounced)
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -501,6 +578,10 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
   useEffect(() => {
     handleRef?.({
       triggerUpload: () => fileInputRef.current?.click(),
+      openStoryComposer: () => {
+        setStep(0);
+        setStoryMode(true);
+      },
       setStep,
       setField,
       enhanceExperience: () => {
@@ -509,11 +590,12 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
       generateSummary,
       runATS: analyzeATS,
       downloadPDF,
+      resetResume,
       getStep: () => step,
       getData: () => data,
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, data, theme]);
+  }, [step, data, theme, resetResume]);
 
   // ─── Validation ─────────────────────────────────────────────────────────
 
@@ -551,10 +633,20 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
           </div>
         )}
 
+        {(step > 0 || user?.cvGenerated) && (
+          <div className="rw-utility-bar">
+            <span className="rw-utility-copy">Resume workspace</span>
+            <button className="rw-reset-btn" onClick={() => { void resetResume(); }} disabled={isResetting}>
+              <ResetIcon size={14} />
+              {isResetting ? "Resetting..." : "Start over"}
+            </button>
+          </div>
+        )}
+
         {/* Upload error banner */}
         {uploadError && (step === 0 || step === 1) && (
           <div className="rw-upload-error">
-            <span>⚠</span>
+            <AlertIcon size={16} />
             <p>{uploadError}</p>
             <button onClick={() => setUploadError(null)}><XIcon size={12} /></button>
           </div>
@@ -566,7 +658,7 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
         {/* ── Step 0: Start ──────────────────────────────────────────── */}
         {step === 0 && (
           <div className="rw-start">
-            <div className="rw-start-icon">📄</div>
+            <div className="rw-start-icon"><DocumentIcon size={34} /></div>
             <h2>Build Your Professional Resume</h2>
             <p>Create an ATS-optimized resume that gets you noticed by recruiters.</p>
 
@@ -576,7 +668,7 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
                 <strong>{isUploading ? "Processing..." : "Upload my CV"}</strong>
                 <span>Upload a PDF and I&apos;ll extract your details into the form</span>
                 {isUploading && <span className="rw-upload-progress">Extracting with AI...</span>}
-                {uploadFileName && !isUploading && <span className="rw-option-file">📎 {uploadFileName}</span>}
+                {uploadFileName && !isUploading && <span className="rw-option-file">{uploadFileName}</span>}
               </button>
 
               <button className="rw-option" onClick={() => { if (data.experiences.length === 0) addExperience(); if (data.education.length === 0) addEducation(); setStep(1); }}>
@@ -584,7 +676,34 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
                 <strong>Start from scratch</strong>
                 <span>Fill in your details step by step — I&apos;ll help format everything</span>
               </button>
+
+              <button className={`rw-option ${storyMode ? "rw-option-active" : ""}`} onClick={() => setStoryMode((open) => !open)} disabled={isStoryImporting}>
+                <ChatIcon size={24} />
+                <strong>Tell your story</strong>
+                <span>Paste your story, notes, or rough paragraphs and I&apos;ll turn them into structured resume fields</span>
+              </button>
             </div>
+
+            {storyMode && (
+              <div className="rw-story-card">
+                <div className="rw-story-header">
+                  <div>
+                    <strong>Tell me about your background</strong>
+                    <p>You can write naturally. Mention your work history, skills, education, certifications, and anything you want captured.</p>
+                  </div>
+                  <button className="rw-btn-ai" onClick={handleStoryImport} disabled={isStoryImporting || !storyInput.trim()}>
+                    {isStoryImporting ? <><span className="rw-spinner" /> Reading...</> : <><SparklesIcon size={14} /> Auto-fill from story</>}
+                  </button>
+                </div>
+                <textarea
+                  value={storyInput}
+                  onChange={(e) => setStoryInput(e.target.value)}
+                  placeholder="Example: I’m a product designer with 5 years of experience across fintech and B2B SaaS. I currently work at..."
+                  rows={8}
+                  className="rw-textarea rw-story-input"
+                />
+              </div>
+            )}
           </div>
         )}
 
@@ -687,7 +806,7 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
                         <div className="rw-highlights-header">
                           <label>Key Achievements / Responsibilities</label>
                           <button className="rw-btn-ai" onClick={() => enhanceExperience(exp.id)} disabled={isEnhancing === exp.id}>
-                            {isEnhancing === exp.id ? <><span className="rw-spinner" /> Enhancing...</> : "✨ AI Enhance"}
+                          {isEnhancing === exp.id ? <><span className="rw-spinner" /> Enhancing...</> : <><SparklesIcon size={14} /> AI Enhance</>}
                           </button>
                         </div>
                         {exp.highlights.map((h, i) => (
@@ -787,7 +906,7 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
                     <div className="rw-highlights-header">
                       <label>Professional Summary</label>
                       <button className="rw-btn-ai" onClick={generateSummary} disabled={isEnhancing === "summary"}>
-                        {isEnhancing === "summary" ? <><span className="rw-spinner" /> Generating...</> : "✨ AI Generate"}
+                        {isEnhancing === "summary" ? <><span className="rw-spinner" /> Generating...</> : <><SparklesIcon size={14} /> AI Generate</>}
                       </button>
                     </div>
                     <textarea value={data.summary} onChange={e => updateField("summary", e.target.value)} placeholder="A brief professional summary highlighting your experience, skills, and career goals. Click 'AI Generate' to create one automatically." rows={5} className="rw-textarea" />
@@ -798,19 +917,19 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
               {/* Navigation */}
               <div className="rw-nav">
                 <button className="rw-btn rw-btn-ghost" onClick={() => goToStep(step - 1)}>
-                  ← {step === 1 ? "Start" : "Back"}
+                  <ChevronLeftIcon size={14} /> {step === 1 ? "Start" : "Back"}
                 </button>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   {saveStatus !== "idle" && (
                     <span className={`rw-save-indicator rw-save-${saveStatus}`}>
-                      {saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "✓ Saved" : "⚠ Save failed"}
+                      {saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : "Save failed"}
                     </span>
                   )}
                   <button className="rw-btn-toggle-preview" onClick={() => setShowPreview(p => !p)}>
                     {showPreview ? "Hide Preview" : "Show Preview"}
                   </button>
                   <button className="rw-btn rw-btn-primary" onClick={() => goToStep(step + 1)} disabled={!canProceed(step)}>
-                    {step === 4 ? "Generate Resume" : "Next →"}
+                    {step === 4 ? "Generate Resume" : "Next"} <ChevronRightIcon size={14} />
                   </button>
                 </div>
               </div>
@@ -854,7 +973,7 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
                 <div className="rw-theme-picker">
                   {(["classic", "modern", "minimal"] as ResumeTheme[]).map(t => (
                     <button key={t} className={`rw-theme-btn ${theme === t ? "rw-theme-active" : ""}`} onClick={() => setTheme(t)}>
-                      {t === "classic" ? "📘" : t === "modern" ? "🎨" : "⚪"} {t}
+                      {t === "classic" ? "Classic" : t === "modern" ? "Studio" : "Minimal"}
                     </button>
                   ))}
                 </div>
@@ -871,7 +990,7 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
                   {atsFeedback.length > 0 && (
                     <div className="rw-ats-feedback">
                       {atsFeedback.slice(0, 4).map((f, i) => (
-                        <div key={i} className="rw-ats-tip">→ {f}</div>
+                        <div key={i} className="rw-ats-tip">{f}</div>
                       ))}
                     </div>
                   )}
@@ -879,7 +998,7 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
                 </div>
               ) : (
                 <button className="rw-ats-btn" onClick={analyzeATS} disabled={isAnalyzing}>
-                  {isAnalyzing ? <><span className="rw-spinner" /> Analyzing...</> : "🎯 Check ATS Compatibility"}
+                  {isAnalyzing ? <><span className="rw-spinner" /> Analyzing...</> : <><SearchIcon size={14} /> Check ATS Compatibility</>}
                 </button>
               )}
             </div>
@@ -890,9 +1009,9 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
               <button className="rw-btn rw-btn-primary" onClick={() => onNavigateToSearch?.()}>
                 <SearchIcon size={14} /> Find Matching Jobs <ArrowRightIcon size={14} />
               </button>
-              <button className="rw-btn rw-btn-ghost" onClick={() => setStep(1)}>✏ Edit Resume</button>
+              <button className="rw-btn rw-btn-ghost" onClick={() => setStep(1)}><DocumentIcon size={14} /> Edit Resume</button>
               <button className="rw-btn rw-btn-ghost" onClick={() => saveCV("final")}>
-                {saveStatus === "saving" ? "⏳ Saving..." : saveStatus === "saved" ? "✓ Saved" : saveStatus === "error" ? "⚠ Retry Save" : "💾 Save"}
+                {saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : saveStatus === "error" ? "Retry Save" : "Save"}
               </button>
             </div>
             {saveError && <p className="rw-save-error">{saveError}</p>}
@@ -977,6 +1096,42 @@ function LivePreviewContent({ cv }: { cv: GeneratedCV; theme: ResumeTheme }) {
 
 function uid() {
   return `_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function createInitialResumeData(user?: {
+  name?: string;
+  email?: string;
+  phone?: string;
+  location?: string;
+} | null): ResumeData {
+  return {
+    fullName: user?.name || "",
+    email: user?.email || "",
+    phone: user?.phone || "",
+    location: user?.location || "",
+    linkedIn: "",
+    portfolio: "",
+    summary: "",
+    skills: [],
+    experiences: [],
+    education: [],
+  };
+}
+
+function parseExtractedResumePayload(
+  payload?: { reply?: string; data?: Record<string, unknown> }
+): Record<string, unknown> | null {
+  if (payload?.data && typeof payload.data === "object") {
+    return payload.data;
+  }
+
+  if (!payload?.reply) return null;
+
+  try {
+    return JSON.parse(payload.reply) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
 }
 
 function isMeaningfulExperience(exp: {
@@ -1262,8 +1417,8 @@ const wizardStyles = `
     --rw-text: #e7edf0;
     --rw-muted: #91a4ad;
     --rw-soft: #627983;
-    --rw-accent: #5ca3a8;
-    --rw-accent-2: #c69153;
+    --rw-accent: #2f6e6a;
+    --rw-accent-2: #b7844d;
     --rw-success: #4db38a;
     --rw-paper: #f4f1ea;
     height: 100%;
@@ -1281,8 +1436,21 @@ const wizardStyles = `
   .rw-upload-error span { flex-shrink: 0; font-size: 1rem; }
   .rw-upload-error p { margin: 0; font-size: 0.8125rem; color: #eab308; line-height: 1.5; flex: 1; }
   .rw-upload-error button { background: none; border: none; color: #eab308; cursor: pointer; padding: 2px; flex-shrink: 0; }
-  .rw-upload-progress { font-size: 0.6875rem; color: #3b82f6; animation: rw-pulse 1.5s ease infinite; }
+  .rw-upload-progress { font-size: 0.6875rem; color: var(--rw-accent); animation: rw-pulse 1.5s ease infinite; }
   @keyframes rw-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+  .rw-utility-bar {
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    margin-bottom:16px;
+  }
+  .rw-utility-copy { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.14em; color:var(--rw-muted); }
+  .rw-reset-btn {
+    display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px;
+    border:1px solid var(--rw-border); background:transparent; color:var(--rw-muted);
+    font-size:0.74rem; font-weight:700; cursor:pointer; transition:all 0.15s;
+  }
+  .rw-reset-btn:hover { border-color:#8f5f5f; color:#f0c3c3; background:rgba(143,95,95,0.08); }
+  .rw-reset-btn:disabled { opacity:0.6; cursor:not-allowed; }
 
   /* Stepper */
   .rw-stepper { display: flex; gap: 8px; margin-bottom: 22px; flex-shrink: 0; }
@@ -1317,7 +1485,11 @@ const wizardStyles = `
       linear-gradient(135deg, rgba(16,26,32,0.98), rgba(20,32,40,0.92));
     border: 1px solid var(--rw-border);
   }
-  .rw-start-icon { font-size: 3rem; margin-bottom: 18px; }
+  .rw-start-icon {
+    width:68px; height:68px; margin:0 auto 18px; border-radius:20px;
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(47,110,106,0.14); color:#d8efed; border:1px solid rgba(47,110,106,0.26);
+  }
   .rw-start h2 { font-size: 2rem; font-weight: 700; letter-spacing: -0.04em; color: #f1f5f9; margin: 0 0 10px; }
   .rw-start p { color: var(--rw-muted); margin: 0 0 32px; font-size: 0.98rem; line-height: 1.65; max-width: 620px; margin-left: auto; margin-right: auto; }
   .rw-start-options { display: flex; gap: 16px; max-width: 720px; margin: 0 auto; }
@@ -1331,9 +1503,19 @@ const wizardStyles = `
   }
   .rw-option:hover { border-color: rgba(92,163,168,0.34); background: linear-gradient(180deg, rgba(255,255,255,0.024), transparent 16%), var(--rw-panel-2); color: #e2e8f0; transform: translateY(-2px); box-shadow: 0 18px 30px rgba(6,12,16,0.24); }
   .rw-option:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+  .rw-option-active { border-color: rgba(47,110,106,0.34); background: linear-gradient(180deg, rgba(255,255,255,0.024), transparent 16%), var(--rw-panel-2); }
   .rw-option strong { color: #f1f5f9; font-size: 1rem; }
   .rw-option span { font-size: 0.78rem; line-height: 1.5; }
   .rw-option-file { font-size: 0.6875rem; color: var(--rw-accent-2); margin-top: 4px; }
+  .rw-story-card {
+    margin:18px auto 0; max-width:720px; text-align:left; padding:20px; border-radius:20px;
+    background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent 16%), var(--rw-panel);
+    border:1px solid var(--rw-border); box-shadow:0 18px 30px rgba(6,12,16,0.22);
+  }
+  .rw-story-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:14px; }
+  .rw-story-header strong { display:block; font-size:0.98rem; color:#f1f5f9; margin-bottom:6px; }
+  .rw-story-header p { margin:0; color:var(--rw-muted); font-size:0.82rem; line-height:1.55; }
+  .rw-story-input { min-height:180px; }
 
   /* Split Pane */
   .rw-split { display: flex; gap: 22px; flex: 1; min-height: 0; overflow: hidden; }
@@ -1357,7 +1539,7 @@ const wizardStyles = `
     color: #475569; cursor: pointer; text-transform: capitalize;
   }
   .rw-theme-btn-sm:hover { color: #94a3b8; }
-  .rw-theme-active-sm { border-color: #3b82f6; color: #3b82f6; }
+  .rw-theme-active-sm { border-color: var(--rw-accent); color: var(--rw-accent); }
   .rw-live-preview {
     flex: 1; overflow-y: auto; padding: 22px;
     background: var(--rw-paper); color: #1a1a2e;
@@ -1416,7 +1598,7 @@ const wizardStyles = `
     color: var(--rw-text); font-size: 0.89rem; font-family: inherit;
     transition: border-color 0.15s;
   }
-  .rw-field input:focus, .rw-textarea:focus { outline: none; border-color: var(--rw-accent); box-shadow: 0 0 0 3px rgba(92,163,168,0.12); }
+  .rw-field input:focus, .rw-textarea:focus { outline: none; border-color: var(--rw-accent); box-shadow: 0 0 0 3px rgba(47,110,106,0.12); }
   .rw-field input::placeholder, .rw-textarea::placeholder { color: #475569; }
   .rw-field input:disabled { opacity: 0.5; }
   .rw-textarea { resize: vertical; min-height: 100px; line-height: 1.6; }
@@ -1459,7 +1641,7 @@ const wizardStyles = `
     min-height: 44px; align-items: center;
     transition: border-color 0.15s;
   }
-  .rw-skills-input:focus-within { border-color: var(--rw-accent); box-shadow: 0 0 0 3px rgba(92,163,168,0.12); }
+  .rw-skills-input:focus-within { border-color: var(--rw-accent); box-shadow: 0 0 0 3px rgba(47,110,106,0.12); }
   .rw-skill-tag {
     display: inline-flex; align-items: center; gap: 4px;
     padding: 4px 10px; border-radius: 999px;
@@ -1482,15 +1664,15 @@ const wizardStyles = `
     cursor: pointer; transition: all 0.15s;
     border: none;
   }
-  .rw-btn-primary { background: linear-gradient(135deg, var(--rw-accent), var(--rw-accent-2)); color: white; box-shadow: 0 12px 24px rgba(9,24,28,0.24); }
-  .rw-btn-primary:hover { opacity: 0.95; transform: translateY(-1px); }
+  .rw-btn-primary { background: var(--rw-accent); color: white; box-shadow: 0 12px 24px rgba(9,24,28,0.24); }
+  .rw-btn-primary:hover { background:#285e5a; transform: translateY(-1px); }
   .rw-btn-primary:disabled { background: #1c2a30; color: #64748b; cursor: not-allowed; box-shadow: none; }
   .rw-btn-ghost { background: transparent; color: var(--rw-muted); border: 1px solid var(--rw-border); }
   .rw-btn-ghost:hover { background: var(--rw-panel-2); color: #e2e8f0; }
   .rw-btn-add {
     display: inline-flex; align-items: center; gap: 4px;
     padding: 8px 14px; border-radius: 999px;
-    background: #132128; border: 1px solid rgba(92,163,168,0.3);
+    background: #132128; border: 1px solid rgba(47,110,106,0.3);
     color: #9ed6d8; font-size: 0.8125rem; font-weight: 700;
     cursor: pointer; transition: all 0.15s;
   }
@@ -1503,12 +1685,12 @@ const wizardStyles = `
   .rw-btn-ai {
     display: inline-flex; align-items: center; gap: 4px;
     padding: 6px 12px; border-radius: 999px;
-    background: linear-gradient(135deg, rgba(92,163,168,0.12), rgba(198,145,83,0.12));
-    border: 1px solid rgba(92,163,168,0.28);
+    background: rgba(47,110,106,0.12);
+    border: 1px solid rgba(47,110,106,0.28);
     color: #b7dfe2; font-size: 0.75rem; font-weight: 700;
     cursor: pointer; transition: all 0.15s;
   }
-  .rw-btn-ai:hover { background: linear-gradient(135deg, rgba(92,163,168,0.18), rgba(198,145,83,0.18)); border-color: var(--rw-accent); }
+  .rw-btn-ai:hover { background: rgba(47,110,106,0.18); border-color: var(--rw-accent); }
   .rw-btn-ai:disabled { opacity: 0.6; cursor: not-allowed; }
 
   /* Empty State */
@@ -1542,8 +1724,8 @@ const wizardStyles = `
     color: #64748b; font-size: 0.6875rem; font-weight: 600;
     cursor: pointer; transition: all 0.15s; text-transform: capitalize;
   }
-  .rw-theme-btn:hover { border-color: #3b82f6; color: #94a3b8; }
-  .rw-theme-active { border-color: #3b82f6 !important; color: #3b82f6 !important; background: #131a2b !important; }
+  .rw-theme-btn:hover { border-color: var(--rw-accent); color: #d8efed; }
+  .rw-theme-active { border-color: var(--rw-accent) !important; color: var(--rw-accent-2) !important; background: #131a2b !important; }
 
   /* ATS Bar */
   .rw-ats-bar { margin-bottom: 16px; }
@@ -1623,6 +1805,9 @@ const wizardStyles = `
     .rw-stepper { overflow-x: auto; padding-bottom: 4px; }
     .rw-step { min-width: 132px; }
     .rw-start-options { flex-direction: column; }
+    .rw-story-header { flex-direction: column; }
+    .rw-utility-bar { flex-direction: column; align-items: stretch; }
+    .rw-reset-btn { justify-content: center; }
     .rw-field-half, .rw-field-third { width: 100%; }
     .rw-cv-exp-row { flex-direction: column; }
     .rw-preview-toolbar { flex-direction: column; }
@@ -1638,5 +1823,6 @@ const wizardStyles = `
     .rw-start h2 { font-size: 1.5rem; }
     .rw-step { min-width: 108px; padding: 10px 12px; }
     .rw-preview { padding: 22px; }
+    .rw-story-card { padding: 16px; }
   }
 `;

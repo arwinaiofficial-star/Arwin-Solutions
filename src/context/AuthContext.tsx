@@ -79,6 +79,7 @@ interface AuthContextType {
   logout: () => void;
   updateProfile: (data: Partial<UserProfile>) => void;
   saveGeneratedCV: (cv: GeneratedCV, options?: { markGenerated?: boolean }) => void;
+  clearGeneratedCV: () => void;
   refreshUser: () => Promise<void>;
 }
 
@@ -226,9 +227,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (user) {
         setUser({ ...user, ...data });
         const serverUpdate: Record<string, string> = {};
-        if (data.name) serverUpdate.name = data.name;
-        if (data.phone) serverUpdate.phone = data.phone;
-        if (data.location) serverUpdate.location = data.location;
+        if ("name" in data) serverUpdate.name = data.name || "";
+        if ("phone" in data) serverUpdate.phone = data.phone || "";
+        if ("location" in data) serverUpdate.location = data.location || "";
         if (Object.keys(serverUpdate).length > 0) {
           authApi.updateProfile(serverUpdate);
         }
@@ -249,6 +250,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  const clearGeneratedCV = useCallback(() => {
+    setUser(prev => prev ? {
+      ...prev,
+      cvGenerated: false,
+      cvData: null,
+    } : prev);
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -260,6 +269,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         updateProfile,
         saveGeneratedCV,
+        clearGeneratedCV,
         refreshUser,
       }}
     >

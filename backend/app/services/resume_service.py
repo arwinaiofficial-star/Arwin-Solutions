@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import Resume
@@ -135,6 +135,12 @@ async def get_latest_resume(db: AsyncSession, user_id: str) -> Resume | None:
     return result.scalars().first()
 
 
+async def delete_all_resumes(db: AsyncSession, user_id: str) -> None:
+    """Delete all saved resume versions for a user."""
+    await db.execute(delete(Resume).where(Resume.user_id == user_id))
+    await db.commit()
+
+
 EXTRACT_CV_PROMPT = """You are an expert CV/resume parser. Your job is to extract EVERY piece of structured data from the raw text below.
 
 IMPORTANT RULES:
@@ -264,4 +270,3 @@ async def parse_user_response(message: str, agent_state: dict) -> dict:
             "next_question": "Could you tell me more about your work experience?",
             "confidence": 0.3,
         }
-

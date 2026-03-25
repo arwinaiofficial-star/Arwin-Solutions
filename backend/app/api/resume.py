@@ -54,7 +54,7 @@ async def resume_chat(
                 )
             import json
             extracted = await resume_service.extract_cv_from_text(raw_text)
-            return ResumeChatResponse(reply=json.dumps(extracted))
+            return ResumeChatResponse(reply=json.dumps(extracted), data=extracted)
 
         elif data.action == "parse_resume_update":
             parsed = await resume_service.parse_user_response(
@@ -121,3 +121,12 @@ async def get_latest_resume(
         "created_at": resume.created_at.isoformat(),
         "updated_at": resume.updated_at.isoformat(),
     }
+
+
+@router.delete("/latest", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_latest_resume(
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete all saved resume versions for the user."""
+    await resume_service.delete_all_resumes(db, user_id)

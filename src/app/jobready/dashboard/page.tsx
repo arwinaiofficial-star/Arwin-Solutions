@@ -7,9 +7,29 @@ import ResumeWizard, { ResumeWizardHandle } from "@/components/jobready/ResumeWi
 import AICopilot from "@/components/jobready/AICopilot";
 import CommandPalette from "@/components/jobready/CommandPalette";
 import {
-  LogoutIcon, SearchIcon,
-  LocationIcon, ExternalLinkIcon, BriefcaseIcon,
-  SettingsIcon, XIcon,
+  AlertIcon,
+  BotIcon,
+  BriefcaseIcon,
+  CheckIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ClockIcon,
+  ClipboardIcon,
+  DocumentIcon,
+  DownloadIcon,
+  EditIcon,
+  ExternalLinkIcon,
+  HomeIcon,
+  InfoIcon,
+  LocationIcon,
+  LogoutIcon,
+  ResetIcon,
+  RocketIcon,
+  SearchIcon,
+  SettingsIcon,
+  SparklesIcon,
+  TrashIcon,
+  XIcon,
 } from "@/components/icons/Icons";
 import { authApi, resumeApi, jobPrepareApi, applicationsApi, JobApplicationData } from "@/lib/api/client";
 import { buildSafeCoverLetterSnippet, computeResumeJobMatch } from "@/lib/jobMatch";
@@ -144,9 +164,11 @@ function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id
     <div className="toast-container">
       {toasts.map(t => (
         <div key={t.id} className={`toast toast-${t.type}`}>
-          <span>{t.type === "success" ? "✓" : t.type === "error" ? "✕" : "ℹ"}</span>
+          <span className="toast-icon">
+            {t.type === "success" ? <CheckIcon size={14} /> : t.type === "error" ? <AlertIcon size={14} /> : <InfoIcon size={14} />}
+          </span>
           <p>{t.message}</p>
-          <button onClick={() => onDismiss(t.id)}>×</button>
+          <button onClick={() => onDismiss(t.id)}><XIcon size={12} /></button>
         </div>
       ))}
     </div>
@@ -156,7 +178,7 @@ function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id
 // ─── Main Page ──────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const { user, isAuthenticated, isLoading, logout, clearGeneratedCV, updateProfile } = useAuth();
   const router = useRouter();
   const [activeView, setActiveView] = useState<ViewType>("home");
   const [copilotOpen, setCopilotOpen] = useState(true);
@@ -175,6 +197,22 @@ export default function DashboardPage() {
   const [resumeStep, setResumeStep] = useState(0);
   const [resumeData, setResumeData] = useState<Record<string, unknown>>({});
   const wizardHandleRef = useRef<ResumeWizardHandle | null>(null);
+
+  const clearWorkflowDraft = useCallback(() => {
+    setAtsBaselineComplete(false);
+    setCoverLetterJob(null);
+    setCoverLetterText("");
+    setCoverLetterJobId(null);
+    setTailoredResumeJobId(null);
+    setMatchedJobs([]);
+    setJobCount(0);
+    setResumeStep(0);
+    setResumeData({});
+
+    if (user?.id && typeof window !== "undefined") {
+      window.localStorage.removeItem(`jobready_workflow_${user.id}`);
+    }
+  }, [user]);
 
   const restoreWorkflowDraft = useCallback((draft: Partial<WorkflowDraftState>) => {
     setAtsBaselineComplete(Boolean(draft.atsBaselineComplete));
@@ -239,6 +277,25 @@ export default function DashboardPage() {
   const dismissToast = useCallback((id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
+
+  const resetResumeWorkspace = useCallback(async () => {
+    if (typeof window !== "undefined" && !window.confirm("Reset your saved resume data and start again from scratch?")) {
+      return false;
+    }
+
+    const result = await resumeApi.reset();
+    if (result.error) {
+      addToast(result.error, "error");
+      return false;
+    }
+
+    clearGeneratedCV();
+    updateProfile({ phone: "", location: "" });
+    clearWorkflowDraft();
+    setActiveView("resume");
+    addToast("Resume data reset. You can start fresh now.", "success");
+    return true;
+  }, [addToast, clearGeneratedCV, clearWorkflowDraft, updateProfile]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -350,11 +407,16 @@ export default function DashboardPage() {
 
   const handleCopilotUpdateField = useCallback((field: string, value: unknown) => {
     const handle = wizardHandleRef.current;
-    if (handle) {
+    if (activeView !== "resume") {
+      setActiveView("resume");
+      setTimeout(() => {
+        wizardHandleRef.current?.setField(field, value);
+      }, 120);
+    } else if (handle) {
       handle.setField(field, value);
-      addToast(`Updated ${field.replace(/([A-Z])/g, " $1").toLowerCase()}`, "success");
     }
-  }, [addToast]);
+    addToast(`Updated ${field.replace(/([A-Z])/g, " $1").toLowerCase()}`, "success");
+  }, [activeView, addToast]);
 
   const handleCopilotAction = useCallback((action: string, payload?: Record<string, unknown>) => {
     const handle = wizardHandleRef.current;
@@ -368,6 +430,10 @@ export default function DashboardPage() {
       case "triggerUpload":
         setActiveView("resume");
         setTimeout(() => handle?.triggerUpload(), 100);
+        break;
+      case "openStoryComposer":
+        setActiveView("resume");
+        setTimeout(() => handle?.openStoryComposer(), 100);
         break;
       case "triggerSearch":
         setActiveView("jobs");
@@ -386,6 +452,10 @@ export default function DashboardPage() {
         break;
       case "downloadPDF":
         handle?.downloadPDF();
+        break;
+      case "resetResume":
+        setActiveView("resume");
+        setTimeout(() => { void handle?.resetResume(); }, 100);
         break;
       default:
         console.log("Unknown copilot action:", action, payload);
@@ -446,15 +516,15 @@ export default function DashboardPage() {
     : currentStage?.description || workflowStages[0].description;
 
   const cmdActions = [
-    { id: "home", label: "Open Command Center", icon: "🏠", action: () => setActiveView("home") },
-    { id: "resume", label: "Build Resume", icon: "📄", action: () => navigateWorkflowStage(workflowStages[0]) },
-    { id: "jobs", label: "Find Matching Jobs", icon: "💼", action: () => navigateWorkflowStage(workflowStages[2]) },
-    { id: "tailor", label: "Open Tailor Studio", icon: "✂️", action: () => navigateWorkflowStage(workflowStages[3]) },
-    { id: "tracker", label: "Track Applications", icon: "📊", action: () => navigateWorkflowStage(workflowStages[5]) },
-    { id: "settings", label: "Settings & Profile", icon: "⚙", action: () => setActiveView("settings") },
-    { id: "copilot", label: copilotOpen ? "Hide AI Guide" : "Show AI Guide", icon: "🤖", action: () => setCopilotOpen(p => !p) },
-    { id: "download", label: "Download Resume as PDF", icon: "📥", action: () => { setActiveView("resume"); addToast("Navigate to Resume Preview to download PDF", "info"); } },
-    { id: "logout", label: "Sign Out", icon: "🚪", action: () => { logout(); router.push("/jobready"); } },
+    { id: "home", label: "Open Command Center", icon: <HomeIcon size={16} />, action: () => setActiveView("home") },
+    { id: "resume", label: "Build Resume", icon: <DocumentIcon size={16} />, action: () => navigateWorkflowStage(workflowStages[0]) },
+    { id: "jobs", label: "Find Matching Jobs", icon: <BriefcaseIcon size={16} />, action: () => navigateWorkflowStage(workflowStages[2]) },
+    { id: "tailor", label: "Open Tailor Studio", icon: <SparklesIcon size={16} />, action: () => navigateWorkflowStage(workflowStages[3]) },
+    { id: "tracker", label: "Track Applications", icon: <ClipboardIcon size={16} />, action: () => navigateWorkflowStage(workflowStages[5]) },
+    { id: "settings", label: "Settings & Profile", icon: <SettingsIcon size={16} />, action: () => setActiveView("settings") },
+    { id: "copilot", label: copilotOpen ? "Hide AI Guide" : "Show AI Guide", icon: <BotIcon size={16} />, action: () => setCopilotOpen(p => !p) },
+    { id: "download", label: "Download Resume as PDF", icon: <DownloadIcon size={16} />, action: () => { setActiveView("resume"); addToast("Navigate to Resume Preview to download PDF", "info"); } },
+    { id: "logout", label: "Sign Out", icon: <LogoutIcon size={16} />, action: () => { logout(); router.push("/jobready"); } },
   ];
 
   return (
@@ -464,7 +534,7 @@ export default function DashboardPage() {
         {/* ── Sidebar ──────────────────────────────────────────── */}
         <aside className="ws-sidebar">
           <div className="ws-brand">
-            <button className="ws-logo" title="JobReady.ai" onClick={() => setActiveView("home")}>⚡</button>
+            <button className="ws-logo" title="JobReady.ai" onClick={() => setActiveView("home")}><RocketIcon size={18} /></button>
             <div>
               <strong>JobReady</strong>
               <span>Application OS</span>
@@ -502,7 +572,7 @@ export default function DashboardPage() {
               <SettingsIcon size={18} />
             </button>
             <button className={`ws-side-icon ${copilotOpen ? "ws-side-icon-active" : ""}`} onClick={() => setCopilotOpen(p => !p)} title="AI Guide">
-              <span style={{ fontSize: 18 }}>🤖</span>
+              <BotIcon size={18} />
             </button>
             <button className="ws-side-icon" onClick={() => { logout(); router.push("/jobready"); }} title="Sign out">
               <LogoutIcon size={18} />
@@ -515,7 +585,7 @@ export default function DashboardPage() {
           <div className="ws-mobile-shell">
             <div className="ws-mobile-topbar">
               <button className="ws-mobile-brand" title="JobReady.ai" onClick={() => setActiveView("home")}>
-                <span className="ws-logo ws-mobile-logo">⚡</span>
+                <span className="ws-logo ws-mobile-logo"><RocketIcon size={16} /></span>
                 <span className="ws-mobile-brand-copy">
                   <strong>JobReady</strong>
                   <em>{activeView === "home" ? "Command Center" : currentStage?.shortLabel || "Workflow"}</em>
@@ -523,7 +593,7 @@ export default function DashboardPage() {
               </button>
               <div className="ws-mobile-actions">
                 <button className={`ws-side-icon ${copilotOpen ? "ws-side-icon-active" : ""}`} onClick={() => setCopilotOpen(p => !p)} title="AI Guide">
-                  <span style={{ fontSize: 18 }}>🤖</span>
+                  <BotIcon size={18} />
                 </button>
                 <button className={`ws-side-icon ${activeView === "settings" ? "ws-side-icon-active" : ""}`} onClick={() => setActiveView("settings")} title="Settings">
                   <SettingsIcon size={18} />
@@ -606,6 +676,7 @@ export default function DashboardPage() {
                   onStepChange={setResumeStep}
                   onDataChange={(d) => setResumeData(d as unknown as Record<string, unknown>)}
                   onATSComplete={() => setAtsBaselineComplete(true)}
+                  onReset={clearWorkflowDraft}
                   handleRef={(h) => { wizardHandleRef.current = h; }}
                 />
               )}
@@ -652,6 +723,7 @@ export default function DashboardPage() {
                 <SettingsPanel
                   user={user}
                   onEditResume={() => setActiveView("resume")}
+                  onResetResume={resetResumeWorkspace}
                   addToast={addToast}
                 />
               )}
@@ -1164,11 +1236,11 @@ Return ONLY valid JSON: {"matched": [...], "missing": [...], "score": number, "s
 
             {/* Tabs */}
             <div className="prep-tabs">
-              <button className={activeTab === "tips" ? "prep-tab-active" : ""} onClick={() => setActiveTab("tips")}>💡 Tips</button>
-              <button className={activeTab === "skills" ? "prep-tab-active" : ""} onClick={() => setActiveTab("skills")}>🎯 Skills</button>
-              <button className={activeTab === "tailor" ? "prep-tab-active" : ""} onClick={() => { setActiveTab("tailor"); if (!tailoredSummary && !isTailoring) tailorResume(); }}>📝 Tailor Resume</button>
-              <button className={activeTab === "ats" ? "prep-tab-active" : ""} onClick={() => { setActiveTab("ats"); if (!atsKeywords && !isAnalyzingAts) analyzeAtsKeywords(); }}>📊 ATS Keywords</button>
-              <button className={activeTab === "cover" ? "prep-tab-active" : ""} onClick={() => setActiveTab("cover")}>✉ Cover Letter</button>
+              <button className={activeTab === "tips" ? "prep-tab-active" : ""} onClick={() => setActiveTab("tips")}>Tips</button>
+              <button className={activeTab === "skills" ? "prep-tab-active" : ""} onClick={() => setActiveTab("skills")}>Skills</button>
+              <button className={activeTab === "tailor" ? "prep-tab-active" : ""} onClick={() => { setActiveTab("tailor"); if (!tailoredSummary && !isTailoring) tailorResume(); }}>Tailor Resume</button>
+              <button className={activeTab === "ats" ? "prep-tab-active" : ""} onClick={() => { setActiveTab("ats"); if (!atsKeywords && !isAnalyzingAts) analyzeAtsKeywords(); }}>ATS Keywords</button>
+              <button className={activeTab === "cover" ? "prep-tab-active" : ""} onClick={() => setActiveTab("cover")}>Cover Letter</button>
             </div>
 
             <div className="prep-content">
@@ -1176,7 +1248,7 @@ Return ONLY valid JSON: {"matched": [...], "missing": [...], "score": number, "s
                 <div className="prep-tips">
                   {data.aiTips.split("\n").filter(Boolean).map((tip, i) => (
                     <div key={i} className="prep-tip-item">
-                      <span className="prep-tip-bullet">→</span>
+                      <span className="prep-tip-bullet" />
                       <p>{tip}</p>
                     </div>
                   ))}
@@ -1229,17 +1301,17 @@ Return ONLY valid JSON: {"matched": [...], "missing": [...], "score": number, "s
                       )}
                       <div className="prep-tailor-actions">
                         <button className="prep-btn-primary" onClick={applyTailoredResume}>
-                          ✓ Apply to My Resume
+                          <DocumentIcon size={14} /> Apply to My Resume
                         </button>
                         <button className="prep-btn-secondary" onClick={tailorResume}>
-                          ↻ Regenerate
+                          <ResetIcon size={14} /> Regenerate
                         </button>
                       </div>
                     </>
                   ) : (
                     <div className="prep-tailor-empty">
                       <p>Click to generate a tailored version of your resume for this specific job.</p>
-                      <button className="prep-btn-primary" onClick={tailorResume}>📝 Tailor My Resume</button>
+                      <button className="prep-btn-primary" onClick={tailorResume}><SparklesIcon size={14} /> Tailor My Resume</button>
                     </div>
                   )}
                 </div>
@@ -1279,16 +1351,16 @@ Return ONLY valid JSON: {"matched": [...], "missing": [...], "score": number, "s
                         <div className="prep-skill-group">
                           <h4>Rewrite Suggestions</h4>
                           {atsKeywords.suggestions.map((s, i) => (
-                            <div key={i} className="prep-tip-item"><span className="prep-tip-bullet">→</span><p>{s}</p></div>
+                            <div key={i} className="prep-tip-item"><span className="prep-tip-bullet" /><p>{s}</p></div>
                           ))}
                         </div>
                       )}
-                      <button className="prep-btn-secondary" style={{ marginTop: 12 }} onClick={analyzeAtsKeywords}>↻ Re-analyze</button>
+                      <button className="prep-btn-secondary" style={{ marginTop: 12 }} onClick={analyzeAtsKeywords}><ResetIcon size={14} /> Re-analyze</button>
                     </>
                   ) : (
                     <div className="prep-tailor-empty">
                       <p>Analyze how well your resume keywords match this job for ATS systems.</p>
-                      <button className="prep-btn-primary" onClick={analyzeAtsKeywords}>📊 Analyze Keywords</button>
+                      <button className="prep-btn-primary" onClick={analyzeAtsKeywords}><SearchIcon size={14} /> Analyze Keywords</button>
                     </div>
                   )}
                 </div>
@@ -1299,10 +1371,10 @@ Return ONLY valid JSON: {"matched": [...], "missing": [...], "score": number, "s
                   <div className="prep-cover-text">{data.coverLetterSnippet}</div>
                   <div className="prep-cover-actions">
                     <button className="prep-btn-primary" onClick={() => { onOpenCoverLetter(job, data.coverLetterSnippet); onClose(); }}>
-                      ✏ Edit in Cover Letter Builder
+                      <SparklesIcon size={14} /> Edit in Cover Letter Builder
                     </button>
                     <button className="prep-btn-secondary" onClick={() => { navigator.clipboard.writeText(data.coverLetterSnippet); addToast("Cover letter copied!", "success"); }}>
-                      📋 Copy
+                      <ClipboardIcon size={14} /> Copy
                     </button>
                   </div>
                 </div>
@@ -1407,7 +1479,7 @@ function JobBoard({
 
   return (
     <div className="jb">
-      <h2 className="jb-title">💼 Job Search</h2>
+      <h2 className="jb-title">Job Search</h2>
       <p className="jb-sub">Find jobs matched to your skills across top platforms.</p>
       <div className="jb-search">
         <div className="jb-field">
@@ -1464,9 +1536,9 @@ function JobBoard({
                   <span className="jb-company">{job.company}</span>
                   <div className="jb-meta">
                     <span><LocationIcon size={12} /> {job.location}</span>
-                    {job.salary && <span className="jb-salary">💰 {job.salary}</span>}
-                    {job.jobType && <span className="jb-type">📋 {job.jobType}</span>}
-                    {job.postedAt && <span>🕐 {job.postedAt}</span>}
+                    {job.salary && <span className="jb-salary">{job.salary}</span>}
+                    {job.jobType && <span className="jb-type">{job.jobType}</span>}
+                    {job.postedAt && <span><ClockIcon size={12} /> {job.postedAt}</span>}
                     <span className="jb-source">{job.source}</span>
                   </div>
                 </div>
@@ -1576,7 +1648,7 @@ function Tracker({
 
   return (
     <div className="tk">
-      <h2 className="tk-title">📊 Application Tracker</h2>
+      <h2 className="tk-title">Application Tracker</h2>
       <p className="tk-sub">Track your job applications through each stage.</p>
 
       {trackedJobs.length === 0 && (
@@ -1616,24 +1688,24 @@ function Tracker({
                       </div>
                     ) : job.notes ? (
                       <div className="tk-note" onClick={() => startEditNote(job)}>
-                        <span>📝</span> {job.notes}
+                        <EditIcon size={12} /> {job.notes}
                       </div>
                     ) : null}
 
                     <div className="tk-card-actions">
                       {prevStatus[col.status] && (
-                        <button onClick={() => moveJob(job.id, prevStatus[col.status])} title="Move back">←</button>
+                        <button onClick={() => moveJob(job.id, prevStatus[col.status])} title="Move back"><ChevronLeftIcon size={14} /></button>
                       )}
                       {nextStatus[col.status] && (
-                        <button onClick={() => moveJob(job.id, nextStatus[col.status])} title="Move forward">→</button>
+                        <button onClick={() => moveJob(job.id, nextStatus[col.status])} title="Move forward"><ChevronRightIcon size={14} /></button>
                       )}
-                      <button onClick={() => startEditNote(job)} title="Add note">📝</button>
+                      <button onClick={() => startEditNote(job)} title="Add note"><EditIcon size={14} /></button>
                       {job.url && (
                         <a href={job.url} target="_blank" rel="noopener noreferrer" className="tk-link-btn" title="Open job posting">
                           <ExternalLinkIcon size={12} />
                         </a>
                       )}
-                      <button onClick={() => removeJob(job.id)} className="tk-remove" title="Remove">✕</button>
+                      <button onClick={() => removeJob(job.id)} className="tk-remove" title="Remove"><XIcon size={14} /></button>
                     </div>
                   </div>
                 ))}
@@ -1717,7 +1789,7 @@ ${buildResumeFacts(cvData)}`,
 
   return (
     <div className="cl">
-      <h2 className="cl-title">✉️ Cover Letter Generator</h2>
+      <h2 className="cl-title">Cover Letter Generator</h2>
       <p className="cl-sub">Generate a tailored cover letter using AI and your resume data.</p>
 
       <div className="cl-fields">
@@ -1733,7 +1805,7 @@ ${buildResumeFacts(cvData)}`,
           {isGenerating ? (
             <><span className="cl-spinner" /> Generating...</>
           ) : (
-            "✨ Generate with AI"
+            <><SparklesIcon size={14} /> Generate with AI</>
           )}
         </button>
       </div>
@@ -1749,9 +1821,9 @@ ${buildResumeFacts(cvData)}`,
 
       {text && (
         <div className="cl-actions">
-          <button className="cl-btn-primary" onClick={copyToClipboard}>📋 Copy</button>
-          <button className="cl-btn-secondary" onClick={downloadAsText}>📥 Download .txt</button>
-          <button className="cl-btn-secondary" onClick={() => { setText(""); addToast("Cleared", "info"); }}>🗑 Clear</button>
+          <button className="cl-btn-primary" onClick={copyToClipboard}><ClipboardIcon size={14} /> Copy</button>
+          <button className="cl-btn-secondary" onClick={downloadAsText}><DownloadIcon size={14} /> Download .txt</button>
+          <button className="cl-btn-secondary" onClick={() => { setText(""); addToast("Cleared", "info"); }}><TrashIcon size={14} /> Clear</button>
         </div>
       )}
     </div>
@@ -1761,10 +1833,11 @@ ${buildResumeFacts(cvData)}`,
 // ─── Settings Panel ─────────────────────────────────────────────────────────
 
 function SettingsPanel({
-  user, onEditResume, addToast,
+  user, onEditResume, onResetResume, addToast,
 }: {
   user: { name: string; email: string; phone?: string; location?: string; cvGenerated?: boolean; cvData?: GeneratedCV | null; createdAt: string };
   onEditResume: () => void;
+  onResetResume: () => Promise<boolean>;
   addToast: (msg: string, type: Toast["type"]) => void;
 }) {
   const { updateProfile } = useAuth();
@@ -1836,9 +1909,14 @@ function SettingsPanel({
     addToast("Data exported!", "success");
   };
 
+  const resetResumeData = async () => {
+    const didReset = await onResetResume();
+    if (didReset) onEditResume();
+  };
+
   return (
     <div className="sp">
-      <h2 className="sp-title">⚙ Settings</h2>
+      <h2 className="sp-title">Settings</h2>
 
       {/* Profile Card */}
       <div className="sp-card">
@@ -1922,7 +2000,7 @@ function SettingsPanel({
         <div className="sp-card-header">
           <h3>Resume</h3>
         </div>
-        <p className="sp-status">{user.cvGenerated ? "✅ Resume created" : "⚠️ No resume yet"}</p>
+        <p className="sp-status">{user.cvGenerated ? "Resume created" : "No resume yet"}</p>
         {user.cvGenerated && user.cvData && (
           <div className="sp-resume-info">
             <span>Skills: {user.cvData.skills?.length || 0}</span>
@@ -1930,7 +2008,10 @@ function SettingsPanel({
             <span>Education: {user.cvData.education?.length || 0} entries</span>
           </div>
         )}
-        <button className="sp-btn" onClick={onEditResume}>{user.cvGenerated ? "Edit Resume" : "Create Resume"}</button>
+        <div className="sp-edit-actions">
+          <button className="sp-btn" onClick={onEditResume}>{user.cvGenerated ? "Edit Resume" : "Create Resume"}</button>
+          {user.cvGenerated && <button className="sp-btn-cancel" onClick={resetResumeData}><ResetIcon size={14} /> Reset Resume Data</button>}
+        </div>
       </div>
 
       {/* Data Export */}
@@ -1939,7 +2020,7 @@ function SettingsPanel({
           <h3>Data</h3>
         </div>
         <p className="sp-data-desc">Export all your JobReady data including profile, resume, and tracked applications.</p>
-        <button className="sp-btn-outline" onClick={exportData}>📥 Export All Data</button>
+        <button className="sp-btn-outline" onClick={exportData}><DownloadIcon size={14} /> Export All Data</button>
       </div>
     </div>
   );
@@ -1960,9 +2041,9 @@ const workspaceCSS = `
     --ws-text:#e7edf0;
     --ws-muted:#91a4ad;
     --ws-soft:#647983;
-    --ws-accent:#5ca3a8;
-    --ws-accent-strong:#7bc4c8;
-    --ws-warm:#c69153;
+    --ws-accent:#2f6e6a;
+    --ws-accent-strong:#9ed5cf;
+    --ws-warm:#b7844d;
     --ws-success:#4db38a;
     display:flex; height:100vh;
     background:
@@ -1993,7 +2074,7 @@ const workspaceCSS = `
   }
   .ws-logo {
     width:42px; height:42px; border-radius:15px;
-    background:linear-gradient(135deg, var(--ws-accent), var(--ws-warm));
+    background:var(--ws-accent);
     color:#fff; display:flex; align-items:center; justify-content:center;
     font-size:1.05rem; box-shadow:0 14px 30px rgba(8,14,18,0.42);
     border:none; cursor:pointer;
@@ -2044,7 +2125,7 @@ const workspaceCSS = `
   .ws-rail-cta, .wf-primary, .wf-primary-link {
     display:inline-flex; align-items:center; justify-content:center; gap:8px;
     padding:10px 16px; border:none; border-radius:999px;
-    background:linear-gradient(135deg, var(--ws-accent), var(--ws-warm)); color:#fff;
+    background:var(--ws-accent); color:#fff;
     font-size:0.82rem; font-weight:700; cursor:pointer; text-decoration:none;
     box-shadow:0 16px 28px rgba(11,29,34,0.34); transition:transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
   }
@@ -2119,7 +2200,7 @@ const workspaceCSS = `
   .ws-cmd-btn { padding:6px 11px; border-radius:8px; background:rgba(16,26,32,0.9); border:1px solid var(--ws-border); color:var(--ws-soft); font-size:0.6875rem; font-family:"IBM Plex Mono","SFMono-Regular",monospace; font-weight:600; cursor:pointer; transition:all 0.15s; }
   .ws-cmd-btn:hover { border-color:var(--ws-accent); color:var(--ws-accent-strong); }
   .ws-user-pill { display:flex; align-items:center; gap:8px; padding:4px 12px 4px 4px; border-radius:10px; background:rgba(16,26,32,0.9); border:1px solid var(--ws-border); }
-  .ws-avatar { width:28px; height:28px; border-radius:9px; background:linear-gradient(135deg,var(--ws-accent), var(--ws-warm)); color:#fff; font-size:0.7rem; font-weight:700; display:flex; align-items:center; justify-content:center; }
+  .ws-avatar { width:28px; height:28px; border-radius:9px; background:var(--ws-accent); color:#fff; font-size:0.7rem; font-weight:700; display:flex; align-items:center; justify-content:center; }
   .ws-user-pill span { font-size:0.76rem; color:var(--ws-muted); }
 
   /* Content */
@@ -2239,15 +2320,15 @@ const workspaceCSS = `
     min-width:280px; box-shadow:0 18px 34px rgba(4,10,14,0.34);
   }
   @keyframes toast-in { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
-  .toast span { font-size:1rem; flex-shrink:0; }
+  .toast-icon { width:26px; height:26px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); }
   .toast p { margin:0; flex:1; }
-  .toast button { background:none; border:none; color:var(--ws-soft); cursor:pointer; font-size:1rem; padding:0 2px; }
+  .toast button { background:none; border:none; color:var(--ws-soft); cursor:pointer; padding:0 2px; display:flex; align-items:center; justify-content:center; }
   .toast-success { border-color:rgba(77,179,138,0.34); }
-  .toast-success span { color:#84d4b2; }
+  .toast-success .toast-icon { color:#84d4b2; }
   .toast-error { border-color:rgba(194,120,120,0.3); }
-  .toast-error span { color:#efb4b4; }
+  .toast-error .toast-icon { color:#efb4b4; }
   .toast-info { border-color:rgba(92,163,168,0.34); }
-  .toast-info span { color:var(--ws-accent-strong); }
+  .toast-info .toast-icon { color:var(--ws-accent-strong); }
 
   /* Prepare Modal */
   .modal-overlay { position:fixed; inset:0; background:rgba(5,9,12,0.78); backdrop-filter:blur(10px); z-index:100; display:flex; align-items:center; justify-content:center; padding:20px; }
@@ -2293,7 +2374,10 @@ const workspaceCSS = `
   .prep-content { padding:20px 24px; min-height:200px; }
   .prep-tips { display:flex; flex-direction:column; gap:10px; }
   .prep-tip-item { display:flex; gap:10px; align-items:flex-start; }
-  .prep-tip-bullet { color:var(--ws-accent-strong); font-weight:700; flex-shrink:0; margin-top:2px; }
+  .prep-tip-bullet {
+    width:8px; height:8px; border-radius:999px; background:var(--ws-accent-strong);
+    flex-shrink:0; margin-top:6px; box-shadow:0 0 0 4px rgba(47,110,106,0.12);
+  }
   .prep-tip-item p { margin:0; font-size:0.8125rem; color:#d3dde1; line-height:1.6; }
 
   .prep-skills { display:flex; flex-direction:column; gap:16px; }
@@ -2313,17 +2397,18 @@ const workspaceCSS = `
   .prep-cover-actions { display:flex; gap:8px; margin-top:12px; }
 
   .prep-btn-primary {
-    padding:9px 16px; border-radius:999px; background:linear-gradient(135deg, var(--ws-accent), var(--ws-warm));
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    padding:9px 16px; border-radius:999px; background:var(--ws-accent);
     border:none; color:#fff; font-size:0.75rem; font-weight:700; cursor:pointer;
   }
-  .prep-btn-primary:hover { opacity:0.94; }
-  .prep-btn-secondary { padding:9px 16px; border-radius:999px; background:transparent; border:1px solid var(--ws-border); color:var(--ws-muted); font-size:0.75rem; cursor:pointer; }
+  .prep-btn-primary:hover { background:#285e5a; }
+  .prep-btn-secondary { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:9px 16px; border-radius:999px; background:transparent; border:1px solid var(--ws-border); color:var(--ws-muted); font-size:0.75rem; cursor:pointer; }
   .prep-btn-secondary:hover { border-color:var(--ws-accent); color:var(--ws-accent-strong); }
 
   .prep-actions { display:flex; gap:8px; padding:18px 24px; border-top:1px solid var(--ws-border); }
   .prep-btn-apply {
     display:inline-flex; align-items:center; gap:6px; padding:10px 24px; border-radius:999px;
-    background:linear-gradient(135deg, var(--ws-success), #67c7a2); color:#072019; font-size:0.8125rem; font-weight:700; text-decoration:none; transition:all 0.15s;
+    background:var(--ws-success); color:#072019; font-size:0.8125rem; font-weight:700; text-decoration:none; transition:all 0.15s;
   }
   .prep-btn-apply:hover { filter:brightness(1.03); }
   .prep-btn-save { padding:10px 20px; border-radius:999px; background:transparent; border:1px solid var(--ws-border); color:var(--ws-muted); font-size:0.8125rem; cursor:pointer; }
@@ -2372,8 +2457,8 @@ const workspaceCSS = `
   .jb-field label { font-size:0.68rem; color:var(--ws-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.12em; }
   .jb-field input { padding:11px 14px; border-radius:14px; background:#0c1318; border:1px solid var(--ws-border); color:#e2e8f0; font-size:0.84rem; }
   .jb-field input:focus { outline:none; border-color:var(--ws-accent); box-shadow:0 0 0 3px rgba(92,163,168,0.12); }
-  .jb-search-btn { padding:11px 22px; border-radius:999px; background:linear-gradient(135deg, var(--ws-accent), var(--ws-warm)); border:none; color:#fff; font-size:0.8125rem; font-weight:700; cursor:pointer; white-space:nowrap; box-shadow:0 12px 20px rgba(10,29,34,0.26); }
-  .jb-search-btn:hover { opacity:0.95; transform:translateY(-1px); }
+  .jb-search-btn { padding:11px 22px; border-radius:999px; background:var(--ws-accent); border:none; color:#fff; font-size:0.8125rem; font-weight:700; cursor:pointer; white-space:nowrap; box-shadow:0 12px 20px rgba(10,29,34,0.26); }
+  .jb-search-btn:hover { background:#285e5a; transform:translateY(-1px); }
   .jb-search-btn:disabled { opacity:0.6; cursor:not-allowed; }
   .jb-empty { text-align:center; padding:48px 20px; color:var(--ws-soft); }
   .jb-empty p { margin:12px 0 0; font-size:0.875rem; }
@@ -2415,8 +2500,8 @@ const workspaceCSS = `
   .jb-tag { padding:4px 12px; border-radius:999px; background:rgba(255,255,255,0.025); border:1px solid var(--ws-border); font-size:0.6875rem; color:var(--ws-muted); transition:border-color 0.15s; }
   .jb-tag:hover { border-color:var(--ws-accent); color:#cbd5e1; }
   .jb-actions { display:flex; gap:8px; flex-wrap:wrap; }
-  .jb-prepare-btn { display:inline-flex; align-items:center; gap:6px; padding:9px 20px; border-radius:999px; background:linear-gradient(135deg,var(--ws-accent),#6a8fb6); border:none; color:#fff; font-size:0.8125rem; font-weight:700; cursor:pointer; transition:all 0.15s; box-shadow:0 10px 20px rgba(10,29,34,0.26); }
-  .jb-prepare-btn:hover { opacity:0.94; transform:translateY(-1px); box-shadow:0 14px 24px rgba(10,29,34,0.34); }
+  .jb-prepare-btn { display:inline-flex; align-items:center; gap:6px; padding:9px 20px; border-radius:999px; background:var(--ws-accent); border:none; color:#fff; font-size:0.8125rem; font-weight:700; cursor:pointer; transition:all 0.15s; box-shadow:0 10px 20px rgba(10,29,34,0.26); }
+  .jb-prepare-btn:hover { background:#285e5a; transform:translateY(-1px); box-shadow:0 14px 24px rgba(10,29,34,0.34); }
   .jb-apply-btn { display:inline-flex; align-items:center; gap:4px; padding:7px 16px; border-radius:999px; background:transparent; border:1px solid rgba(77,179,138,0.34); color:#84d4b2; font-size:0.75rem; font-weight:700; text-decoration:none; transition:all 0.15s; }
   .jb-apply-btn:hover { background:rgba(77,179,138,0.08); }
   .jb-save-btn, .jb-detail-btn { padding:7px 14px; border-radius:999px; background:transparent; border:1px solid var(--ws-border); color:var(--ws-muted); font-size:0.75rem; cursor:pointer; transition:all 0.15s; }
@@ -2444,15 +2529,14 @@ const workspaceCSS = `
   .tk-card-loc { font-size:0.625rem; color:var(--ws-soft); display:block; margin-top:2px; }
   .tk-card-salary { font-size:0.625rem; color:#84d4b2; display:block; margin-top:1px; }
   .tk-card-date { font-size:0.5625rem; color:#55656d; display:block; margin-top:4px; }
-  .tk-note { font-size:0.6875rem; color:var(--ws-muted); margin-top:6px; padding:8px 10px; background:rgba(8,15,19,0.74); border-radius:10px; cursor:pointer; line-height:1.45; border:1px solid rgba(255,255,255,0.03); }
+  .tk-note { display:flex; align-items:flex-start; gap:6px; font-size:0.6875rem; color:var(--ws-muted); margin-top:6px; padding:8px 10px; background:rgba(8,15,19,0.74); border-radius:10px; cursor:pointer; line-height:1.45; border:1px solid rgba(255,255,255,0.03); }
   .tk-note:hover { background:#131e24; }
-  .tk-note span { margin-right:4px; }
   .tk-note-edit { margin-top:6px; }
   .tk-note-edit textarea { width:100%; padding:10px; border-radius:10px; background:#080f13; border:1px solid var(--ws-border); color:#e2e8f0; font-size:0.75rem; resize:none; outline:none; font-family:inherit; }
   .tk-note-edit textarea:focus { border-color:var(--ws-accent); }
   .tk-note-btns { display:flex; gap:4px; margin-top:4px; }
   .tk-note-btns button { padding:4px 10px; border-radius:999px; border:1px solid var(--ws-border); background:transparent; color:var(--ws-muted); font-size:0.625rem; cursor:pointer; }
-  .tk-note-btns button:first-child { background:linear-gradient(135deg, var(--ws-accent), var(--ws-warm)); border-color:transparent; color:#fff; }
+  .tk-note-btns button:first-child { background:var(--ws-accent); border-color:transparent; color:#fff; }
   .tk-card-actions { display:flex; gap:4px; margin-top:8px; flex-wrap:wrap; }
   .tk-card-actions button, .tk-link-btn { padding:4px 10px; border-radius:999px; border:1px solid var(--ws-border); background:transparent; color:var(--ws-muted); font-size:0.625rem; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; text-decoration:none; }
   .tk-card-actions button:hover, .tk-link-btn:hover { border-color:var(--ws-accent); color:var(--ws-accent-strong); }
@@ -2473,7 +2557,7 @@ const workspaceCSS = `
   .cl-field label { font-size:0.68rem; color:var(--ws-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.12em; }
   .cl-field input { padding:11px 14px; border-radius:14px; background:#0c1318; border:1px solid var(--ws-border); color:#e2e8f0; font-size:0.84rem; outline:none; }
   .cl-field input:focus { border-color:var(--ws-accent); box-shadow:0 0 0 3px rgba(92,163,168,0.12); }
-  .cl-generate-btn { padding:11px 22px; border-radius:999px; background:linear-gradient(135deg, var(--ws-accent), var(--ws-warm)); border:none; color:#fff; font-size:0.8125rem; font-weight:700; cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:6px; box-shadow:0 12px 20px rgba(10,29,34,0.26); }
+  .cl-generate-btn { padding:11px 22px; border-radius:999px; background:var(--ws-accent); border:none; color:#fff; font-size:0.8125rem; font-weight:700; cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:6px; box-shadow:0 12px 20px rgba(10,29,34,0.26); }
   .cl-generate-btn:hover { opacity:0.9; }
   .cl-generate-btn:disabled { opacity:0.6; cursor:not-allowed; }
   .cl-spinner { display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:cospin 0.7s linear infinite; }
@@ -2482,9 +2566,9 @@ const workspaceCSS = `
   .cl-editor textarea:focus { border-color:var(--ws-accent); box-shadow:0 0 0 3px rgba(92,163,168,0.12); }
   .cl-editor textarea::placeholder { color:#55656d; }
   .cl-actions { display:flex; gap:8px; }
-  .cl-btn-primary { padding:10px 18px; border-radius:999px; background:linear-gradient(135deg, var(--ws-accent), var(--ws-warm)); border:none; color:#fff; font-size:0.8125rem; font-weight:700; cursor:pointer; }
+  .cl-btn-primary { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:10px 18px; border-radius:999px; background:var(--ws-accent); border:none; color:#fff; font-size:0.8125rem; font-weight:700; cursor:pointer; }
   .cl-btn-primary:hover { opacity:0.94; }
-  .cl-btn-secondary { padding:10px 18px; border-radius:999px; background:transparent; border:1px solid var(--ws-border); color:var(--ws-muted); font-size:0.8125rem; cursor:pointer; }
+  .cl-btn-secondary { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:10px 18px; border-radius:999px; background:transparent; border:1px solid var(--ws-border); color:var(--ws-muted); font-size:0.8125rem; cursor:pointer; }
   .cl-btn-secondary:hover { border-color:var(--ws-accent); color:var(--ws-accent-strong); }
 
   /* Settings */
@@ -2508,12 +2592,12 @@ const workspaceCSS = `
   .sp-status { font-size:0.8125rem; color:var(--ws-muted); margin:0 0 12px; }
   .sp-resume-info { display:flex; gap:16px; font-size:0.75rem; color:var(--ws-muted); margin-bottom:12px; flex-wrap:wrap; }
   .sp-data-desc { font-size:0.8125rem; color:var(--ws-muted); margin:0 0 12px; }
-  .sp-btn { padding:10px 18px; border-radius:999px; background:linear-gradient(135deg, var(--ws-accent), var(--ws-warm)); border:none; color:#fff; font-size:0.8125rem; font-weight:700; cursor:pointer; }
-  .sp-btn:hover { opacity:0.95; }
+  .sp-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:10px 18px; border-radius:999px; background:var(--ws-accent); border:none; color:#fff; font-size:0.8125rem; font-weight:700; cursor:pointer; }
+  .sp-btn:hover { background:#285e5a; }
   .sp-btn:disabled { opacity:0.6; cursor:not-allowed; }
-  .sp-btn-cancel { padding:10px 18px; border-radius:999px; background:transparent; border:1px solid var(--ws-border); color:var(--ws-muted); font-size:0.8125rem; cursor:pointer; }
+  .sp-btn-cancel { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:10px 18px; border-radius:999px; background:transparent; border:1px solid var(--ws-border); color:var(--ws-muted); font-size:0.8125rem; cursor:pointer; }
   .sp-btn-cancel:hover { border-color:#ef4444; color:#f87171; }
-  .sp-btn-outline { padding:10px 18px; border-radius:999px; background:transparent; border:1px solid var(--ws-border); color:var(--ws-muted); font-size:0.8125rem; cursor:pointer; }
+  .sp-btn-outline { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:10px 18px; border-radius:999px; background:transparent; border:1px solid var(--ws-border); color:var(--ws-muted); font-size:0.8125rem; cursor:pointer; }
   .sp-btn-outline:hover { border-color:var(--ws-accent); color:var(--ws-accent-strong); }
 
   /* ─── Mobile / Tablet Shell ─── */

@@ -50,3 +50,38 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get("Authorization");
+
+    if (!authHeader) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
+    const response = await fetchBackend("/api/v1/resume/latest", {
+      method: "DELETE",
+      headers: {
+        Authorization: authHeader,
+      },
+    });
+
+    if (response.status === 204) {
+      return new NextResponse(null, { status: 204 });
+    }
+
+    const data = await response.json();
+    return NextResponse.json(
+      { error: data.detail || data.error || "Failed to reset resume" },
+      { status: response.status }
+    );
+  } catch {
+    return NextResponse.json(
+      { error: "Unable to connect to backend service" },
+      { status: 503 }
+    );
+  }
+}

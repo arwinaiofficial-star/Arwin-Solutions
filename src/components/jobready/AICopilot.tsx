@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { SendIcon, XIcon } from "@/components/icons/Icons";
+import { BotIcon, SearchIcon, SendIcon, SparklesIcon, XIcon } from "@/components/icons/Icons";
 import { resumeApi } from "@/lib/api/client";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -15,7 +15,7 @@ interface Message {
 }
 
 export interface CopilotAction {
-  type: "navigate" | "fill_field" | "enhance" | "generate" | "download" | "analyze";
+  type: "navigate" | "fill_field" | "enhance" | "generate" | "download" | "analyze" | "command";
   label: string;
   payload: Record<string, unknown>;
 }
@@ -151,6 +151,21 @@ function summarizeAppliedUpdates(actions: CopilotAction[]): string {
   return `Updated ${labels.join(", ")}.`;
 }
 
+function shouldExtractResumeNarrative(text: string): boolean {
+  const normalized = text.trim().toLowerCase();
+  if (!normalized) return false;
+
+  const cues = [
+    "experience", "worked", "currently", "skills", "education", "graduated",
+    "degree", "certification", "portfolio", "linkedin", "resume", "cv",
+  ];
+  const cueHits = cues.filter((cue) => normalized.includes(cue)).length;
+  const wordCount = normalized.split(/\s+/).filter(Boolean).length;
+  const lineCount = normalized.split("\n").filter((line) => line.trim()).length;
+
+  return wordCount >= 25 || lineCount >= 3 || cueHits >= 2;
+}
+
 // ─── Suggestion Actions (these trigger real workspace actions, not just chat) ─
 
 interface Suggestion {
@@ -169,6 +184,7 @@ function getSuggestions(context: string, resumeStep?: number, cvData?: Record<st
       return [
         { label: "Upload my CV", action: "direct", directAction: { type: "enhance", label: "Upload CV", payload: { trigger: "upload" } } },
         { label: "Start from scratch", action: "direct", directAction: { type: "navigate", label: "Go to Personal Info", payload: { step: 1 } } },
+        { label: "Tell my story", action: "direct", directAction: { type: "command", label: "Open story composer", payload: { command: "openStoryComposer" } } },
         ...(hasCv ? [{ label: "Jump to Preview", action: "direct" as const, directAction: { type: "navigate" as const, label: "Preview", payload: { step: 5 } } }] : []),
       ];
     }
@@ -309,6 +325,12 @@ export default function AICopilot({
         onTriggerAction?.("downloadPDF", {});
         addMessage("action", "Downloading resume as PDF...");
         break;
+      case "command":
+        if (action.payload.command) {
+          onTriggerAction?.(action.payload.command as string, action.payload);
+          addMessage("action", action.label);
+        }
+        break;
       case "fill_field":
         if (action.payload.field && action.payload.value !== undefined) {
           onUpdateField?.(action.payload.field as string, action.payload.value);
@@ -343,9 +365,9 @@ export default function AICopilot({
       hasInitialized.current = true;
       const hasCv = cvData && (cvData as Record<string, unknown>).skills;
       if (hasCv) {
-        addMessage("ai", "Welcome back! Your resume is loaded. I can help you enhance it, find jobs, or prep for interviews. Use the quick actions below or ask me anything.");
+        addMessage("ai", "Welcome back. Your resume is loaded. I can update fields from natural language, tighten content, and move you to the next workflow step.");
       } else {
-        addMessage("ai", "Welcome to JobReady! Upload your CV or start from scratch — I'll guide you through every step. Try the quick actions below to get started.");
+        addMessage("ai", "Welcome to JobReady. Upload your CV, paste your story, or start from scratch. I can read natural-language background details and turn them into structured resume fields.");
       }
     }
   }, [isOpen, cvData, addMessage]);
@@ -472,16 +494,31 @@ export default function AICopilot({
         onTriggerAction?.("enhanceExperience", {});
         addMessage("action", "Enhancing your experience bullet points...");
       } else {
-        if (context === "resume") {
-          const localParsed = parseResumeUpdateLocally(trimmed);
-          const localActions = buildResumeFillActions(localParsed);
-          if (localActions.length > 0) {
-            addMessage("ai", summarizeAppliedUpdates(localActions));
-            localActions.forEach((action) => executeAction(action));
+        const localParsed = parseResumeUpdateLocally(trimmed);
+        const localActions = buildResumeFillActions(localParsed);
+        if (localActions.length > 0) {
+          addMessage("ai", summarizeAppliedUpdates(localActions));
+          localActions.forEach((action) => executeAction(action));
+          setIsLoading(false);
+          return;
+        }
+
+        if (shouldExtractResumeNarrative(trimmed)) {
+          const extractedResult = await resumeApi.chat(
+            trimmed,
+            "extract_cv",
+            { raw_text: trimmed, ...(cvData || {}), ...(resumeData || {}) },
+          );
+          const extractedActions = buildResumeFillActions(extractedResult.data?.data);
+          if (extractedActions.length > 0) {
+            addMessage("ai", "I turned that story into structured resume fields. Review the form and tighten anything that needs more precision.");
+            extractedActions.forEach((action) => executeAction(action));
             setIsLoading(false);
             return;
           }
+        }
 
+        if (context === "resume") {
           const parsedResult = await resumeApi.chat(
             trimmed,
             "parse_resume_update",
@@ -541,8 +578,8 @@ export default function AICopilot({
         <div className="cop-messages">
           {messages.map(m => (
             <div key={m.id} className={`cop-msg cop-msg-${m.role}`}>
-              {m.role === "ai" && <div className="cop-avatar">AI</div>}
-              {m.role === "action" && <div className="cop-avatar cop-avatar-action">⚡</div>}
+              {m.role === "ai" && <div className="cop-avatar"><BotIcon size={14} /></div>}
+              {m.role === "action" && <div className="cop-avatar cop-avatar-action"><BotIcon size={14} /></div>}
               <div className={`cop-bubble ${m.role === "action" ? "cop-bubble-action" : ""}`}>
                 <p>{m.text}</p>
                 {m.role !== "action" && <span className="cop-time">{m.time}</span>}
@@ -554,14 +591,14 @@ export default function AICopilot({
             <div className="cop-inline-actions">
               {messages[messages.length - 1].actions!.map((a, i) => (
                 <button key={i} className="cop-action-btn" onClick={() => executeAction(a)}>
-                  {a.type === "navigate" ? "→" : a.type === "analyze" ? "📊" : a.type === "enhance" ? "✨" : "⚡"} {a.label}
+                  {a.type === "navigate" ? <SearchIcon size={12} /> : a.type === "analyze" ? <SearchIcon size={12} /> : a.type === "enhance" ? <SparklesIcon size={12} /> : <BotIcon size={12} />} {a.label}
                 </button>
               ))}
             </div>
           )}
           {isLoading && (
             <div className="cop-msg cop-msg-ai">
-              <div className="cop-avatar">AI</div>
+              <div className="cop-avatar"><BotIcon size={14} /></div>
               <div className="cop-bubble cop-typing"><span /><span /><span /></div>
             </div>
           )}
@@ -614,19 +651,17 @@ const copilotCSS = `
     --cop-text:#e7edf0;
     --cop-muted:#8fa2ab;
     --cop-soft:#627983;
-    --cop-accent:#5ca3a8;
-    --cop-accent-strong:#7bc4c8;
-    --cop-warm:#c69153;
+    --cop-accent:#2f6e6a;
+    --cop-accent-strong:#9ed5cf;
+    --cop-warm:#b7844d;
     display:flex; flex-direction:column; height:100%;
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.018), transparent 16%),
-      var(--cop-bg);
+    background:var(--cop-bg);
     border-left:1px solid var(--cop-border);
   }
   .cop-header {
     display:flex; align-items:center; justify-content:space-between; padding:16px 18px;
     border-bottom:1px solid var(--cop-border);
-    background:linear-gradient(180deg, rgba(255,255,255,0.018), transparent 18%);
+    background:#0d161b;
   }
   .cop-header-left { display:flex; align-items:center; gap:10px; font-size:0.84rem; font-weight:700; color:var(--cop-text); letter-spacing:0.01em; flex-wrap:wrap; }
   .cop-dot { width:8px; height:8px; border-radius:50%; background:var(--cop-accent-strong); box-shadow:0 0 10px rgba(123,196,200,0.42); }
@@ -643,19 +678,20 @@ const copilotCSS = `
   .cop-msg-user { flex-direction:row-reverse; }
   .cop-msg-action { opacity:0.7; }
   .cop-avatar {
-    width:30px; height:30px; border-radius:10px; background:linear-gradient(135deg,var(--cop-accent),var(--cop-warm));
-    color:#fff; font-size:0.625rem; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    width:30px; height:30px; border-radius:10px; background:rgba(47,110,106,0.18);
+    color:#d8efed; font-size:0.625rem; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    border:1px solid rgba(47,110,106,0.24);
     box-shadow:0 10px 18px rgba(7,17,21,0.24);
   }
-  .cop-avatar-action { background:linear-gradient(135deg,var(--cop-accent),#67c7a2); font-size:0.75rem; }
+  .cop-avatar-action { background:rgba(77,179,138,0.14); border-color:rgba(77,179,138,0.22); font-size:0.75rem; }
   .cop-bubble { padding:12px 14px; border-radius:16px; max-width:88%; box-shadow:0 10px 20px rgba(4,10,14,0.16); }
   .cop-msg-ai .cop-bubble {
-    background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent 18%), var(--cop-panel);
+    background:var(--cop-panel);
     border:1px solid var(--cop-border);
   }
   .cop-msg-user .cop-bubble {
-    background:linear-gradient(135deg, rgba(92,163,168,0.2), rgba(198,145,83,0.18)), #17303a;
-    border:1px solid rgba(92,163,168,0.26);
+    background:#17303a;
+    border:1px solid rgba(47,110,106,0.26);
   }
   .cop-bubble-action {
     background:rgba(77,179,138,0.08) !important;
@@ -680,31 +716,31 @@ const copilotCSS = `
   .cop-suggestions {
     display:flex; flex-wrap:wrap; gap:8px; padding:12px 18px 14px;
     border-top:1px solid rgba(255,255,255,0.03);
-    background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent 24%);
+    background:#0d161b;
   }
   .cop-sug {
     padding:7px 12px; border-radius:999px; background:rgba(255,255,255,0.02);
     border:1px solid var(--cop-border); color:var(--cop-muted); font-size:0.7rem; font-weight:700; cursor:pointer; transition:all 0.15s; white-space:nowrap;
   }
-  .cop-sug:hover { border-color:var(--cop-accent); color:var(--cop-accent-strong); background:rgba(92,163,168,0.08); }
+  .cop-sug:hover { border-color:var(--cop-accent); color:var(--cop-accent-strong); background:rgba(47,110,106,0.08); }
   .cop-sug-action { border-color:rgba(77,179,138,0.24); color:#9fddc0; }
   .cop-sug-action:hover { border-color:rgba(77,179,138,0.42); background:rgba(77,179,138,0.1); }
   .cop-input {
     display:flex; gap:10px; padding:14px 18px 18px; border-top:1px solid var(--cop-border);
-    background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent 18%);
+    background:#0d161b;
   }
   .cop-input input {
     flex:1; padding:12px 14px; border-radius:16px; background:#0b1216; border:1px solid var(--cop-border);
     color:var(--cop-text); font-size:0.84rem; outline:none; transition:border-color 0.15s, box-shadow 0.15s;
   }
-  .cop-input input:focus { border-color:var(--cop-accent); box-shadow:0 0 0 3px rgba(92,163,168,0.12); }
+  .cop-input input:focus { border-color:var(--cop-accent); box-shadow:0 0 0 3px rgba(47,110,106,0.12); }
   .cop-input input::placeholder { color:var(--cop-soft); }
   .cop-input button {
-    width:42px; height:42px; border-radius:14px; background:linear-gradient(135deg,var(--cop-accent),var(--cop-warm));
+    width:42px; height:42px; border-radius:14px; background:var(--cop-accent);
     border:none; color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.15s; flex-shrink:0;
     box-shadow:0 12px 20px rgba(10,29,34,0.26);
   }
-  .cop-input button:hover { opacity:0.95; transform:translateY(-1px); }
+  .cop-input button:hover { background:#285e5a; transform:translateY(-1px); }
   .cop-input button:disabled { background:#1a2a31; color:#5a6d76; cursor:not-allowed; box-shadow:none; }
 
   @media (max-width: 768px) {

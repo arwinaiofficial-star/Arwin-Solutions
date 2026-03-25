@@ -177,6 +177,10 @@ function writeLocalResumeRecords(records: LocalResumeRecord[]) {
   writeScopedStorage(LOCAL_RESUME_KEY, records);
 }
 
+function clearLocalResumeRecords() {
+  writeLocalResumeRecords([]);
+}
+
 function cacheLatestResume(record: LocalResumeRecord) {
   const records = readLocalResumeRecords();
   const nextRecords = records.filter((item) => item.id !== record.id);
@@ -586,6 +590,34 @@ export const resumeApi = {
           status: localResume.status,
         },
       };
+    }
+  },
+
+  async reset(): Promise<ApiResponse<void>> {
+    try {
+      const response = await authenticatedFetch(`${RESUME_API_BASE}/latest`, {
+        method: "DELETE",
+      });
+
+      if (response.status === 204) {
+        clearLocalResumeRecords();
+        return { data: undefined };
+      }
+
+      const body = await response.json();
+      if (!response.ok) {
+        if (shouldUseLocalFallback(response.status, body.error || body.detail)) {
+          clearLocalResumeRecords();
+          return { data: undefined };
+        }
+        return { error: body.detail || body.error || "Failed to reset resume" };
+      }
+
+      clearLocalResumeRecords();
+      return { data: undefined };
+    } catch {
+      clearLocalResumeRecords();
+      return { data: undefined };
     }
   },
 
