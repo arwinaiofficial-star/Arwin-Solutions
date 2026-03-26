@@ -1,30 +1,90 @@
 "use client";
 
+import Image from "next/image";
 import { stats } from "@/lib/content";
+import { clientLogos, clientLogoRows, type ClientLogo } from "@/lib/clientLogos";
 
-const clients = [
-  { name: "Indian Railways", abbr: "IR" },
-  { name: "NTPC", abbr: "NTPC" },
-  { name: "NIC", abbr: "NIC" },
-  { name: "TTD", abbr: "TTD" },
-  { name: "CBIT", abbr: "CBIT" },
-  { name: "Geetanjali", abbr: "GJ" },
-  { name: "KV Schools", abbr: "KV" },
-  { name: "SVP", abbr: "SVP" },
-];
+type MarqueeVariant = "compact" | "detailed";
 
-function LogoPlaceholder({ abbr, name }: { abbr: string; name: string }) {
+function LogoCard({
+  client,
+  variant,
+}: {
+  client: ClientLogo;
+  variant: MarqueeVariant;
+}) {
   return (
-    <div className="client-logo" aria-label={name}>
-      <div className="client-logo-mark">{abbr}</div>
-      <span className="client-logo-name">{name}</span>
+    <article
+      className={`client-logo-card client-logo-card-${variant}`}
+      aria-label={client.name}
+      data-sector={client.sector.toLowerCase()}
+    >
+      {variant === "detailed" ? (
+        <span className="client-logo-sector">{client.sector}</span>
+      ) : null}
+
+      <div className={`client-logo-panel client-logo-panel-${variant}`}>
+        <Image
+          src={client.image}
+          alt={client.name}
+          width={220}
+          height={110}
+          className="client-logo-image"
+          style={client.imageScale ? { transform: `scale(${client.imageScale})` } : undefined}
+        />
+      </div>
+
+      {variant === "compact" ? (
+        <div className="client-logo-copy client-logo-copy-compact">
+          <span className="client-logo-title client-logo-title-compact">{client.name}</span>
+        </div>
+      ) : null}
+
+      {variant === "detailed" ? (
+        <div className="client-logo-copy">
+          <span className="client-logo-title">{client.name}</span>
+          <span className="client-logo-subtitle">{client.highlight}</span>
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
+function LogoTrack({
+  logos,
+  variant,
+  reverse = false,
+}: {
+  logos: ClientLogo[];
+  variant: MarqueeVariant;
+  reverse?: boolean;
+}) {
+  const doubled = [...logos, ...logos];
+
+  return (
+    <div className={`client-marquee client-marquee-${variant}`}>
+      <div
+        className={[
+          "client-marquee-track",
+          `client-marquee-track-${variant}`,
+          reverse ? "client-marquee-track-reverse" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        {doubled.map((client, index) => (
+          <LogoCard
+            key={`${variant}-${reverse ? "r" : "f"}-${client.slug}-${index}`}
+            client={client}
+            variant={variant}
+          />
+        ))}
+      </div>
     </div>
   );
 }
 
 export function TrustSection() {
-  const doubled = [...clients, ...clients];
-
   const statItems = [
     { value: `${stats.yearsInBusiness}+`, label: "Years" },
     { value: `${stats.projectsCompleted}+`, label: "Projects" },
@@ -35,10 +95,9 @@ export function TrustSection() {
   return (
     <section className="trust-section">
       <div className="container">
-        {/* Inline stats row */}
         <div className="trust-stats">
-          {statItems.map((item, i) => (
-            <div key={i} className="trust-stat">
+          {statItems.map((item, index) => (
+            <div key={index} className="trust-stat">
               <span className="trust-stat-value">{item.value}</span>
               <span className="trust-stat-label">{item.label}</span>
             </div>
@@ -52,18 +111,19 @@ export function TrustSection() {
         </p>
       </div>
 
-      {/* Logo marquee */}
-      <div className="logo-marquee">
-        <div className="logo-marquee-track">
-          {doubled.map((c, i) => (
-            <LogoPlaceholder key={i} abbr={c.abbr} name={c.name} />
-          ))}
-        </div>
-      </div>
+      <LogoTrack logos={clientLogos} variant="compact" />
     </section>
   );
 }
 
-/* Keep these as named re-exports for backward compat if used elsewhere */
+export function WorkLogoShowcase() {
+  return (
+    <div className="work-logo-showcase">
+      <LogoTrack logos={clientLogoRows[0]} variant="detailed" />
+      <LogoTrack logos={clientLogoRows[1]} variant="detailed" reverse />
+    </div>
+  );
+}
+
 export const ClientLogos = TrustSection;
 export const StatsRibbon = () => null;

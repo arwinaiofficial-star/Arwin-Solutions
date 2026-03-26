@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { recentProjects, legacyProjects, stats } from "@/lib/content";
+import { recentProjects, stats } from "@/lib/content";
 import {
   GovernmentIcon,
   EducationIcon,
@@ -12,18 +12,9 @@ import {
   SparklesIcon,
   ForgeIcon,
 } from "@/components/icons/SiteIcons";
-
-/* Flatten all legacy projects with sector metadata for the scrolling showcase */
-const allProjects = [
-  ...legacyProjects.government.projects.map((p) => ({ ...p, sector: "Government", color: "#2563eb" })),
-  ...legacyProjects.education.projects.map((p) => ({ ...p, sector: "Education", color: "#10b981" })),
-  ...legacyProjects.enterprise.projects.map((p) => ({ ...p, sector: "Enterprise", color: "#7c3aed" })),
-];
+import { WorkLogoShowcase } from "@/components/ClientLogos";
 
 export default function WorkPageClient() {
-  /* Double the array for seamless infinite scroll */
-  const doubled = [...allProjects, ...allProjects];
-
   return (
     <>
       {/* Hero */}
@@ -130,10 +121,10 @@ export default function WorkPageClient() {
       <section className="section" style={{ background: "var(--color-background-alt)" }}>
         <div className="container">
           <div className="mb-xl text-center">
-            <div className="eyebrow mb-sm">Legacy Portfolio</div>
-            <h2>{stats.yearsInBusiness} Years of Digital Excellence</h2>
+            <div className="eyebrow mb-sm">Client Portfolio</div>
+            <h2>{stats.yearsInBusiness} Years of Trusted Delivery</h2>
             <p className="text-muted max-w-screen-md mx-auto" style={{ fontSize: "1.0625rem" }}>
-              Foundation projects that established Arwin Forge as a trusted partner across India&apos;s critical sectors.
+              Institutions, public-sector bodies, schools, and enterprise brands that trusted Arwin Forge across long-term digital programs.
             </p>
           </div>
 
@@ -151,34 +142,7 @@ export default function WorkPageClient() {
             ))}
           </div>
         </div>
-
-        {/* Scrolling project cards — row 1 (left to right) */}
-        <div className="project-marquee">
-          <div className="project-marquee-track">
-            {doubled.map((p, i) => (
-              <div key={`a-${i}`} className="project-scroll-card">
-                <div className="project-scroll-stripe" style={{ background: p.color }} />
-                <span className="project-scroll-sector" style={{ color: p.color }}>{p.sector}</span>
-                <h4 className="project-scroll-name">{p.name}</h4>
-                <p className="project-scroll-desc">{p.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Scrolling project cards — row 2 (right to left, offset) */}
-        <div className="project-marquee">
-          <div className="project-marquee-track project-marquee-reverse">
-            {[...doubled].reverse().map((p, i) => (
-              <div key={`b-${i}`} className="project-scroll-card">
-                <div className="project-scroll-stripe" style={{ background: p.color }} />
-                <span className="project-scroll-sector" style={{ color: p.color }}>{p.sector}</span>
-                <h4 className="project-scroll-name">{p.name}</h4>
-                <p className="project-scroll-desc">{p.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+        <WorkLogoShowcase />
       </section>
 
       {/* CTA */}
