@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchBackend } from "@/lib/api/backend";
+import { applyAuthCookies, getAuthorizationHeader } from "@/lib/api/authCookies";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const token = request.headers.get("authorization");
 
     const response = await fetchBackend("/api/v1/auth/social", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(token ? { Authorization: token } : {}),
+        ...getAuthorizationHeader(request),
       },
       body: JSON.stringify(body),
     });
@@ -24,7 +24,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json(data);
+    const nextResponse = NextResponse.json(data);
+    if (data.tokens) {
+      applyAuthCookies(nextResponse, data.tokens);
+    }
+    return nextResponse;
   } catch {
     return NextResponse.json(
       { error: "Network error during social login" },

@@ -5,13 +5,10 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { fetchBackend } from "@/lib/api/backend";
+import { getAuthorizationHeader } from "@/lib/api/authCookies";
 
 function getAuthHeader(request: NextRequest): Record<string, string> {
-  const auth = request.headers.get("authorization");
-  if (auth) {
-    return { Authorization: auth };
-  }
-  return {};
+  return getAuthorizationHeader(request);
 }
 
 export async function GET(request: NextRequest) {

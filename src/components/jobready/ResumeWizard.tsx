@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useAuth, GeneratedCV } from "@/context/AuthContext";
 import { resumeApi } from "@/lib/api/client";
+import { trackEvent } from "@/lib/analytics";
 import { normalizeEducationRecord, normalizeEducationRecords } from "@/lib/resumeExtraction";
 import {
   CheckIcon,
@@ -25,7 +26,7 @@ import {
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-interface ExperienceEntry {
+export interface ExperienceEntry {
   id: string;
   title: string;
   company: string;
@@ -36,7 +37,7 @@ interface ExperienceEntry {
   highlights: string[];
 }
 
-interface EducationEntry {
+export interface EducationEntry {
   id: string;
   degree: string;
   institution: string;
@@ -45,7 +46,7 @@ interface EducationEntry {
   gpa: string;
 }
 
-interface ResumeData {
+export interface ResumeData {
   fullName: string;
   email: string;
   phone: string;
@@ -60,13 +61,15 @@ interface ResumeData {
 
 const STEP_LABELS = ["Start", "Personal", "Experience", "Education", "Skills", "Preview"];
 
-type ResumeTheme = "classic" | "modern" | "minimal";
+export type ResumeTheme = "classic" | "modern" | "minimal";
 
 export interface ResumeWizardHandle {
   triggerUpload: () => void;
   openStoryComposer: () => void;
   setStep: (s: number) => void;
   setField: (field: string, value: unknown) => void;
+  replaceData: (next: ResumeData) => void;
+  setTheme: (nextTheme: ResumeTheme) => void;
   enhanceExperience: () => void;
   generateSummary: () => void;
   runATS: () => void;
@@ -81,13 +84,26 @@ interface ResumeWizardProps {
   onStepChange?: (step: number) => void;
   onDataChange?: (data: ResumeData) => void;
   onATSComplete?: (result: { score: number | null; feedback: string[] }) => void;
+  onSaveComplete?: (result: { status: "draft" | "final"; data: ResumeData; cv: GeneratedCV }) => void;
+  initialTheme?: ResumeTheme;
+  onThemeChange?: (theme: ResumeTheme) => void;
   onReset?: () => void;
   handleRef?: (handle: ResumeWizardHandle) => void;
 }
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 
-export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataChange, onATSComplete, onReset, handleRef }: ResumeWizardProps) {
+export default function ResumeWizard({
+  onNavigateToSearch,
+  onStepChange,
+  onDataChange,
+  onATSComplete,
+  onSaveComplete,
+  initialTheme = "classic",
+  onThemeChange,
+  onReset,
+  handleRef,
+}: ResumeWizardProps) {
   const { user, saveGeneratedCV, updateProfile, clearGeneratedCV } = useAuth();
   const [step, setStepRaw] = useState(0);
   const [data, setData] = useState<ResumeData>(createInitialResumeData(user));
@@ -104,7 +120,7 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
   const cvLoadedRef = useRef(false);
 
   // Preview state
-  const [theme, setTheme] = useState<ResumeTheme>("classic");
+  const [theme, setTheme] = useState<ResumeTheme>(initialTheme);
   const [atsScore, setAtsScore] = useState<number | null>(null);
   const [atsFeedback, setAtsFeedback] = useState<string[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -120,6 +136,14 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
   useEffect(() => {
     onDataChange?.(data);
   }, [data, onDataChange]);
+
+  useEffect(() => {
+    setTheme(initialTheme);
+  }, [initialTheme]);
+
+  useEffect(() => {
+    onThemeChange?.(theme);
+  }, [onThemeChange, theme]);
 
   // ── LIVE PREVIEW: Derive CV from data in real-time (no race condition) ──
   const liveCV = useMemo<GeneratedCV>(() => buildCVFromData(data), [data]);
@@ -196,6 +220,10 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
 
       return { ...prev, [field]: value };
     });
+  }, []);
+
+  const replaceData = useCallback((next: ResumeData) => {
+    setData(ensureEditableSections(next));
   }, []);
 
   const resetLocalState = useCallback(() => {
@@ -446,6 +474,10 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
       });
       if (result.data?.reply) {
         updateField("summary", result.data.reply);
+        trackEvent("jobready_resume_summary_generated", {
+          experienceCount: data.experiences.length,
+          skillCount: data.skills.length,
+        });
       }
     } catch { /* silent */ }
     setIsEnhancing(null);
@@ -474,6 +506,14 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
         phone: nextData.phone,
         location: nextData.location,
         skills: nextData.skills,
+      });
+      onSaveComplete?.({ status, data: nextData, cv });
+      trackEvent("jobready_resume_saved", {
+        status,
+        theme,
+        experienceCount: nextData.experiences.length,
+        educationCount: nextData.education.length,
+        skillCount: nextData.skills.length,
       });
       setSaveError(null);
       setSaveStatus("saved");
@@ -507,6 +547,7 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
         } else {
           setSaveError(null);
           saveGeneratedCV(cv, { markGenerated: false });
+          onSaveComplete?.({ status: "draft", data, cv });
           setSaveStatus("saved");
           setTimeout(() => setSaveStatus(prev => prev === "saved" ? "idle" : prev), 2000);
         }
@@ -550,6 +591,10 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
           setAtsScore(parsed.score || null);
           setAtsFeedback(parsed.feedback || []);
           onATSComplete?.({ score: parsed.score || null, feedback: parsed.feedback || [] });
+          trackEvent("jobready_resume_ats_checked", {
+            score: parsed.score || null,
+            feedbackCount: Array.isArray(parsed.feedback) ? parsed.feedback.length : 0,
+          });
         } catch {
           const match = result.data.reply.match(/(\d{1,3})/);
           const score = match ? parseInt(match[1]) : 70;
@@ -557,6 +602,10 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
           setAtsScore(score);
           setAtsFeedback(feedback);
           onATSComplete?.({ score, feedback });
+          trackEvent("jobready_resume_ats_checked", {
+            score,
+            feedbackCount: feedback.length,
+          });
         }
       }
     } catch { /* silent */ }
@@ -569,6 +618,7 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
     const html = buildResumeHTML(liveCV, theme);
     const w = window.open("", "_blank");
     if (!w) return;
+    trackEvent("jobready_resume_pdf_requested", { theme });
     w.document.write(html);
     w.document.close();
     w.onload = () => w.print();
@@ -585,6 +635,8 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
       },
       setStep,
       setField,
+      replaceData,
+      setTheme,
       enhanceExperience: () => {
         if (data.experiences.length > 0) enhanceExperience(data.experiences[0].id);
       },
@@ -596,7 +648,7 @@ export default function ResumeWizard({ onNavigateToSearch, onStepChange, onDataC
       getData: () => data,
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, data, theme, resetResume]);
+  }, [step, data, theme, replaceData, resetResume, setField, setStep]);
 
   // ─── Validation ─────────────────────────────────────────────────────────
 

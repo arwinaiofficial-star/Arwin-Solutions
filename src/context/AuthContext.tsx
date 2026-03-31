@@ -133,17 +133,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // On mount: validate token and load user
+  // On mount: validate current session cookie and load user
   useEffect(() => {
     const init = async () => {
       if (typeof window === "undefined") {
-        setIsLoading(false);
-        return;
-      }
-
-      const token = localStorage.getItem("jobready_access_token");
-      if (!token) {
-        setUser(null);
         setIsLoading(false);
         return;
       }
@@ -152,19 +145,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (result.data) {
         await setUserWithCV(mapUserDataToProfile(result.data));
       } else {
-        // Token expired — try refresh
         const refreshResult = await authApi.refreshToken();
         if (refreshResult.data) {
           const meResult = await authApi.getMe();
           if (meResult.data) {
             await setUserWithCV(mapUserDataToProfile(meResult.data));
           } else {
-            // Refresh succeeded but /me still failed — force clean state
             authApi.logout();
             setUser(null);
           }
         } else {
-          // Refresh failed — force clean state so login works fresh
           authApi.logout();
           setUser(null);
         }
@@ -196,12 +186,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const result = await authApi.register(email, password, name);
       if (result.error) return { success: false, error: result.error };
       if (result.data) {
-        setUser(mapUserDataToProfile(result.data.user));
+        await setUserWithCV(mapUserDataToProfile(result.data.user));
         return { success: true };
       }
       return { success: false, error: "Unknown error" };
     },
-    []
+    [setUserWithCV]
   );
 
   const logout = useCallback(() => {

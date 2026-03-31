@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { fetchBackend } from "@/lib/api/backend";
+import { applyAuthCookies } from "@/lib/api/authCookies";
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,7 +26,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json(data, { status: 201 });
+    const nextResponse = NextResponse.json(data, { status: 201 });
+    if (data.tokens) {
+      applyAuthCookies(nextResponse, data.tokens);
+    }
+    return nextResponse;
   } catch {
     return NextResponse.json(
       { error: "Unable to connect to backend service" },

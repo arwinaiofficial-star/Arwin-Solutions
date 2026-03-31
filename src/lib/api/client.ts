@@ -2,10 +2,10 @@
  * API client for communicating with the backend.
  * All auth API calls go through Next.js BFF routes which proxy to FastAPI.
  *
- * Key reliability features:
- * - Automatic token refresh on 401 (transparent retry)
- * - Centralized auth header management
+ * Key platform behaviors:
+ * - Automatic cookie-based session refresh on 401
  * - Consistent error handling across all endpoints
+ * - Local persistence only for non-sensitive resume drafts
  */
 
 const API_BASE = "/api/auth";
@@ -15,58 +15,7 @@ interface ApiResponse<T = unknown> {
   error?: string;
 }
 
-// ─── Backend wake-up retry (client-side, no Vercel timeout limit) ────────────
-
-const WAKE_MAX_RETRIES = 3;
-const WAKE_RETRY_DELAY_MS = 4_000;
-
-async function shouldRetry503(response: Response): Promise<boolean> {
-  if (response.status !== 503) return false;
-
-  try {
-    const contentType = response.headers.get("content-type") || "";
-    if (!contentType.includes("application/json")) {
-      return true;
-    }
-
-    const body = await response.clone().json() as { error?: string; detail?: string };
-    const message = body.error || body.detail || "";
-    if (message.includes("Configured backend does not support")) {
-      return false;
-    }
-  } catch {
-    // Fall through to retry for transient/non-JSON 503s.
-  }
-
-  return true;
-}
-
-/**
- * Fetch with automatic retry on 503 (backend sleeping / cold start).
- * Runs in the browser — no serverless timeout constraint.
- */
-async function fetchWithWakeRetry(
-  url: string,
-  options: RequestInit,
-  retries = WAKE_MAX_RETRIES
-): Promise<Response> {
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    const response = await fetch(url, options);
-
-    // 503 = BFF couldn't reach backend (cold start). Retry after delay.
-    if (attempt < retries && await shouldRetry503(response)) {
-      await new Promise((r) => setTimeout(r, WAKE_RETRY_DELAY_MS));
-      continue;
-    }
-
-    return response;
-  }
-
-  // Should never reach here
-  return fetch(url, options);
-}
-
-// ─── Token management ────────────────────────────────────────────────────────
+// ─── Session helpers ────────────────────────────────────────────────────────
 
 export interface AuthTokens {
   access_token: string;
@@ -75,50 +24,26 @@ export interface AuthTokens {
   expires_in: number;
 }
 
-function storeTokens(tokens: AuthTokens) {
-  localStorage.setItem("jobready_access_token", tokens.access_token);
-  localStorage.setItem("jobready_refresh_token", tokens.refresh_token);
-}
+const USER_SCOPE_KEY = "jobready_user_scope";
 
-function clearTokens() {
+function clearLegacyTokenStorage() {
+  if (typeof window === "undefined") return;
   localStorage.removeItem("jobready_access_token");
   localStorage.removeItem("jobready_refresh_token");
 }
 
-function getAccessToken(): string | null {
-  return typeof window !== "undefined"
-    ? localStorage.getItem("jobready_access_token")
-    : null;
-}
-
-function getRefreshToken(): string | null {
-  return typeof window !== "undefined"
-    ? localStorage.getItem("jobready_refresh_token")
-    : null;
-}
-
-function authHeaders(): Record<string, string> {
-  const token = getAccessToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-function parseTokenPayload(token: string | null): Record<string, unknown> | null {
-  if (!token) return null;
-  const parts = token.split(".");
-  if (parts.length !== 3) return null;
-
-  try {
-    return JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))) as Record<string, unknown>;
-  } catch {
-    return null;
+function setCurrentUserScope(userId: string | null) {
+  if (typeof window === "undefined") return;
+  if (userId) {
+    localStorage.setItem(USER_SCOPE_KEY, userId);
+  } else {
+    localStorage.removeItem(USER_SCOPE_KEY);
   }
 }
 
 function currentUserStorageScope(): string {
   if (typeof window === "undefined") return "server";
-  const payload = parseTokenPayload(getAccessToken());
-  const sub = typeof payload?.sub === "string" ? payload.sub : "anonymous";
-  return sub;
+  return localStorage.getItem(USER_SCOPE_KEY) || "anonymous";
 }
 
 function scopedStorageKey(base: string): string {
@@ -147,15 +72,6 @@ function makeLocalId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function shouldUseLocalFallback(status: number, error?: string): boolean {
-  if (status === 503 || status === 405) return true;
-  return Boolean(error && (
-    error.includes("Configured backend does not support") ||
-    error.includes("Unable to connect to backend") ||
-    error.includes("Network error")
-  ));
-}
-
 type LocalResumeRecord = {
   id: string;
   data: Record<string, unknown>;
@@ -166,8 +82,6 @@ type LocalResumeRecord = {
 };
 
 const LOCAL_RESUME_KEY = "jobready_resume_records";
-const LOCAL_APPLICATIONS_KEY = "jobready_application_records";
-const LOCAL_CHAT_SESSION_KEY = "jobready_chat_session";
 
 function readLocalResumeRecords(): LocalResumeRecord[] {
   return readScopedStorage<LocalResumeRecord[]>(LOCAL_RESUME_KEY, []);
@@ -246,28 +160,16 @@ async function tryRefreshToken(): Promise<boolean> {
   if (_refreshPromise) return _refreshPromise;
 
   _refreshPromise = (async () => {
-    const refreshToken = getRefreshToken();
-    if (!refreshToken) return false;
-
     try {
       const response = await fetch(`${API_BASE}/refresh`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token: refreshToken }),
       });
 
       if (!response.ok) {
-        clearTokens();
         return false;
       }
 
-      const body = await response.json();
-      if (body.access_token && body.refresh_token) {
-        storeTokens(body as AuthTokens);
-        return true;
-      }
-      clearTokens();
-      return false;
+      return true;
     } catch {
       return false;
     } finally {
@@ -288,10 +190,9 @@ async function request<T>(
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       ...((options.headers as Record<string, string>) || {}),
-      ...authHeaders(),
     };
 
-    const response = await fetchWithWakeRetry(`${API_BASE}${endpoint}`, {
+    const response = await fetch(`${API_BASE}${endpoint}`, {
       ...options,
       headers,
     });
@@ -308,9 +209,8 @@ async function request<T>(
         const retryHeaders: Record<string, string> = {
           "Content-Type": "application/json",
           ...((options.headers as Record<string, string>) || {}),
-          ...authHeaders(), // fresh token
         };
-        const retryResponse = await fetchWithWakeRetry(`${API_BASE}${endpoint}`, {
+        const retryResponse = await fetch(`${API_BASE}${endpoint}`, {
           ...options,
           headers: retryHeaders,
         });
@@ -350,10 +250,9 @@ async function authenticatedFetch(
 ): Promise<Response> {
   const headers: Record<string, string> = {
     ...((options.headers as Record<string, string>) || {}),
-    ...authHeaders(),
   };
 
-  let response = await fetchWithWakeRetry(url, { ...options, headers });
+  let response = await fetch(url, { ...options, headers });
 
   // Auto-refresh on 401
   if (response.status === 401) {
@@ -361,9 +260,8 @@ async function authenticatedFetch(
     if (refreshed) {
       const retryHeaders: Record<string, string> = {
         ...((options.headers as Record<string, string>) || {}),
-        ...authHeaders(), // fresh token
       };
-      response = await fetchWithWakeRetry(url, { ...options, headers: retryHeaders });
+      response = await fetch(url, { ...options, headers: retryHeaders });
     }
   }
 
@@ -403,7 +301,8 @@ export const authApi = {
       body: JSON.stringify({ email, password, name }),
     });
     if (result.data) {
-      storeTokens(result.data.tokens);
+      clearLegacyTokenStorage();
+      setCurrentUserScope(result.data.user.id);
     }
     return result;
   },
@@ -417,23 +316,16 @@ export const authApi = {
       body: JSON.stringify({ email, password }),
     });
     if (result.data) {
-      storeTokens(result.data.tokens);
+      clearLegacyTokenStorage();
+      setCurrentUserScope(result.data.user.id);
     }
     return result;
   },
 
   async refreshToken(): Promise<ApiResponse<AuthTokens>> {
-    const refreshToken = getRefreshToken();
-    if (!refreshToken) {
-      return { error: "No refresh token" };
-    }
     const result = await request<AuthTokens>("/refresh", {
       method: "POST",
-      body: JSON.stringify({ refresh_token: refreshToken }),
     });
-    if (result.data) {
-      storeTokens(result.data);
-    }
     return result;
   },
 
@@ -466,11 +358,13 @@ export const authApi = {
   },
 
   logout() {
-    clearTokens();
+    clearLegacyTokenStorage();
+    setCurrentUserScope(null);
+    void fetch("/api/auth/logout", { method: "POST", keepalive: true });
   },
 
   isAuthenticated(): boolean {
-    return !!getAccessToken();
+    return currentUserStorageScope() !== "anonymous";
   },
 };
 
@@ -514,7 +408,7 @@ export const resumeApi = {
 
       const body = await response.json();
       if (!response.ok) {
-        if (shouldUseLocalFallback(response.status, body.error || body.detail)) {
+        if (status === "draft" && response.status >= 500) {
           return { data: saveResumeLocally(data, status) };
         }
         return { error: body.detail || body.error || "Resume save failed" };
@@ -531,7 +425,10 @@ export const resumeApi = {
       }
       return { data: body };
     } catch {
-      return { data: saveResumeLocally(data, status) };
+      if (status === "draft") {
+        return { data: saveResumeLocally(data, status) };
+      }
+      return { error: "Unable to save your resume right now." };
     }
   },
 
@@ -548,19 +445,18 @@ export const resumeApi = {
 
       const body = await response.json();
       if (!response.ok) {
-        if (shouldUseLocalFallback(response.status, body.error || body.detail)) {
+        if (response.status === 404) {
           const localResume = getLatestLocalResume();
-          if (!localResume) {
-            return { error: "No resume found" };
+          if (localResume?.status === "draft") {
+            return {
+              data: {
+                id: localResume.id,
+                data: localResume.data,
+                version: localResume.version,
+                status: localResume.status,
+              },
+            };
           }
-          return {
-            data: {
-              id: localResume.id,
-              data: localResume.data,
-              version: localResume.version,
-              status: localResume.status,
-            },
-          };
         }
         return {
           error: body.detail || body.error || "Failed to fetch resume",
@@ -579,17 +475,17 @@ export const resumeApi = {
       return { data: body };
     } catch {
       const localResume = getLatestLocalResume();
-      if (!localResume) {
-        return { error: "Network error. Please check your connection." };
+      if (localResume?.status === "draft") {
+        return {
+          data: {
+            id: localResume.id,
+            data: localResume.data,
+            version: localResume.version,
+            status: localResume.status,
+          },
+        };
       }
-      return {
-        data: {
-          id: localResume.id,
-          data: localResume.data,
-          version: localResume.version,
-          status: localResume.status,
-        },
-      };
+      return { error: "Unable to load your resume right now." };
     }
   },
 
@@ -606,10 +502,7 @@ export const resumeApi = {
 
       const body = await response.json();
       if (!response.ok) {
-        if (shouldUseLocalFallback(response.status, body.error || body.detail)) {
-          clearLocalResumeRecords();
-          return { data: undefined };
-        }
+        clearLocalResumeRecords();
         return { error: body.detail || body.error || "Failed to reset resume" };
       }
 
@@ -617,7 +510,7 @@ export const resumeApi = {
       return { data: undefined };
     } catch {
       clearLocalResumeRecords();
-      return { data: undefined };
+      return { error: "Unable to reset your resume right now." };
     }
   },
 
@@ -669,11 +562,11 @@ export const chatSessionApi = {
       const response = await authenticatedFetch("/api/chat/session", {});
       const body = await response.json();
       if (!response.ok) {
-        return { data: { session: readLocalChatSession() } };
+        return { error: body.error || body.detail || "Failed to load session" };
       }
       return { data: body };
     } catch {
-      return { data: { session: readLocalChatSession() } };
+      return { error: "Unable to load session right now." };
     }
   },
 
@@ -691,36 +584,11 @@ export const chatSessionApi = {
       });
       const body = await response.json();
       if (!response.ok) {
-        const now = new Date().toISOString();
-        const session = {
-          id: data.session_id || makeLocalId("session"),
-          messages: data.messages,
-          agent_state: data.agent_state,
-          collected_data: data.collected_data,
-          last_active_at: now,
-        };
-        writeLocalChatSession(session);
-        return { data: { id: session.id } };
+        return { error: body.error || body.detail || "Failed to save session" };
       }
-      writeLocalChatSession({
-        id: (body.id as string) || data.session_id || makeLocalId("session"),
-        messages: data.messages,
-        agent_state: data.agent_state,
-        collected_data: data.collected_data,
-        last_active_at: (body.last_active_at as string) || new Date().toISOString(),
-      });
       return { data: body };
     } catch {
-      const now = new Date().toISOString();
-      const session = {
-        id: data.session_id || makeLocalId("session"),
-        messages: data.messages,
-        agent_state: data.agent_state,
-        collected_data: data.collected_data,
-        last_active_at: now,
-      };
-      writeLocalChatSession(session);
-      return { data: { id: session.id } };
+      return { error: "Unable to save session right now." };
     }
   },
 };
@@ -747,7 +615,8 @@ export const socialAuthApi = {
         return { error: body.error || "Social login failed" };
       }
       if (body.tokens) {
-        storeTokens(body.tokens);
+        clearLegacyTokenStorage();
+        setCurrentUserScope(body.user?.id || null);
       }
       return { data: body };
     } catch {
@@ -775,89 +644,6 @@ export interface JobApplicationData {
   updated_at: string;
 }
 
-function readLocalApplications(): JobApplicationData[] {
-  return readScopedStorage<JobApplicationData[]>(LOCAL_APPLICATIONS_KEY, []);
-}
-
-function writeLocalApplications(applications: JobApplicationData[]) {
-  writeScopedStorage(LOCAL_APPLICATIONS_KEY, applications);
-}
-
-function createLocalApplication(data: {
-  job_title: string;
-  company: string;
-  location?: string;
-  job_url?: string;
-  salary?: string;
-  source?: string;
-  status?: string;
-  notes?: string;
-  description?: string;
-}): JobApplicationData {
-  const now = new Date().toISOString();
-  const application: JobApplicationData = {
-    id: makeLocalId("app"),
-    user_id: currentUserStorageScope(),
-    job_title: data.job_title,
-    company: data.company,
-    location: data.location || null,
-    job_url: data.job_url || null,
-    salary: data.salary || null,
-    source: data.source || null,
-    status: data.status || "saved",
-    resume_id: null,
-    notes: data.notes || null,
-    description: data.description || null,
-    applied_at: now,
-    updated_at: now,
-  };
-  const applications = readLocalApplications();
-  writeLocalApplications([application, ...applications]);
-  return application;
-}
-
-function updateLocalApplication(
-  id: string,
-  data: { status?: string; notes?: string; job_url?: string; salary?: string }
-): JobApplicationData | null {
-  const now = new Date().toISOString();
-  let updatedApp: JobApplicationData | null = null;
-  const applications = readLocalApplications().map((application) => {
-    if (application.id !== id) return application;
-    updatedApp = {
-      ...application,
-      ...data,
-      updated_at: now,
-    };
-    return updatedApp;
-  });
-  writeLocalApplications(applications);
-  return updatedApp;
-}
-
-function removeLocalApplication(id: string): boolean {
-  const applications = readLocalApplications();
-  const nextApplications = applications.filter((application) => application.id !== id);
-  writeLocalApplications(nextApplications);
-  return nextApplications.length !== applications.length;
-}
-
-type LocalChatSession = {
-  id: string;
-  messages: unknown[];
-  agent_state: Record<string, unknown>;
-  collected_data: Record<string, unknown>;
-  last_active_at: string;
-};
-
-function readLocalChatSession(): LocalChatSession | null {
-  return readScopedStorage<LocalChatSession | null>(LOCAL_CHAT_SESSION_KEY, null);
-}
-
-function writeLocalChatSession(session: LocalChatSession | null) {
-  writeScopedStorage(LOCAL_CHAT_SESSION_KEY, session);
-}
-
 export const applicationsApi = {
   async list(status?: string): Promise<ApiResponse<JobApplicationData[]>> {
     try {
@@ -865,23 +651,11 @@ export const applicationsApi = {
       const response = await authenticatedFetch(`/api/applications${qs}`, {});
       const body = await response.json();
       if (!response.ok) {
-        if (shouldUseLocalFallback(response.status, body.error || body.detail)) {
-          const localApplications = readLocalApplications()
-            .filter((application) => !status || application.status === status)
-            .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
-          return { data: localApplications };
-        }
-        return { error: body.error || "Failed to load applications" };
-      }
-      if (Array.isArray(body)) {
-        writeLocalApplications(body as JobApplicationData[]);
+        return { error: body.error || body.detail || "Failed to load applications" };
       }
       return { data: body };
     } catch {
-      const localApplications = readLocalApplications()
-        .filter((application) => !status || application.status === status)
-        .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
-      return { data: localApplications };
+      return { error: "Unable to load applications right now." };
     }
   },
 
@@ -904,21 +678,11 @@ export const applicationsApi = {
       });
       const body = await response.json();
       if (!response.ok) {
-        if (shouldUseLocalFallback(response.status, body.error || body.detail)) {
-          return { data: createLocalApplication(data) };
-        }
-        return { error: body.error || "Failed to save application" };
-      }
-      if (body?.id) {
-        const applications = readLocalApplications();
-        writeLocalApplications([
-          body as JobApplicationData,
-          ...applications.filter((application) => application.id !== (body as JobApplicationData).id),
-        ]);
+        return { error: body.error || body.detail || "Failed to save application" };
       }
       return { data: body };
     } catch {
-      return { data: createLocalApplication(data) };
+      return { error: "Unable to save application right now." };
     }
   },
 
@@ -934,22 +698,11 @@ export const applicationsApi = {
       });
       const body = await response.json();
       if (!response.ok) {
-        if (shouldUseLocalFallback(response.status, body.error || body.detail)) {
-          const updated = updateLocalApplication(id, data);
-          return updated ? { data: updated } : { error: "Application not found" };
-        }
-        return { error: body.error || "Failed to update application" };
-      }
-      if (body?.id) {
-        const applications = readLocalApplications().map((application) =>
-          application.id === (body as JobApplicationData).id ? body as JobApplicationData : application
-        );
-        writeLocalApplications(applications);
+        return { error: body.error || body.detail || "Failed to update application" };
       }
       return { data: body };
     } catch {
-      const updated = updateLocalApplication(id, data);
-      return updated ? { data: updated } : { error: "Network error" };
+      return { error: "Unable to update application right now." };
     }
   },
 
@@ -959,18 +712,12 @@ export const applicationsApi = {
         method: "DELETE",
       });
       if (response.status === 204 || response.ok) {
-        removeLocalApplication(id);
         return { data: undefined };
       }
       const body = await response.json();
-      if (shouldUseLocalFallback(response.status, body.error || body.detail)) {
-        removeLocalApplication(id);
-        return { data: undefined };
-      }
-      return { error: body.error || "Failed to delete application" };
+      return { error: body.error || body.detail || "Failed to delete application" };
     } catch {
-      removeLocalApplication(id);
-      return { data: undefined };
+      return { error: "Unable to delete application right now." };
     }
   },
 };

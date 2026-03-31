@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchBackend } from "@/lib/api/backend";
+import { getAuthorizationHeader } from "@/lib/api/authCookies";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Try backend LLM extraction
-    const token = request.headers.get("authorization");
+    const token = getAuthorizationHeader(request).Authorization;
 
     try {
       const extractResponse = await fetchBackend("/api/v1/resume/chat", {

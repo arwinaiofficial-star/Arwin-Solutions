@@ -13,6 +13,11 @@ from app.api.resume import router as resume_router
 from app.api.social_auth import router as social_auth_router
 from app.api.chat_session import router as chat_session_router
 from app.api.job_applications import router as job_applications_router
+from app.api.entitlements import router as entitlements_router
+from app.api.interviews import router as interviews_router
+from app.api.salary import router as salary_router
+from app.api.pathways import router as pathways_router
+from app.api.events import router as events_router
 
 
 @asynccontextmanager
@@ -48,6 +53,11 @@ app.include_router(social_auth_router, prefix=settings.API_PREFIX)
 app.include_router(resume_router, prefix=settings.API_PREFIX)
 app.include_router(chat_session_router, prefix=settings.API_PREFIX)
 app.include_router(job_applications_router, prefix=settings.API_PREFIX)
+app.include_router(entitlements_router, prefix=settings.API_PREFIX)
+app.include_router(interviews_router, prefix=settings.API_PREFIX)
+app.include_router(salary_router, prefix=settings.API_PREFIX)
+app.include_router(pathways_router, prefix=settings.API_PREFIX)
+app.include_router(events_router, prefix=settings.API_PREFIX)
 
 
 @app.get("/")

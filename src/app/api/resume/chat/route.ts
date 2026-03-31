@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { fetchBackend } from "@/lib/api/backend";
+import { getAuthorizationHeader } from "@/lib/api/authCookies";
 
 function extractUserId(authHeader: string): string | null {
   const token = authHeader.replace(/^Bearer\s+/i, "").trim();
@@ -55,7 +56,7 @@ function normalizeChatResponse(body: unknown) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json() as Record<string, unknown>;
-    const authHeader = request.headers.get("Authorization");
+    const authHeader = getAuthorizationHeader(request).Authorization;
 
     if (!authHeader) {
       return NextResponse.json(

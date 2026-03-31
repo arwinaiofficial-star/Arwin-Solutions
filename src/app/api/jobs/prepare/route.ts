@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import logger from "@/lib/logger";
 import { fetchBackend } from "@/lib/api/backend";
 import { buildSafeCoverLetterSnippet, computeResumeJobMatch, ResumeMatchData } from "@/lib/jobMatch";
+import { getAuthorizationHeader } from "@/lib/api/authCookies";
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const token = request.headers.get("authorization");
+    const token = getAuthorizationHeader(request).Authorization;
 
     // Use the resume chat endpoint with a special action
     const response = await fetchBackend("/api/v1/resume/chat", {

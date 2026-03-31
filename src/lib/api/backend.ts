@@ -2,9 +2,7 @@
  * Shared backend fetch helper for BFF API routes.
  *
  * Handles:
- * - Render free-tier cold starts (up to 60s spin-up) with retry
  * - Centralized FASTAPI_URL config
- * - Consistent error responses
  * - Timeout management
  */
 
@@ -22,35 +20,7 @@ if (!process.env.FASTAPI_URL && process.env.NODE_ENV === "production") {
   );
 }
 
-/** Timeout per attempt (Vercel Hobby has 10s function limit — keep under that) */
 const ATTEMPT_TIMEOUT_MS = 8_000;
-
-/** Max retries — keep total time under 10s (8s attempt + no delay = ~8s for 1 try) */
-const MAX_RETRIES = 0;
-
-/** Delay between retries */
-const RETRY_DELAY_MS = 1_000;
-
-function isConnectionError(err: unknown): boolean {
-  if (err instanceof TypeError && String(err.message).includes("fetch failed")) return true;
-  if (err instanceof Error) {
-    const msg = err.message.toLowerCase();
-    return (
-      msg.includes("econnrefused") ||
-      msg.includes("econnreset") ||
-      msg.includes("etimedout") ||
-      msg.includes("socket hang up") ||
-      msg.includes("abort") ||
-      msg.includes("network") ||
-      msg.includes("fetch failed")
-    );
-  }
-  return false;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 /**
  * Fetch from the FastAPI backend with cold-start retry.
@@ -65,35 +35,17 @@ export async function fetchBackend(
   init: RequestInit = {}
 ): Promise<Response> {
   const url = `${FASTAPI_URL}${path}`;
-  let lastError: unknown;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ATTEMPT_TIMEOUT_MS);
 
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), ATTEMPT_TIMEOUT_MS);
-
-      const response = await fetch(url, {
-        ...init,
-        signal: controller.signal,
-      });
-
-      clearTimeout(timer);
-      return response;
-    } catch (err) {
-      lastError = err;
-
-      // Only retry on connection errors (cold start), not on other failures
-      if (attempt < MAX_RETRIES && isConnectionError(err)) {
-        await sleep(RETRY_DELAY_MS);
-        continue;
-      }
-
-      throw err;
-    }
+  try {
+    return await fetch(url, {
+      ...init,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
   }
-
-  // Should never reach here, but just in case
-  throw lastError;
 }
 
 /**
@@ -101,43 +53,4 @@ export async function fetchBackend(
  */
 export function getBackendUrl(): string {
   return FASTAPI_URL;
-}
-
-type BackendCapabilities = {
-  supportsResumeSave: boolean;
-  supportsResumeLatest: boolean;
-  supportsApplications: boolean;
-};
-
-let backendCapabilitiesPromise: Promise<BackendCapabilities> | null = null;
-
-export async function getBackendCapabilities(): Promise<BackendCapabilities> {
-  if (!backendCapabilitiesPromise) {
-    backendCapabilitiesPromise = (async () => {
-      try {
-        const response = await fetch(`${FASTAPI_URL}/openapi.json`, {
-          signal: AbortSignal.timeout(ATTEMPT_TIMEOUT_MS),
-        });
-        if (!response.ok) {
-          throw new Error(`OpenAPI fetch failed with ${response.status}`);
-        }
-        const body = await response.json() as { paths?: Record<string, unknown> };
-        const paths = body.paths || {};
-
-        return {
-          supportsResumeSave: "/api/v1/resume/save" in paths,
-          supportsResumeLatest: "/api/v1/resume/latest" in paths,
-          supportsApplications: "/api/v1/applications" in paths,
-        };
-      } catch {
-        return {
-          supportsResumeSave: false,
-          supportsResumeLatest: false,
-          supportsApplications: false,
-        };
-      }
-    })();
-  }
-
-  return backendCapabilitiesPromise;
 }

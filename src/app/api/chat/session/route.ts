@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchBackend } from "@/lib/api/backend";
+import { getAuthorizationHeader } from "@/lib/api/authCookies";
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.headers.get("authorization");
+    const token = getAuthorizationHeader(request).Authorization;
     if (!token) {
       return NextResponse.json({ session: null });
     }
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const token = request.headers.get("authorization");
+    const token = getAuthorizationHeader(request).Authorization;
 
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

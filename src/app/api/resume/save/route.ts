@@ -4,27 +4,18 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { fetchBackend, getBackendCapabilities } from "@/lib/api/backend";
+import { fetchBackend } from "@/lib/api/backend";
+import { getAuthorizationHeader } from "@/lib/api/authCookies";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const authHeader = request.headers.get("Authorization");
+    const authHeader = getAuthorizationHeader(request).Authorization;
 
     if (!authHeader) {
       return NextResponse.json(
         { error: "Authentication required" },
         { status: 401 }
-      );
-    }
-
-    const capabilities = await getBackendCapabilities();
-    if (!capabilities.supportsResumeSave) {
-      return NextResponse.json(
-        {
-          error: "Configured backend does not support resume persistence. Deploy the current JobReady backend or point FASTAPI_URL to a compatible API.",
-        },
-        { status: 503 }
       );
     }
 
@@ -49,7 +40,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(data, { status: 201 });
   } catch {
     return NextResponse.json(
-      { error: "Unable to connect to backend service" },
+      { error: "Resume service is unavailable right now" },
       { status: 503 }
     );
   }

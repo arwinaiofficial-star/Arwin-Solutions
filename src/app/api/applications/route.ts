@@ -6,11 +6,11 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { fetchBackend, getBackendCapabilities } from "@/lib/api/backend";
+import { fetchBackend } from "@/lib/api/backend";
+import { getAuthorizationHeader } from "@/lib/api/authCookies";
 
 function getAuthHeader(request: NextRequest): Record<string, string> {
-  const auth = request.headers.get("authorization");
-  return auth ? { Authorization: auth } : {};
+  return getAuthorizationHeader(request);
 }
 
 export async function GET(request: NextRequest) {
@@ -18,16 +18,6 @@ export async function GET(request: NextRequest) {
     const auth = getAuthHeader(request);
     if (!auth.Authorization) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    }
-
-    const capabilities = await getBackendCapabilities();
-    if (!capabilities.supportsApplications) {
-      return NextResponse.json(
-        {
-          error: "Configured backend does not support application tracking. Deploy the current JobReady backend or point FASTAPI_URL to a compatible API.",
-        },
-        { status: 503 }
-      );
     }
 
     const { searchParams } = new URL(request.url);
@@ -47,7 +37,7 @@ export async function GET(request: NextRequest) {
     }
     return NextResponse.json(data);
   } catch {
-    return NextResponse.json({ error: "Unable to connect to backend" }, { status: 503 });
+    return NextResponse.json({ error: "Application tracking is unavailable right now" }, { status: 503 });
   }
 }
 
@@ -56,16 +46,6 @@ export async function POST(request: NextRequest) {
     const auth = getAuthHeader(request);
     if (!auth.Authorization) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    }
-
-    const capabilities = await getBackendCapabilities();
-    if (!capabilities.supportsApplications) {
-      return NextResponse.json(
-        {
-          error: "Configured backend does not support application tracking. Deploy the current JobReady backend or point FASTAPI_URL to a compatible API.",
-        },
-        { status: 503 }
-      );
     }
 
     const body = await request.json();
@@ -84,6 +64,6 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json(data, { status: 201 });
   } catch {
-    return NextResponse.json({ error: "Unable to connect to backend" }, { status: 503 });
+    return NextResponse.json({ error: "Application tracking is unavailable right now" }, { status: 503 });
   }
 }
