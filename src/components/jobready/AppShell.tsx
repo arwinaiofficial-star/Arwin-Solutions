@@ -7,9 +7,11 @@ import { useAuth } from "@/context/AuthContext";
 import { trackEvent } from "@/lib/analytics";
 import {
   BriefcaseIcon,
+  ClipboardIcon,
   DocumentIcon,
   HomeIcon,
   LogoutIcon,
+  SearchIcon,
   SettingsIcon,
 } from "@/components/icons/Icons";
 import "@/app/jobready/jobready.css";
@@ -17,8 +19,8 @@ import "@/app/jobready/jobready.css";
 const navItems = [
   { href: "/jobready/app", label: "Home", icon: HomeIcon },
   { href: "/jobready/app/documents", label: "Resume", icon: DocumentIcon },
-  { href: "/jobready/app/jobs", label: "Jobs", icon: BriefcaseIcon },
-  { href: "/jobready/app/applications", label: "Applications", icon: BriefcaseIcon },
+  { href: "/jobready/app/jobs", label: "Jobs", icon: SearchIcon },
+  { href: "/jobready/app/applications", label: "Applications", icon: ClipboardIcon },
 ];
 
 function isActivePath(pathname: string, href: string) {

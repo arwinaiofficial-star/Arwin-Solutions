@@ -1,5 +1,7 @@
-import { SettingsWorkspace } from "@/components/jobready/PlatformPanels";
+"use client";
+
+import { Settings } from "@/components/jobready/settings";
 
 export default function SettingsPage() {
-  return <SettingsWorkspace />;
+  return <Settings />;
 }

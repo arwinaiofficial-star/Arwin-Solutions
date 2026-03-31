@@ -1,5 +1,7 @@
-import JobSearchWorkspace from "@/components/jobready/JobSearchWorkspace";
+"use client";
+
+import { JobSearch } from "@/components/jobready/jobs";
 
 export default function JobsPage() {
-  return <JobSearchWorkspace />;
+  return <JobSearch />;
 }

@@ -2208,3 +2208,109 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ===== SETTINGS ===== */
+.jr-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jr-space-6);
+  max-width: 640px;
+}
+
+.jr-settings-section {
+  background: var(--jr-white);
+  border: 1px solid var(--jr-gray-200);
+  border-radius: var(--jr-radius-lg);
+  padding: var(--jr-space-6);
+}
+
+.jr-settings-section h2 {
+  font-size: var(--jr-text-base);
+  font-weight: 600;
+  color: var(--jr-gray-900);
+  margin: 0 0 var(--jr-space-5) 0;
+  padding-bottom: var(--jr-space-3);
+  border-bottom: 1px solid var(--jr-gray-100);
+}
+
+.jr-settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jr-space-1);
+  margin-bottom: var(--jr-space-4);
+}
+
+.jr-settings-field:last-child {
+  margin-bottom: 0;
+}
+
+.jr-settings-field label {
+  font-size: var(--jr-text-sm);
+  font-weight: 500;
+  color: var(--jr-gray-700);
+}
+
+.jr-settings-field input {
+  padding: var(--jr-space-2) var(--jr-space-3);
+  border: 1px solid var(--jr-gray-200);
+  border-radius: var(--jr-radius-sm);
+  font-size: var(--jr-text-sm);
+  color: var(--jr-gray-900);
+  background: var(--jr-white);
+  outline: none;
+  transition: border-color var(--jr-duration) var(--jr-ease);
+}
+
+.jr-settings-field input:focus {
+  border-color: var(--jr-blue);
+}
+
+.jr-settings-field input:disabled {
+  background: var(--jr-gray-50);
+  color: var(--jr-gray-500);
+}
+
+.jr-settings-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--jr-space-4);
+}
+
+.jr-settings-actions {
+  display: flex;
+  gap: var(--jr-space-3);
+  padding-top: var(--jr-space-4);
+  border-top: 1px solid var(--jr-gray-100);
+  margin-top: var(--jr-space-4);
+}
+
+.jr-settings-message {
+  font-size: var(--jr-text-sm);
+  padding: var(--jr-space-3) var(--jr-space-4);
+  border-radius: var(--jr-radius-md);
+  margin-top: var(--jr-space-3);
+}
+
+.jr-settings-message.success {
+  background: var(--jr-success-light);
+  color: var(--jr-success);
+}
+
+.jr-settings-message.error {
+  background: var(--jr-error-light);
+  color: var(--jr-error);
+}
+
+.jr-settings-danger {
+  border-color: var(--jr-error-light);
+}
+
+.jr-settings-danger h2 {
+  color: var(--jr-error);
+}
+
+@media (max-width: 640px) {
+  .jr-settings-row {
+    grid-template-columns: 1fr;
+  }
+}
