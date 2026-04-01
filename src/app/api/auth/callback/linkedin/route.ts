@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { fetchBackend } from "@/lib/api/backend";
+import { applyAuthCookies } from "@/lib/api/authCookies";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const LINKEDIN_CLIENT_ID = process.env.NEXT_PUBLIC_LINKEDIN_CLIENT_ID || "";
 const LINKEDIN_CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET || "";
 
@@ -12,11 +13,12 @@ export async function GET(req: NextRequest) {
   const baseUrl = new URL(req.url).origin;
 
   if (error || !code) {
+    console.error("[LinkedIn OAuth] Auth failed or no code:", error);
     return NextResponse.redirect(`${baseUrl}/jobready/login?error=linkedin_auth_failed`);
   }
 
   try {
-    // Exchange code for tokens with LinkedIn
+    // 1. Exchange code for tokens with LinkedIn
     const tokenRes = await fetch("https://www.linkedin.com/oauth/v2/accessToken", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -29,62 +31,61 @@ export async function GET(req: NextRequest) {
       }),
     });
 
-    const tokens = await tokenRes.json();
-    if (!tokens.access_token) {
+    const linkedinTokens = await tokenRes.json();
+    if (!linkedinTokens.access_token) {
+      console.error("[LinkedIn OAuth] Token exchange failed:", linkedinTokens);
       return NextResponse.redirect(`${baseUrl}/jobready/login?error=linkedin_token_failed`);
     }
 
-    // Get user info from LinkedIn using OpenID Connect userinfo endpoint
+    // 2. Get user info from LinkedIn (OpenID Connect userinfo)
     const userRes = await fetch("https://api.linkedin.com/v2/userinfo", {
-      headers: { Authorization: `Bearer ${tokens.access_token}` },
+      headers: { Authorization: `Bearer ${linkedinTokens.access_token}` },
     });
     const linkedinUser = await userRes.json();
 
-    // Send to our backend social auth endpoint
-    const backendRes = await fetch(`${BACKEND_URL}/api/v1/auth/social`, {
+    if (!linkedinUser.email) {
+      console.error("[LinkedIn OAuth] No email in user info:", linkedinUser);
+      return NextResponse.redirect(`${baseUrl}/jobready/login?error=linkedin_auth_failed`);
+    }
+
+    // 3. Send to our backend via the standard fetchBackend helper
+    const backendRes = await fetchBackend("/api/v1/auth/social", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         provider: "linkedin",
         email: linkedinUser.email,
         name: linkedinUser.name || `${linkedinUser.given_name || ""} ${linkedinUser.family_name || ""}`.trim(),
-        provider_id: linkedinUser.sub,
-        image: linkedinUser.picture,
+        provider_id: String(linkedinUser.sub),
+        image: linkedinUser.picture || "",
       }),
     });
 
     const backendData = await backendRes.json();
 
     if (!backendRes.ok) {
+      console.error("[LinkedIn OAuth] Backend social auth failed:", backendRes.status, backendData);
       return NextResponse.redirect(`${baseUrl}/jobready/login?error=auth_failed`);
     }
 
-    // Set auth cookies and redirect to app
+    // 4. Extract tokens — handle both { tokens: {...} } and flat { access_token, ... } shapes
+    const tokens = backendData.tokens || backendData;
+    if (!tokens?.access_token) {
+      console.error("[LinkedIn OAuth] No access_token in backend response:", backendData);
+      return NextResponse.redirect(`${baseUrl}/jobready/login?error=auth_failed`);
+    }
+
+    // 5. Set auth cookies using the standard helper and redirect
     const response = NextResponse.redirect(`${baseUrl}/jobready/app`);
-
-    if (backendData.tokens?.access_token) {
-      response.cookies.set("jobready_access_token", backendData.tokens.access_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-        maxAge: backendData.tokens.expires_in || 3600,
-      });
-    }
-
-    if (backendData.tokens?.refresh_token) {
-      response.cookies.set("jobready_refresh_token", backendData.tokens.refresh_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-        maxAge: 30 * 24 * 60 * 60,
-      });
-    }
+    applyAuthCookies(response, {
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token || "",
+      expires_in: tokens.expires_in || 3600,
+    });
 
     return response;
   } catch (err) {
-    console.error("LinkedIn OAuth callback error:", err);
+    console.error("[LinkedIn OAuth] Callback error:", err);
     return NextResponse.redirect(`${baseUrl}/jobready/login?error=linkedin_callback_error`);
   }
 }
