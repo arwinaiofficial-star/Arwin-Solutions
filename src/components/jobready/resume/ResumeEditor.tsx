@@ -12,6 +12,9 @@ import SkillsStep from "./SkillsStep";
 import SummaryStep from "./SummaryStep";
 import ResumePreview from "./ResumePreview";
 import ResumeScore from "./ResumeScore";
+import ResumeAnalyzer from "./ResumeAnalyzer";
+import ATSScoreCard from "./ATSScoreCard";
+import RoleSuggestions from "./RoleSuggestions";
 import {
   ResumeData,
   createInitialResumeData,
@@ -19,11 +22,11 @@ import {
 } from "./types";
 
 const STEPS = [
-  { id: 1, label: "Personal" },
-  { id: 2, label: "Experience" },
-  { id: 3, label: "Education" },
-  { id: 4, label: "Skills" },
-  { id: 5, label: "Summary" },
+  { id: 1, label: "Personal", desc: "Add your contact details and online presence." },
+  { id: 2, label: "Experience", desc: "List your work history with measurable achievements." },
+  { id: 3, label: "Education", desc: "Add your academic background." },
+  { id: 4, label: "Skills", desc: "Highlight your technical and professional skills." },
+  { id: 5, label: "Summary", desc: "Write a compelling professional summary." },
 ];
 
 export default function ResumeEditor() {
@@ -33,6 +36,7 @@ export default function ResumeEditor() {
     createInitialResumeData(null)
   );
   const [saving, setSaving] = useState(false);
+  const [showATS, setShowATS] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load existing data on mount
@@ -84,11 +88,20 @@ export default function ResumeEditor() {
   };
 
   const handleNext = () => {
-    if (activeStep < 5) setActiveStep(activeStep + 1);
+    if (activeStep < 5) {
+      setActiveStep(activeStep + 1);
+    } else {
+      // On step 5, "Next" shows the ATS score
+      setShowATS(true);
+    }
   };
 
   const handleBack = () => {
-    if (activeStep > 1) setActiveStep(activeStep - 1);
+    if (showATS) {
+      setShowATS(false);
+    } else if (activeStep > 1) {
+      setActiveStep(activeStep - 1);
+    }
   };
 
   const { score, hint } = calculateScore(data);
@@ -102,16 +115,19 @@ export default function ResumeEditor() {
   ];
   const renderStep = () => (activeStep > 0 && activeStep <= 5 ? steps[activeStep - 1]() : null);
 
+  const stepInfo = STEPS[activeStep - 1];
+
   return (
     <div className="jr-resume-editor">
       <div className="jr-resume-form">
+        {/* Step Navigation */}
         <div className="jr-resume-steps">
           {STEPS.map((step) => (
             <button
               key={step.id}
-              onClick={() => setActiveStep(step.id)}
+              onClick={() => { setActiveStep(step.id); setShowATS(false); }}
               className={`jr-resume-step-btn ${
-                activeStep === step.id ? "jr-resume-step-btn-active" : ""
+                activeStep === step.id && !showATS ? "jr-resume-step-btn-active" : ""
               } ${activeStep > step.id ? "jr-resume-step-completed" : ""}`}
             >
               <div className="jr-resume-step-num">{step.id}</div>
@@ -120,23 +136,58 @@ export default function ResumeEditor() {
           ))}
         </div>
 
-        <div className="jr-resume-section">
-          <h2 className="jr-resume-section-title">{STEPS[activeStep - 1].label}</h2>
-          <p className="jr-resume-section-desc">
-            Complete your {STEPS[activeStep - 1].label.toLowerCase()} information
-          </p>
-          {renderStep()}
-        </div>
+        {showATS ? (
+          /* ATS Score View (after step 5) */
+          <div className="jr-resume-section">
+            <h2 className="jr-resume-section-title">ATS Compatibility</h2>
+            <p className="jr-resume-section-desc">
+              Check how your resume performs with Applicant Tracking Systems before applying.
+            </p>
+            <ATSScoreCard data={data} />
 
+            {/* Role Suggestions — after ATS check */}
+            <RoleSuggestions data={data} />
+          </div>
+        ) : (
+          /* Normal Step Content */
+          <div className="jr-resume-section">
+            <h2 className="jr-resume-section-title">{stepInfo.label}</h2>
+            <p className="jr-resume-section-desc">{stepInfo.desc}</p>
+
+            {/* AI Analyzer — appears at every step */}
+            <ResumeAnalyzer
+              data={data}
+              currentStep={activeStep}
+              onApplySuggestion={handleFieldChange}
+            />
+
+            {renderStep()}
+          </div>
+        )}
+
+        {/* Navigation Actions */}
         <div className="jr-resume-actions">
-          <button onClick={handleBack} disabled={activeStep === 1} className="jr-btn-secondary">Back</button>
+          <button
+            onClick={handleBack}
+            disabled={activeStep === 1 && !showATS}
+            className="jr-btn jr-btn-secondary"
+          >
+            Back
+          </button>
           <div className="jr-resume-actions-right">
-            {saving && <span>Saving...</span>}
-            <button onClick={handleNext} disabled={activeStep === 5} className="jr-btn-primary">Next</button>
+            {saving && <span className="jr-text-muted">Saving...</span>}
+            <button
+              onClick={handleNext}
+              disabled={showATS}
+              className="jr-btn jr-btn-primary"
+            >
+              {activeStep === 5 && !showATS ? "Check ATS Score" : "Next"}
+            </button>
           </div>
         </div>
       </div>
 
+      {/* Right Pane: Preview */}
       <div className="jr-resume-preview-pane">
         <ResumeScore score={score} hint={hint} />
         <ResumePreview data={data} />

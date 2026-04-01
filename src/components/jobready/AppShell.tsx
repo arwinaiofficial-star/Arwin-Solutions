@@ -14,6 +14,7 @@ import {
   SearchIcon,
   SettingsIcon,
 } from "@/components/icons/Icons";
+import { Copilot } from "@/components/jobready/copilot";
 import "@/app/jobready/jobready.css";
 
 const navItems = [
@@ -157,6 +158,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+
+      {/* AI Copilot — available on every page */}
+      <Copilot />
     </div>
   );
 }

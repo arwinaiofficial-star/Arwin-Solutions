@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { applicationsApi } from "@/lib/api/client";
 import { SearchIcon } from "@/components/icons/Icons";
@@ -11,6 +12,7 @@ import "@/app/jobready/jobready.css";
 
 export default function JobSearch() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
   const [state, setState] = useState<JobSearchState>({
     query: "",
     location: "",
@@ -20,10 +22,14 @@ export default function JobSearch() {
     sortBy: "relevance",
   });
   const [selectedJob, setSelectedJob] = useState<JobResult | null>(null);
+  const [autoSearched, setAutoSearched] = useState(false);
 
-  // Pre-fill search with user's skills
+  // Pre-fill from URL params (e.g., from role suggestions) or user skills
   useEffect(() => {
-    if (user?.cvData) {
+    const urlQuery = searchParams.get("q");
+    if (urlQuery) {
+      setState((prev) => ({ ...prev, query: urlQuery }));
+    } else if (user?.cvData) {
       const cv = user.cvData as unknown as Record<string, unknown>;
       const skills = cv?.skills as string[] | undefined;
       if (skills && skills.length > 0) {
@@ -33,7 +39,17 @@ export default function JobSearch() {
         }));
       }
     }
-  }, [user]);
+  }, [user, searchParams]);
+
+  // Auto-search if query came from URL params (role suggestions)
+  useEffect(() => {
+    const urlQuery = searchParams.get("q");
+    if (urlQuery && state.query === urlQuery && !autoSearched && !state.searched) {
+      setAutoSearched(true);
+      handleSearch();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.query]);
 
   const handleSearch = useCallback(async () => {
     if (!state.query.trim()) return;
