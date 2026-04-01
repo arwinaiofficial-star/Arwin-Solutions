@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@/context/AuthContext";
 import { resumeApi } from "@/lib/api/client";
 import { ResumeEditor } from "@/components/jobready/resume";
 import ResumeCreationFlow from "@/components/jobready/resume/ResumeCreationFlow";
@@ -9,32 +8,48 @@ import AIResumeWizard from "@/components/jobready/resume/AIResumeWizard";
 import ExampleTemplates from "@/components/jobready/resume/ExampleTemplates";
 import type { ResumeData } from "@/components/jobready/resume/types";
 import type { CreationMethod } from "@/components/jobready/resume/ResumeCreationFlow";
+import { mapBackendToResumeData } from "@/components/jobready/resume/types";
 
-type View = "loading" | "choose" | "ai-wizard" | "examples" | "editor";
+type View = "loading" | "choose" | "ai-wizard" | "examples" | "editor" | "uploading" | "importing";
 
 export default function DocumentsPage() {
-  const { user } = useAuth();
   const [view, setView] = useState<View>("loading");
   const [initialData, setInitialData] = useState<ResumeData | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Check if user already has resume data
+  // On mount: check DATABASE for existing resume — not user.cvData
   useEffect(() => {
-    if (user === undefined) return; // still loading auth
-    const hasResume = !!user?.cvData || !!user?.cvGenerated;
-    if (hasResume) {
-      setView("editor");
-    } else {
-      setView("choose");
-    }
-  }, [user]);
+    let cancelled = false;
+    (async () => {
+      const result = await resumeApi.getLatest();
+      if (cancelled) return;
+      if (result.data?.data) {
+        setInitialData(mapBackendToResumeData(result.data.data));
+        setView("editor");
+      } else {
+        // No resume in DB — show creation options
+        setView("choose");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const startEditor = useCallback((data?: ResumeData) => {
     if (data) setInitialData(data);
+    else setInitialData(null);
     setView("editor");
+  }, []);
+
+  // Reset: delete from DB, go back to choose
+  const handleReset = useCallback(async () => {
+    await resumeApi.reset();
+    setInitialData(null);
+    setView("choose");
   }, []);
 
   const handleMethodSelect = useCallback(
     (method: CreationMethod) => {
+      setError(null);
       switch (method) {
         case "new":
           startEditor();
@@ -54,26 +69,36 @@ export default function DocumentsPage() {
 
   const handleLinkedInImport = useCallback(
     async (url: string) => {
-      try {
-        const result = await resumeApi.chat(
-          `Extract resume data from this LinkedIn profile URL: ${url}`,
-          "linkedin_import"
-        );
-        const content =
-          typeof result.data === "string"
-            ? result.data
-            : (result.data as Record<string, unknown>)?.response || "";
-        const text = typeof content === "string" ? content : JSON.stringify(content);
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
+      setView("importing");
+      setError(null);
+      const result = await resumeApi.chat(
+        `Extract resume data from this LinkedIn profile URL: ${url}. Return ONLY valid JSON with fields: fullName, email, phone, location, linkedIn, portfolio, summary, skills (array), experiences (array of {id, title, company, location, startDate, endDate, current, highlights[]}), education (array of {id, degree, institution, location, graduationYear, gpa}).`,
+        "extract_cv"
+      );
+
+      if (result.error) {
+        setError(`LinkedIn import failed: ${result.error}`);
+        setView("choose");
+        return;
+      }
+
+      // Try to parse structured data from reply
+      const reply = result.data?.reply || "";
+      const dataObj = result.data?.data;
+      if (dataObj) {
+        startEditor(mapBackendToResumeData(dataObj));
+      } else {
+        // Try to extract JSON from the reply text
+        const jsonMatch = reply.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]) as ResumeData;
-          startEditor(parsed);
-        } else {
-          // Fallback — just start editor
-          startEditor();
+          try {
+            const parsed = JSON.parse(jsonMatch[0]);
+            startEditor(mapBackendToResumeData(parsed));
+            return;
+          } catch { /* fall through */ }
         }
-      } catch {
-        startEditor();
+        setError("Could not parse LinkedIn data. Try uploading your resume instead.");
+        setView("choose");
       }
     },
     [startEditor]
@@ -81,49 +106,53 @@ export default function DocumentsPage() {
 
   const handleFileUpload = useCallback(
     async (file: File) => {
-      try {
-        const result = await resumeApi.uploadCV(file);
-        if (result.data) {
-          const cv = result.data as Record<string, unknown>;
-          const pi = (cv.personalInfo ?? {}) as Record<string, string>;
-          const parsed: ResumeData = {
-            fullName: pi.name || "",
-            email: pi.email || "",
-            phone: pi.phone || "",
-            location: pi.location || "",
-            linkedIn: pi.linkedIn || "",
-            portfolio: pi.portfolio || "",
-            summary: (cv.summary as string) || "",
-            skills: (cv.skills as string[]) || [],
-            experiences: (cv.experience as ResumeData["experiences"]) || [],
-            education: (cv.education as ResumeData["education"]) || [],
-          };
-          startEditor(parsed);
-        } else {
-          startEditor();
-        }
-      } catch {
-        startEditor();
+      setView("uploading");
+      setError(null);
+      const result = await resumeApi.uploadCV(file);
+
+      if (result.error) {
+        setError(`Upload failed: ${result.error}`);
+        setView("choose");
+        return;
+      }
+
+      if (result.data?.extractedData) {
+        startEditor(mapBackendToResumeData(result.data.extractedData));
+      } else {
+        setError("Could not parse the uploaded file. Try a different format or create from scratch.");
+        setView("choose");
       }
     },
     [startEditor]
   );
 
-  if (view === "loading") {
+  if (view === "loading" || view === "uploading" || view === "importing") {
+    const msg =
+      view === "uploading" ? "Parsing your resume..." :
+      view === "importing" ? "Importing from LinkedIn..." :
+      "Loading...";
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
-        <p style={{ color: "var(--jr-gray-400)" }}>Loading...</p>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh", gap: "12px" }}>
+        <div className="jr-ai-wizard-spinner" />
+        <p style={{ color: "var(--jr-gray-500)", fontSize: "var(--jr-text-sm)" }}>{msg}</p>
       </div>
     );
   }
 
   if (view === "choose") {
     return (
-      <ResumeCreationFlow
-        onSelect={handleMethodSelect}
-        onLinkedInImport={handleLinkedInImport}
-        onFileUpload={handleFileUpload}
-      />
+      <>
+        {error && (
+          <div style={{ maxWidth: 720, margin: "16px auto 0", padding: "12px 16px", background: "var(--jr-error-light)", color: "var(--jr-error)", borderRadius: 8, fontSize: "var(--jr-text-sm)" }}>
+            {error}
+          </div>
+        )}
+        <ResumeCreationFlow
+          onSelect={handleMethodSelect}
+          onLinkedInImport={handleLinkedInImport}
+          onFileUpload={handleFileUpload}
+        />
+      </>
     );
   }
 
@@ -145,5 +174,5 @@ export default function DocumentsPage() {
     );
   }
 
-  return <ResumeEditor initialData={initialData} />;
+  return <ResumeEditor initialData={initialData} onReset={handleReset} />;
 }

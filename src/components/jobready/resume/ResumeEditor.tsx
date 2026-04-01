@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { resumeApi } from "@/lib/api/client";
 import "@/app/jobready/jobready.css";
@@ -19,10 +19,12 @@ import {
   ResumeData,
   createInitialResumeData,
   calculateScore,
+  resumeDataToBackend,
 } from "./types";
 
 interface ResumeEditorProps {
   initialData?: ResumeData | null;
+  onReset?: () => void;
 }
 
 const STEPS = [
@@ -33,51 +35,51 @@ const STEPS = [
   { id: 5, label: "Summary", desc: "Write a compelling professional summary." },
 ];
 
-export default function ResumeEditor({ initialData }: ResumeEditorProps = {}) {
+export default function ResumeEditor({ initialData, onReset }: ResumeEditorProps) {
   const { user } = useAuth();
   const [activeStep, setActiveStep] = useState(1);
   const [data, setData] = useState<ResumeData>(
-    createInitialResumeData(null)
+    initialData || createInitialResumeData(user || null)
   );
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [showATS, setShowATS] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hasMountedRef = useRef(false);
 
-  // Load existing data on mount — prefer initialData (from creation flow),
-  // then user.cvData (previously saved), then blank
+  // Set initial data on mount (only once)
   useEffect(() => {
-    if (initialData) {
+    if (initialData && !hasMountedRef.current) {
       setData(initialData);
-    } else if (user?.cvData) {
-      const cv = user.cvData as unknown as Record<string, unknown>;
-      const pi = (cv?.personalInfo ?? {}) as Record<string, string>;
-      setData({
-        fullName: pi.name || user.name || "",
-        email: pi.email || user.email || "",
-        phone: pi.phone || "",
-        location: pi.location || "",
-        linkedIn: pi.linkedIn || "",
-        portfolio: pi.portfolio || "",
-        summary: (cv?.summary as string) || "",
-        skills: (cv?.skills as string[]) || [],
-        experiences: (cv?.experience as ResumeData["experiences"]) || [],
-        education: (cv?.education as ResumeData["education"]) || [],
-      });
-    } else {
-      setData(createInitialResumeData(user || null));
+      hasMountedRef.current = true;
+    } else if (!initialData && user && !hasMountedRef.current) {
+      setData(createInitialResumeData(user));
+      hasMountedRef.current = true;
     }
-  }, [user, initialData]);
+  }, [initialData, user]);
 
-  // Auto-save with debounce
-  useEffect(() => {
+  // Auto-save to DATABASE with debounce — no localStorage
+  const saveToDatabase = useCallback(async (resumeData: ResumeData) => {
     setSaving(true);
+    setSaveError(null);
+    const result = await resumeApi.save(resumeDataToBackend(resumeData), "draft");
+    setSaving(false);
+    if (result.error) {
+      setSaveError(result.error);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Don't auto-save on first render
+    if (!hasMountedRef.current) return;
+
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
 
-    saveTimeoutRef.current = setTimeout(async () => {
-      await resumeApi.save(data as unknown as Record<string, unknown>, "draft");
-      setSaving(false);
+    saveTimeoutRef.current = setTimeout(() => {
+      saveToDatabase(data);
     }, 2000);
 
     return () => {
@@ -85,20 +87,16 @@ export default function ResumeEditor({ initialData }: ResumeEditorProps = {}) {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [data]);
+  }, [data, saveToDatabase]);
 
   const handleFieldChange = (field: string, value: unknown) => {
-    setData(prev => ({
-      ...prev,
-      [field]: value,
-    }));
+    setData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleNext = () => {
     if (activeStep < 5) {
       setActiveStep(activeStep + 1);
     } else {
-      // On step 5, "Next" shows the ATS score
       setShowATS(true);
     }
   };
@@ -111,16 +109,25 @@ export default function ResumeEditor({ initialData }: ResumeEditorProps = {}) {
     }
   };
 
+  const handleReset = async () => {
+    setShowResetConfirm(false);
+    if (onReset) {
+      onReset();
+    }
+  };
+
   const { score, hint } = calculateScore(data);
 
-  const steps = [
-    () => <PersonalInfoStep data={data} onChange={handleFieldChange} />,
-    () => <ExperienceStep data={data} onUpdate={(e) => handleFieldChange("experiences", e)} />,
-    () => <EducationStep data={data} onUpdate={(e) => handleFieldChange("education", e)} />,
-    () => <SkillsStep data={data} onUpdate={(s) => handleFieldChange("skills", s)} />,
-    () => <SummaryStep data={data} onChange={handleFieldChange} />,
-  ];
-  const renderStep = () => (activeStep > 0 && activeStep <= 5 ? steps[activeStep - 1]() : null);
+  const renderStep = () => {
+    switch (activeStep) {
+      case 1: return <PersonalInfoStep data={data} onChange={handleFieldChange} />;
+      case 2: return <ExperienceStep data={data} onUpdate={(e) => handleFieldChange("experiences", e)} />;
+      case 3: return <EducationStep data={data} onUpdate={(e) => handleFieldChange("education", e)} />;
+      case 4: return <SkillsStep data={data} onUpdate={(s) => handleFieldChange("skills", s)} />;
+      case 5: return <SummaryStep data={data} onChange={handleFieldChange} />;
+      default: return null;
+    }
+  };
 
   const stepInfo = STEPS[activeStep - 1];
 
@@ -144,25 +151,22 @@ export default function ResumeEditor({ initialData }: ResumeEditorProps = {}) {
         </div>
 
         {showATS ? (
-          /* ATS Score View (after step 5) */
           <div className="jr-resume-section">
             <h2 className="jr-resume-section-title">ATS Compatibility</h2>
             <p className="jr-resume-section-desc">
-              Check how your resume performs with Applicant Tracking Systems before applying.
+              Check how your resume performs with Applicant Tracking Systems.
             </p>
             <ATSScoreCard data={data} />
-
-            {/* Role Suggestions — after ATS check */}
             <RoleSuggestions data={data} />
           </div>
         ) : (
-          /* Normal Step Content */
           <div className="jr-resume-section">
             <h2 className="jr-resume-section-title">{stepInfo.label}</h2>
             <p className="jr-resume-section-desc">{stepInfo.desc}</p>
 
-            {/* AI Analyzer — appears at every step */}
+            {/* AI Analyzer — keyed by step so it resets when step changes */}
             <ResumeAnalyzer
+              key={`analyzer-step-${activeStep}`}
               data={data}
               currentStep={activeStep}
               onApplySuggestion={handleFieldChange}
@@ -174,15 +178,27 @@ export default function ResumeEditor({ initialData }: ResumeEditorProps = {}) {
 
         {/* Navigation Actions */}
         <div className="jr-resume-actions">
-          <button
-            onClick={handleBack}
-            disabled={activeStep === 1 && !showATS}
-            className="jr-btn jr-btn-secondary"
-          >
-            Back
-          </button>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <button
+              onClick={handleBack}
+              disabled={activeStep === 1 && !showATS}
+              className="jr-btn jr-btn-secondary"
+            >
+              Back
+            </button>
+            {onReset && (
+              <button
+                onClick={() => setShowResetConfirm(true)}
+                className="jr-btn jr-btn-ghost"
+                style={{ color: "var(--jr-error)", fontSize: "var(--jr-text-xs)" }}
+              >
+                Start over
+              </button>
+            )}
+          </div>
           <div className="jr-resume-actions-right">
             {saving && <span className="jr-text-muted">Saving...</span>}
+            {saveError && <span style={{ color: "var(--jr-error)", fontSize: "var(--jr-text-xs)" }}>Save failed</span>}
             <button
               onClick={handleNext}
               disabled={showATS}
@@ -199,6 +215,32 @@ export default function ResumeEditor({ initialData }: ResumeEditorProps = {}) {
         <ResumeScore score={score} hint={hint} />
         <ResumePreview data={data} />
       </div>
+
+      {/* Reset Confirmation Modal */}
+      {showResetConfirm && (
+        <div className="jr-modal-overlay" onClick={() => setShowResetConfirm(false)}>
+          <div className="jr-modal-card" onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ margin: "0 0 8px 0", fontSize: "var(--jr-text-base)", fontWeight: 600 }}>
+              Start over?
+            </h3>
+            <p style={{ margin: "0 0 20px 0", fontSize: "var(--jr-text-sm)", color: "var(--jr-gray-500)" }}>
+              This will delete your current resume and all saved data. You&apos;ll start fresh from the creation options. This cannot be undone.
+            </p>
+            <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+              <button className="jr-btn jr-btn-secondary" onClick={() => setShowResetConfirm(false)}>
+                Cancel
+              </button>
+              <button
+                className="jr-btn"
+                style={{ background: "var(--jr-error)", color: "white" }}
+                onClick={handleReset}
+              >
+                Delete &amp; start over
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { applicationsApi, type JobApplicationData } from "@/lib/api/client";
+import { applicationsApi, resumeApi, type JobApplicationData } from "@/lib/api/client";
 import {
   DocumentIcon,
   SearchIcon,
@@ -11,7 +11,7 @@ import {
   ArrowRightIcon,
   SparklesIcon,
 } from "@/components/icons/Icons";
-import { calculateScore, createInitialResumeData } from "@/components/jobready/resume/types";
+import { calculateScore, createInitialResumeData, mapBackendToResumeData } from "@/components/jobready/resume/types";
 import type { ResumeData } from "@/components/jobready/resume/types";
 import "@/app/jobready/jobready.css";
 
@@ -25,33 +25,21 @@ function getGreeting(): string {
 export default function Dashboard() {
   const { user } = useAuth();
   const [apps, setApps] = useState<JobApplicationData[]>([]);
+  const [resumeData, setResumeData] = useState<ResumeData>(createInitialResumeData(user || null));
+  const [hasResume, setHasResume] = useState(false);
 
+  // Load resume from DATABASE, not user.cvData
   useEffect(() => {
+    resumeApi.getLatest().then((res) => {
+      if (res.data?.data) {
+        setResumeData(mapBackendToResumeData(res.data.data));
+        setHasResume(true);
+      }
+    });
     applicationsApi.list().then((res) => {
       if (res.data) setApps(res.data);
     });
   }, []);
-
-  const hasResume = !!user?.cvGenerated || !!user?.cvData;
-
-  // Build resume data for score calculation
-  const resumeData: ResumeData = (() => {
-    if (!user?.cvData) return createInitialResumeData(user || null);
-    const cv = user.cvData as unknown as Record<string, unknown>;
-    const pi = (cv?.personalInfo ?? {}) as Record<string, string>;
-    return {
-      fullName: pi.name || user?.name || "",
-      email: pi.email || user?.email || "",
-      phone: pi.phone || "",
-      location: pi.location || "",
-      linkedIn: pi.linkedIn || "",
-      portfolio: pi.portfolio || "",
-      summary: (cv?.summary as string) || "",
-      skills: (cv?.skills as string[]) || [],
-      experiences: (cv?.experience as ResumeData["experiences"]) || [],
-      education: (cv?.education as ResumeData["education"]) || [],
-    };
-  })();
 
   const { score: resumeScore, hint: resumeHint } = calculateScore(resumeData);
 
@@ -66,7 +54,6 @@ export default function Dashboard() {
     .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
     .slice(0, 5);
 
-  // Determine what the user should do next
   const nextStep = getNextStep(resumeScore, hasResume, counts);
 
   return (
@@ -77,7 +64,7 @@ export default function Dashboard() {
         <p>{resumeScore < 50 ? "Let's get your resume ready for opportunities." : "Here's your career progress at a glance."}</p>
       </div>
 
-      {/* Resume Journey Card — the key guidance element */}
+      {/* Resume Journey Card */}
       <div className="jr-journey-card">
         <div className="jr-journey-header">
           <div className="jr-journey-info">
@@ -100,7 +87,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Progress checklist */}
         <div className="jr-journey-checklist">
           <JourneyItem done={!!resumeData.fullName && !!resumeData.email} label="Contact information" />
           <JourneyItem done={resumeData.experiences.length > 0} label="Work experience" />
@@ -109,10 +95,7 @@ export default function Dashboard() {
           <JourneyItem done={resumeData.summary.length >= 80} label="Professional summary" />
         </div>
 
-        <Link
-          href="/jobready/app/documents"
-          className="jr-btn jr-btn-primary jr-journey-cta"
-        >
+        <Link href="/jobready/app/documents" className="jr-btn jr-btn-primary jr-journey-cta">
           <SparklesIcon size={16} />
           {nextStep.cta}
         </Link>
@@ -144,7 +127,6 @@ export default function Dashboard() {
 
       {/* Two Column Grid */}
       <div className="jr-dashboard-grid">
-        {/* Quick Actions */}
         <div className="jr-dashboard-section">
           <h2>Quick Actions</h2>
           <div className="jr-quick-actions">
@@ -167,13 +149,12 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Recent Activity */}
         <div className="jr-dashboard-section">
           <h2>Recent Applications</h2>
           {recentApps.length === 0 ? (
             <p style={{ fontSize: "var(--jr-text-sm)", color: "var(--jr-gray-400)" }}>
               {resumeScore < 50
-                ? "Complete your resume first, then start applying to jobs."
+                ? "Complete your resume first, then start applying."
                 : "No applications yet. Start by searching for jobs."}
             </p>
           ) : (
@@ -204,9 +185,7 @@ export default function Dashboard() {
 function JourneyItem({ done, label }: { done: boolean; label: string }) {
   return (
     <div className={`jr-journey-item ${done ? "jr-journey-item-done" : ""}`}>
-      <div className="jr-journey-item-check">
-        {done ? "✓" : "○"}
-      </div>
+      <div className="jr-journey-item-check">{done ? "✓" : "○"}</div>
       <span>{label}</span>
     </div>
   );

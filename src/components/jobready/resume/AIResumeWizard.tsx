@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { resumeApi } from "@/lib/api/client";
 import type { ResumeData } from "./types";
+import { mapBackendToResumeData } from "./types";
 import "@/app/jobready/jobready.css";
 
 interface Props {
@@ -84,12 +85,11 @@ export default function AIResumeWizard({ onComplete, onCancel }: Props) {
       return;
     }
 
-    // Generate resume with AI
+    // Generate resume with AI using the backend enhance_cv action
     setGenerating(true);
     setError("");
 
-    try {
-      const prompt = `Generate a complete ATS-friendly resume in JSON format for the following person:
+    const prompt = `Generate a complete ATS-friendly resume as JSON for:
 Target Role: ${answers.targetRole}
 Recent Experience: ${answers.experience}
 Industry: ${answers.industry}
@@ -97,100 +97,51 @@ Top Skills: ${answers.topSkills}
 Education: ${answers.education}
 Key Achievements: ${answers.achievements}
 
-Return ONLY valid JSON with this exact structure:
+Return ONLY valid JSON with this structure:
 {
-  "fullName": "",
-  "email": "",
-  "phone": "",
-  "location": "",
+  "fullName": "[Your Name]",
+  "email": "[your.email@example.com]",
+  "phone": "[Your Phone]",
+  "location": "[City, State]",
   "linkedIn": "",
   "portfolio": "",
-  "summary": "A compelling 2-3 sentence professional summary",
-  "skills": ["skill1", "skill2", ...],
-  "experiences": [{"id": "exp1", "title": "", "company": "", "location": "", "startDate": "", "endDate": "", "current": false, "highlights": ["bullet1", "bullet2"]}],
-  "education": [{"id": "edu1", "degree": "", "institution": "", "location": "", "graduationYear": "", "gpa": ""}]
+  "summary": "A compelling 2-3 sentence professional summary targeting the role",
+  "skills": ["skill1", "skill2"],
+  "experiences": [{"title": "", "company": "", "location": "", "startDate": "", "endDate": "", "current": false, "highlights": ["achievement with metrics"]}],
+  "education": [{"degree": "", "institution": "", "location": "", "graduationYear": "", "gpa": ""}]
 }
 
-Important:
-- Write strong action-verb bullet points with quantifiable results
-- Include 8-12 relevant skills for ATS keyword matching
-- The summary should highlight key strengths and target the role
-- Use industry-standard terminology for better ATS parsing
-- Fill in realistic placeholders where info is missing (mark with [Your X])`;
+Write strong action-verb bullet points with quantifiable results. Include 8-12 relevant skills. Use industry-standard terminology.`;
 
-      const result = await resumeApi.chat(prompt, "generate_resume");
-      const content =
-        typeof result.data === "string"
-          ? result.data
-          : (result.data as Record<string, unknown>)?.response ||
-            (result.data as Record<string, unknown>)?.content ||
-            "";
+    const result = await resumeApi.chat(prompt, "extract_cv");
 
-      const text = typeof content === "string" ? content : JSON.stringify(content);
-
-      // Extract JSON from response
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]) as ResumeData;
-        // Ensure arrays exist
-        parsed.skills = parsed.skills || [];
-        parsed.experiences = parsed.experiences || [];
-        parsed.education = parsed.education || [];
-        onComplete(parsed);
-      } else {
-        throw new Error("Could not parse AI response");
-      }
-    } catch (err) {
-      console.error("AI resume generation failed:", err);
-      setError(
-        "AI generation encountered an issue. Starting with a pre-filled template instead."
-      );
-      // Fallback: create a template from the answers
-      const skills = answers.topSkills
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-      const fallback: ResumeData = {
-        fullName: "[Your Name]",
-        email: "[your.email@example.com]",
-        phone: "[Your Phone]",
-        location: "[Your Location]",
-        linkedIn: "",
-        portfolio: "",
-        summary: `Experienced ${answers.industry} professional targeting ${answers.targetRole} roles. ${answers.achievements || "Passionate about delivering measurable results."}`,
-        skills,
-        experiences: [
-          {
-            id: "exp-ai-1",
-            title: answers.targetRole || "[Job Title]",
-            company: "[Company Name]",
-            location: "[City, State]",
-            startDate: "",
-            endDate: "",
-            current: true,
-            highlights: answers.experience
-              ? answers.experience
-                  .split(/[,;.]/)
-                  .map((h) => h.trim())
-                  .filter((h) => h.length > 5)
-              : ["[Describe your key achievement with metrics]"],
-          },
-        ],
-        education: [
-          {
-            id: "edu-ai-1",
-            degree: answers.education || "[Your Degree]",
-            institution: "[University Name]",
-            location: "[City, State]",
-            graduationYear: "",
-            gpa: "",
-          },
-        ],
-      };
-      setTimeout(() => onComplete(fallback), 1500);
-    } finally {
+    if (result.error) {
+      setError(`AI generation failed: ${result.error}. Please try again.`);
       setGenerating(false);
+      return;
     }
+
+    // Try structured data first, then parse from reply
+    const dataObj = result.data?.data;
+    if (dataObj) {
+      onComplete(mapBackendToResumeData(dataObj));
+      return;
+    }
+
+    const reply = result.data?.reply || "";
+    const jsonMatch = reply.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[0]);
+        onComplete(mapBackendToResumeData(parsed));
+        return;
+      } catch {
+        // fall through
+      }
+    }
+
+    setError("AI could not generate structured data. Please try again or start from scratch.");
+    setGenerating(false);
   };
 
   if (generating) {
@@ -219,9 +170,7 @@ Important:
         <div className="jr-ai-wizard-progress">
           <div
             className="jr-ai-wizard-progress-bar"
-            style={{
-              width: `${((step + 1) / QUESTIONS.length) * 100}%`,
-            }}
+            style={{ width: `${((step + 1) / QUESTIONS.length) * 100}%` }}
           />
         </div>
         <span className="jr-ai-wizard-step-count">
@@ -255,7 +204,9 @@ Important:
             autoFocus
           />
         )}
-        {error && <p className="jr-input-error-text">{error}</p>}
+        {error && (
+          <p className="jr-input-error-text" style={{ marginTop: 8 }}>{error}</p>
+        )}
       </div>
 
       <div className="jr-ai-wizard-actions">

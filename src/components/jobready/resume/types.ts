@@ -52,6 +52,96 @@ export function createInitialResumeData(user: UserProfile | null): ResumeData {
 }
 
 /**
+ * Map backend DB resume data (various shapes) to our frontend ResumeData.
+ * Handles: direct ResumeData shape, backend extractedData shape, and cvData shape.
+ */
+export function mapBackendToResumeData(raw: Record<string, unknown>): ResumeData {
+  // Direct shape (already matches ResumeData)
+  if (typeof raw.fullName === "string") {
+    return {
+      fullName: (raw.fullName as string) || "",
+      email: (raw.email as string) || "",
+      phone: (raw.phone as string) || "",
+      location: (raw.location as string) || "",
+      linkedIn: (raw.linkedIn as string) || "",
+      portfolio: (raw.portfolio as string) || "",
+      summary: (raw.summary as string) || "",
+      skills: Array.isArray(raw.skills) ? raw.skills as string[] : [],
+      experiences: ensureExperiences(raw.experiences),
+      education: ensureEducation(raw.education),
+    };
+  }
+
+  // Backend cvData shape (has personalInfo nested object)
+  const pi = (raw.personalInfo ?? {}) as Record<string, string>;
+  return {
+    fullName: pi.name || (raw.name as string) || "",
+    email: pi.email || (raw.email as string) || "",
+    phone: pi.phone || (raw.phone as string) || "",
+    location: pi.location || (raw.location as string) || "",
+    linkedIn: pi.linkedIn || (raw.linkedIn as string) || "",
+    portfolio: pi.portfolio || (raw.portfolio as string) || "",
+    summary: (raw.summary as string) || "",
+    skills: Array.isArray(raw.skills) ? raw.skills as string[] : [],
+    experiences: ensureExperiences(raw.experiences || raw.experience),
+    education: ensureEducation(raw.education),
+  };
+}
+
+function ensureExperiences(raw: unknown): ExperienceEntry[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((e: Record<string, unknown>, i: number) => ({
+    id: (e.id as string) || `exp_${i}`,
+    title: (e.title as string) || "",
+    company: (e.company as string) || "",
+    location: (e.location as string) || "",
+    startDate: (e.startDate as string) || "",
+    endDate: (e.endDate as string) || "",
+    current: (e.current as boolean) || false,
+    highlights: Array.isArray(e.highlights) ? e.highlights as string[] : [],
+  }));
+}
+
+function ensureEducation(raw: unknown): EducationEntry[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((e: Record<string, unknown>, i: number) => ({
+    id: (e.id as string) || `edu_${i}`,
+    degree: (e.degree as string) || "",
+    institution: (e.institution as string) || "",
+    location: (e.location as string) || "",
+    graduationYear: (e.graduationYear as string) || "",
+    gpa: (e.gpa as string) || "",
+  }));
+}
+
+/**
+ * Convert frontend ResumeData to the shape the backend expects for saving.
+ */
+export function resumeDataToBackend(data: ResumeData): Record<string, unknown> {
+  return {
+    fullName: data.fullName,
+    email: data.email,
+    phone: data.phone,
+    location: data.location,
+    linkedIn: data.linkedIn,
+    portfolio: data.portfolio,
+    summary: data.summary,
+    skills: data.skills,
+    experiences: data.experiences,
+    education: data.education,
+    // Also save in the personalInfo shape for backward compat
+    personalInfo: {
+      name: data.fullName,
+      email: data.email,
+      phone: data.phone,
+      location: data.location,
+      linkedIn: data.linkedIn,
+      portfolio: data.portfolio,
+    },
+  };
+}
+
+/**
  * Calculate resume completeness score (0-100)
  */
 export function calculateScore(data: ResumeData): { score: number; hint: string } {
