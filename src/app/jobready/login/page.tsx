@@ -2,9 +2,10 @@
 
 import { useState, type FormEvent, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { RocketIcon } from "@/components/icons/Icons";
+import SocialAuthButtons from "@/components/jobready/auth/SocialAuthButtons";
 import "@/app/jobready/jobready.css";
 
 export default function LoginPage() {
@@ -14,10 +15,26 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { login, isAuthenticated } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     if (isAuthenticated) router.push("/jobready/app");
   }, [isAuthenticated, router]);
+
+  // Handle OAuth error from callback redirect
+  useEffect(() => {
+    const oauthError = searchParams.get("error");
+    if (oauthError) {
+      const messages: Record<string, string> = {
+        google_auth_failed: "Google sign-in was cancelled or failed.",
+        google_token_failed: "Could not complete Google sign-in. Please try again.",
+        linkedin_auth_failed: "LinkedIn sign-in was cancelled or failed.",
+        linkedin_token_failed: "Could not complete LinkedIn sign-in. Please try again.",
+        auth_failed: "Social sign-in failed. Please try again or use email/password.",
+      };
+      setError(messages[oauthError] || "Sign-in failed. Please try again.");
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -56,6 +73,8 @@ export default function LoginPage() {
             {error}
           </div>
         )}
+
+        <SocialAuthButtons />
 
         <form onSubmit={handleSubmit} className="jr-auth-form">
           <div className="jr-input-group">

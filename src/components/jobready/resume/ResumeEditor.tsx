@@ -21,6 +21,10 @@ import {
   calculateScore,
 } from "./types";
 
+interface ResumeEditorProps {
+  initialData?: ResumeData | null;
+}
+
 const STEPS = [
   { id: 1, label: "Personal", desc: "Add your contact details and online presence." },
   { id: 2, label: "Experience", desc: "List your work history with measurable achievements." },
@@ -29,7 +33,7 @@ const STEPS = [
   { id: 5, label: "Summary", desc: "Write a compelling professional summary." },
 ];
 
-export default function ResumeEditor() {
+export default function ResumeEditor({ initialData }: ResumeEditorProps = {}) {
   const { user } = useAuth();
   const [activeStep, setActiveStep] = useState(1);
   const [data, setData] = useState<ResumeData>(
@@ -39,9 +43,12 @@ export default function ResumeEditor() {
   const [showATS, setShowATS] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Load existing data on mount
+  // Load existing data on mount — prefer initialData (from creation flow),
+  // then user.cvData (previously saved), then blank
   useEffect(() => {
-    if (user?.cvData) {
+    if (initialData) {
+      setData(initialData);
+    } else if (user?.cvData) {
       const cv = user.cvData as unknown as Record<string, unknown>;
       const pi = (cv?.personalInfo ?? {}) as Record<string, string>;
       setData({
@@ -59,7 +66,7 @@ export default function ResumeEditor() {
     } else {
       setData(createInitialResumeData(user || null));
     }
-  }, [user]);
+  }, [user, initialData]);
 
   // Auto-save with debounce
   useEffect(() => {

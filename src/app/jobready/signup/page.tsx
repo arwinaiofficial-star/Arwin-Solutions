@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { RocketIcon } from "@/components/icons/Icons";
+import SocialAuthButtons from "@/components/jobready/auth/SocialAuthButtons";
 import "@/app/jobready/jobready.css";
 
 export default function SignupPage() {
@@ -68,6 +69,8 @@ export default function SignupPage() {
             {error}
           </div>
         )}
+
+        <SocialAuthButtons />
 
         <form onSubmit={handleSubmit} className="jr-auth-form">
           <div className="jr-input-group">
