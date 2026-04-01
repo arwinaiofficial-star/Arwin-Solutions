@@ -71,10 +71,7 @@ export default function DocumentsPage() {
     async (url: string) => {
       setView("importing");
       setError(null);
-      const result = await resumeApi.chat(
-        `Extract resume data from this LinkedIn profile URL: ${url}. Return ONLY valid JSON with fields: fullName, email, phone, location, linkedIn, portfolio, summary, skills (array), experiences (array of {id, title, company, location, startDate, endDate, current, highlights[]}), education (array of {id, degree, institution, location, graduationYear, gpa}).`,
-        "extract_cv"
-      );
+      const result = await resumeApi.importLinkedIn(url);
 
       if (result.error) {
         setError(`LinkedIn import failed: ${result.error}`);
@@ -82,22 +79,11 @@ export default function DocumentsPage() {
         return;
       }
 
-      // Try to parse structured data from reply
-      const reply = result.data?.reply || "";
-      const dataObj = result.data?.data;
-      if (dataObj) {
-        startEditor(mapBackendToResumeData(dataObj));
+      const extractedData = result.data?.data;
+      if (extractedData) {
+        startEditor(mapBackendToResumeData(extractedData));
       } else {
-        // Try to extract JSON from the reply text
-        const jsonMatch = reply.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          try {
-            const parsed = JSON.parse(jsonMatch[0]);
-            startEditor(mapBackendToResumeData(parsed));
-            return;
-          } catch { /* fall through */ }
-        }
-        setError("Could not parse LinkedIn data. Try uploading your resume instead.");
+        setError("Could not extract LinkedIn profile data. The profile may be private or the URL incorrect.");
         setView("choose");
       }
     },

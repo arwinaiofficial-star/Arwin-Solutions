@@ -3414,6 +3414,7 @@
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  padding: var(--jr-space-4);
 }
 
 .jr-modal-card {
@@ -3421,6 +3422,285 @@
   border-radius: var(--jr-radius-lg);
   padding: var(--jr-space-6);
   max-width: 400px;
-  width: 90%;
+  width: 100%;
   box-shadow: var(--jr-shadow-lg);
+}
+
+/* =============================================
+   COMPREHENSIVE MOBILE RESPONSIVENESS
+   ============================================= */
+
+/* ---- Tablet (max-width: 960px) ---- */
+@media (max-width: 960px) {
+  .jr-journey-header {
+    flex-direction: column;
+    gap: var(--jr-space-4);
+  }
+
+  .jr-journey-header .jr-btn {
+    align-self: flex-start;
+  }
+}
+
+/* ---- Mobile (max-width: 768px) ---- */
+@media (max-width: 768px) {
+  /* Auth pages */
+  .jr-auth-card {
+    padding: var(--jr-space-6);
+    border-radius: var(--jr-radius-lg);
+  }
+
+  .jr-auth-logo {
+    margin-bottom: var(--jr-space-6);
+  }
+
+  .jr-auth-subtitle {
+    margin-bottom: var(--jr-space-6);
+  }
+
+  /* Page padding */
+  .jr-page {
+    padding: var(--jr-space-4) var(--jr-space-3);
+  }
+
+  /* Dashboard greeting */
+  .jr-dashboard-greeting h1 {
+    font-size: var(--jr-text-xl);
+  }
+
+  /* Journey card */
+  .jr-journey-card {
+    padding: var(--jr-space-4);
+  }
+
+  .jr-journey-checklist {
+    gap: var(--jr-space-2);
+  }
+
+  /* Resume creation flow */
+  .jr-creation-flow {
+    padding: var(--jr-space-6) var(--jr-space-3);
+  }
+
+  .jr-creation-header {
+    margin-bottom: var(--jr-space-6);
+  }
+
+  .jr-creation-title {
+    font-size: var(--jr-text-xl);
+  }
+
+  .jr-creation-card {
+    padding: var(--jr-space-3) var(--jr-space-4);
+  }
+
+  .jr-creation-card-icon {
+    width: 36px;
+    height: 36px;
+    font-size: var(--jr-text-base);
+  }
+
+  .jr-creation-panel {
+    padding: var(--jr-space-4);
+  }
+
+  .jr-creation-panel-row {
+    flex-direction: column;
+  }
+
+  /* Upload zone */
+  .jr-upload-zone {
+    padding: var(--jr-space-6) var(--jr-space-3);
+  }
+
+  /* AI Wizard */
+  .jr-ai-wizard {
+    padding: var(--jr-space-6) var(--jr-space-3);
+  }
+
+  .jr-ai-wizard-header h2 {
+    font-size: var(--jr-text-lg);
+  }
+
+  .jr-ai-wizard-actions {
+    flex-direction: column-reverse;
+  }
+
+  .jr-ai-wizard-actions .jr-btn {
+    width: 100%;
+  }
+
+  /* Example templates */
+  .jr-examples {
+    padding: var(--jr-space-6) var(--jr-space-3);
+  }
+
+  .jr-examples-actions {
+    flex-direction: column-reverse;
+  }
+
+  .jr-examples-actions .jr-btn {
+    width: 100%;
+  }
+
+  /* Resume editor */
+  .jr-resume-steps {
+    gap: 0;
+    padding: var(--jr-space-1) var(--jr-space-2);
+  }
+
+  .jr-resume-step {
+    font-size: var(--jr-text-xs);
+    padding: var(--jr-space-2) var(--jr-space-3);
+    white-space: nowrap;
+  }
+
+  .jr-resume-form-header h2 {
+    font-size: var(--jr-text-lg);
+  }
+
+  /* Resume footer actions */
+  .jr-resume-footer {
+    flex-direction: column;
+    gap: var(--jr-space-2);
+    padding: var(--jr-space-3) var(--jr-space-4);
+  }
+
+  .jr-resume-footer .jr-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Settings */
+  .jr-settings-section {
+    padding: var(--jr-space-4);
+  }
+
+  /* Job search */
+  .jr-search-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .jr-job-card {
+    padding: var(--jr-space-4);
+  }
+
+  .jr-job-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--jr-space-2);
+  }
+
+  .jr-job-card-meta {
+    flex-wrap: wrap;
+  }
+
+  /* Application tracker */
+  .jr-tracker-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* Job detail modal */
+  .jr-job-detail {
+    padding: var(--jr-space-4);
+    margin: var(--jr-space-3);
+    max-height: calc(100vh - var(--jr-space-6));
+  }
+
+  .jr-job-detail-actions {
+    flex-direction: column;
+  }
+
+  .jr-job-detail-actions .jr-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Resume analyzer */
+  .jr-analyzer {
+    padding: var(--jr-space-4);
+  }
+
+  .jr-analyzer-score-header {
+    flex-direction: column;
+    gap: var(--jr-space-3);
+    align-items: flex-start;
+  }
+}
+
+/* ---- Small Mobile (max-width: 480px) ---- */
+@media (max-width: 480px) {
+  /* Auth */
+  .jr-auth-card {
+    padding: var(--jr-space-5) var(--jr-space-4);
+  }
+
+  .jr-auth-title {
+    font-size: var(--jr-text-xl);
+  }
+
+  /* Dashboard */
+  .jr-stats-row {
+    grid-template-columns: 1fr;
+  }
+
+  .jr-tracker-stats {
+    grid-template-columns: 1fr;
+  }
+
+  /* Journey card — full stacking */
+  .jr-journey-card {
+    padding: var(--jr-space-3);
+  }
+
+  /* Resume steps — horizontal scroll with snap */
+  .jr-resume-steps {
+    scroll-snap-type: x mandatory;
+  }
+
+  .jr-resume-step {
+    scroll-snap-align: start;
+    min-width: max-content;
+  }
+
+  /* Sidebar nav items — larger tap targets */
+  .jr-sidebar-link {
+    padding: var(--jr-space-3) var(--jr-space-3);
+    min-height: 44px;
+  }
+
+  /* Modal full-width on tiny screens */
+  .jr-modal-card {
+    width: 100%;
+    border-radius: var(--jr-radius-md);
+    padding: var(--jr-space-5);
+  }
+
+  /* Copilot */
+  .jr-copilot-panel {
+    width: 100vw;
+    height: calc(100vh - 60px);
+    bottom: 0;
+    right: 0;
+    border-radius: var(--jr-radius-lg) var(--jr-radius-lg) 0 0;
+  }
+}
+
+/* ---- Touch-friendly universal fixes ---- */
+@media (hover: none) and (pointer: coarse) {
+  .jr-btn {
+    min-height: 44px;
+  }
+
+  .jr-input,
+  .jr-select,
+  .jr-textarea {
+    min-height: 44px;
+    font-size: 16px; /* prevents iOS zoom on focus */
+  }
+
+  .jr-sidebar-link {
+    min-height: 44px;
+  }
 }

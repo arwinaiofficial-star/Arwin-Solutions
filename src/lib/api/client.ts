@@ -41,116 +41,6 @@ function setCurrentUserScope(userId: string | null) {
   }
 }
 
-function currentUserStorageScope(): string {
-  if (typeof window === "undefined") return "server";
-  return localStorage.getItem(USER_SCOPE_KEY) || "anonymous";
-}
-
-function scopedStorageKey(base: string): string {
-  return `${base}:${currentUserStorageScope()}`;
-}
-
-function readScopedStorage<T>(base: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
-  try {
-    const raw = localStorage.getItem(scopedStorageKey(base));
-    return raw ? JSON.parse(raw) as T : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function writeScopedStorage<T>(base: string, value: T) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(scopedStorageKey(base), JSON.stringify(value));
-}
-
-function makeLocalId(prefix: string): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return `${prefix}_${crypto.randomUUID()}`;
-  }
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-}
-
-type LocalResumeRecord = {
-  id: string;
-  data: Record<string, unknown>;
-  version: number;
-  status: string;
-  created_at: string;
-  updated_at: string;
-};
-
-const LOCAL_RESUME_KEY = "jobready_resume_records";
-
-function readLocalResumeRecords(): LocalResumeRecord[] {
-  return readScopedStorage<LocalResumeRecord[]>(LOCAL_RESUME_KEY, []);
-}
-
-function writeLocalResumeRecords(records: LocalResumeRecord[]) {
-  writeScopedStorage(LOCAL_RESUME_KEY, records);
-}
-
-function clearLocalResumeRecords() {
-  writeLocalResumeRecords([]);
-}
-
-function cacheLatestResume(record: LocalResumeRecord) {
-  const records = readLocalResumeRecords();
-  const nextRecords = records.filter((item) => item.id !== record.id);
-  nextRecords.push(record);
-  writeLocalResumeRecords(nextRecords);
-}
-
-function saveResumeLocally(
-  data: Record<string, unknown>,
-  status: string
-): { id: string; version: number; status: string; created_at: string } {
-  const now = new Date().toISOString();
-  const records = readLocalResumeRecords().sort((a, b) => b.version - a.version);
-  const latest = records[0];
-
-  if (status === "draft" && latest?.status === "draft") {
-    const updated: LocalResumeRecord = {
-      ...latest,
-      data,
-      updated_at: now,
-    };
-    writeLocalResumeRecords([updated, ...records.slice(1)]);
-    return {
-      id: updated.id,
-      version: updated.version,
-      status: updated.status,
-      created_at: updated.created_at,
-    };
-  }
-
-  const record: LocalResumeRecord = {
-    id: makeLocalId("resume"),
-    data,
-    version: (latest?.version || 0) + 1,
-    status,
-    created_at: now,
-    updated_at: now,
-  };
-  writeLocalResumeRecords([...records, record]);
-  return {
-    id: record.id,
-    version: record.version,
-    status: record.status,
-    created_at: record.created_at,
-  };
-}
-
-function getLatestLocalResume(): LocalResumeRecord | null {
-  const records = readLocalResumeRecords();
-  if (records.length === 0) return null;
-  return [...records].sort((a, b) => {
-    if (b.version !== a.version) return b.version - a.version;
-    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
-  })[0];
-}
-
 // ─── Refresh lock (prevent concurrent refresh attempts) ─────────────────────
 
 let _refreshPromise: Promise<boolean> | null = null;
@@ -364,7 +254,9 @@ export const authApi = {
   },
 
   isAuthenticated(): boolean {
-    return currentUserStorageScope() !== "anonymous";
+    if (typeof window === "undefined") return false;
+    const scope = localStorage.getItem(USER_SCOPE_KEY);
+    return !!scope && scope !== "anonymous";
   },
 };
 
@@ -408,26 +300,10 @@ export const resumeApi = {
 
       const body = await response.json();
       if (!response.ok) {
-        if (status === "draft" && response.status >= 500) {
-          return { data: saveResumeLocally(data, status) };
-        }
         return { error: body.detail || body.error || "Resume save failed" };
-      }
-      if (body.id && body.version) {
-        cacheLatestResume({
-          id: body.id as string,
-          data,
-          version: body.version as number,
-          status: (body.status as string) || status,
-          created_at: (body.created_at as string) || new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
       }
       return { data: body };
     } catch {
-      if (status === "draft") {
-        return { data: saveResumeLocally(data, status) };
-      }
       return { error: "Unable to save your resume right now." };
     }
   },
@@ -445,46 +321,12 @@ export const resumeApi = {
 
       const body = await response.json();
       if (!response.ok) {
-        if (response.status === 404) {
-          const localResume = getLatestLocalResume();
-          if (localResume?.status === "draft") {
-            return {
-              data: {
-                id: localResume.id,
-                data: localResume.data,
-                version: localResume.version,
-                status: localResume.status,
-              },
-            };
-          }
-        }
         return {
           error: body.detail || body.error || "Failed to fetch resume",
         };
       }
-      if (body.id && body.data) {
-        cacheLatestResume({
-          id: body.id as string,
-          data: body.data as Record<string, unknown>,
-          version: (body.version as number) || 1,
-          status: (body.status as string) || "final",
-          created_at: (body.created_at as string) || new Date().toISOString(),
-          updated_at: (body.updated_at as string) || new Date().toISOString(),
-        });
-      }
       return { data: body };
     } catch {
-      const localResume = getLatestLocalResume();
-      if (localResume?.status === "draft") {
-        return {
-          data: {
-            id: localResume.id,
-            data: localResume.data,
-            version: localResume.version,
-            status: localResume.status,
-          },
-        };
-      }
       return { error: "Unable to load your resume right now." };
     }
   },
@@ -496,21 +338,37 @@ export const resumeApi = {
       });
 
       if (response.status === 204) {
-        clearLocalResumeRecords();
         return { data: undefined };
       }
 
       const body = await response.json();
       if (!response.ok) {
-        clearLocalResumeRecords();
         return { error: body.detail || body.error || "Failed to reset resume" };
       }
 
-      clearLocalResumeRecords();
       return { data: undefined };
     } catch {
-      clearLocalResumeRecords();
       return { error: "Unable to reset your resume right now." };
+    }
+  },
+
+  async importLinkedIn(
+    linkedinUrl: string
+  ): Promise<ApiResponse<{ data: Record<string, unknown> }>> {
+    try {
+      const response = await authenticatedFetch(`${RESUME_API_BASE}/linkedin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ linkedin_url: linkedinUrl }),
+      });
+
+      const body = await response.json();
+      if (!response.ok) {
+        return { error: body.error || body.detail || "LinkedIn import failed" };
+      }
+      return { data: body };
+    } catch {
+      return { error: "Network error. Please check your connection." };
     }
   },
 

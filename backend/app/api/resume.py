@@ -1,12 +1,14 @@
 """Resume chat and management API endpoints."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.api.deps import get_current_user_id, check_rate_limit
 from app.schemas.resume import ResumeChatRequest, ResumeChatResponse, ResumeSaveRequest
 from app.services import resume_service
+from app.services.linkedin_service import fetch_linkedin_profile, LinkedInExtractionError
 
 router = APIRouter(prefix="/resume", tags=["Resume"])
 
@@ -82,6 +84,35 @@ async def resume_chat(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(e),
+        )
+
+
+class LinkedInImportRequest(BaseModel):
+    linkedin_url: str
+
+
+@router.post("/linkedin")
+async def import_linkedin_profile(
+    data: LinkedInImportRequest,
+    user_id: str = Depends(get_current_user_id),
+    _rate: None = Depends(check_rate_limit),
+):
+    """Import resume data from a LinkedIn profile URL.
+
+    Uses RapidAPI's Fresh LinkedIn Profile Data scraper for accurate extraction.
+    """
+    try:
+        resume_data = await fetch_linkedin_profile(data.linkedin_url)
+        return {"data": resume_data}
+    except LinkedInExtractionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e),
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"LinkedIn import service error: {str(e)}",
         )
 
 

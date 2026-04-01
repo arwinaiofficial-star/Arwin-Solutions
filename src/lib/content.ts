@@ -120,7 +120,7 @@ export const homeContent = {
       name: "JobReady",
       tagline: "AI-Powered Career Platform",
       description:
-        "One-stop platform for job seekers in India. AI agents build your CV, match you with top companies, and auto-apply \u2014 so you focus on preparing, not searching.",
+        "Resume builder with real-time ATS scoring, multi-source job search, and application tracking \u2014 unified in one intelligent workspace for job seekers.",
       url: "/jobready",
       external: false,
       status: "Live",
@@ -580,23 +580,23 @@ export const builtiqContent = {
 export const jobreadyContent = {
   hero: {
     title: "JobReady",
-    tagline: "AI-Powered Career Platform for India",
+    tagline: "AI-Powered Career Platform",
     description:
-      "Build an ATS-friendly resume with AI, then search real jobs across India\u2019s top platforms. Resume builder and job search are live!",
+      "Build ATS-optimized resumes with AI, search jobs across top platforms, and track every application — all in one intelligent workspace.",
   },
 
   currentPhase: {
     phase: "Current",
     status: "Live",
     features: [
-      "Simple profile form submission",
-      "AI-powered skill matching for Indian job market",
-      "Real-time job search from top Indian companies",
-      "Relevance-scored job recommendations",
-      "Salaries displayed in INR (\u20b9)",
-      "Resume/CV upload support",
-      "Auto-apply to matching jobs with one click",
-      "Application tracking dashboard",
+      "AI-powered resume builder with real-time ATS scoring",
+      "5 creation paths: blank, AI-assisted, upload, LinkedIn import, templates",
+      "Step-by-step guided editor with live PDF preview",
+      "AI content suggestions and bullet point enhancement",
+      "Multi-source job search with skill-based relevance scoring",
+      "Kanban-style application tracking pipeline",
+      "Database-backed persistence with auto-save",
+      "Google and LinkedIn OAuth authentication",
     ],
   },
 
@@ -604,39 +604,39 @@ export const jobreadyContent = {
     phase: "Roadmap",
     status: "Coming Soon",
     features: [
-      "Advanced agentic AI implementation",
-      "Direct integration with Naukri & LinkedIn India",
-      "Automated interview scheduling",
-      "AI-powered resume optimization",
-      "Salary negotiation assistant",
-      "Company culture matching",
+      "Agentic AI for automated job applications",
+      "Direct integration with Naukri, LinkedIn, and Indeed",
+      "Interview preparation with AI mock interviews",
+      "Salary benchmarking and negotiation insights",
+      "Company culture matching and reviews",
+      "Career pathway recommendations",
     ],
   },
 
   howItWorks: [
     {
       step: 1,
-      title: "Fill Out Your Profile",
+      title: "Build Your Resume",
       description:
-        "Complete a simple form with your skills, experience, and job preferences. Upload your resume for better matching.",
+        "Start from scratch, let AI guide you, upload an existing resume, import from LinkedIn, or begin with a professional template.",
     },
     {
       step: 2,
-      title: "AI Matches Jobs",
+      title: "Optimize with AI",
       description:
-        "Our AI scans top Indian companies and job platforms to find matching opportunities in cities like Bangalore, Hyderabad, Mumbai, and more.",
+        "Real-time ATS scoring analyzes your resume against modern applicant tracking systems. AI suggests improvements for each section.",
     },
     {
       step: 3,
-      title: "Auto-Apply with One Click",
+      title: "Search & Apply",
       description:
-        "Review AI-ranked job matches and use our auto-apply feature to submit applications instantly. Track all your applications in one place.",
+        "Search jobs across multiple platforms. Every listing is scored against your profile so you focus on high-match opportunities.",
     },
     {
       step: 4,
-      title: "Track & Manage",
+      title: "Track Progress",
       description:
-        "View all your applications in the dashboard. Get notified about status updates and interview invitations.",
+        "Manage applications from Saved to Offer with a visual pipeline. Never lose track of deadlines or follow-ups.",
     },
   ],
 };

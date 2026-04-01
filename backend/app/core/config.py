@@ -54,6 +54,10 @@ class Settings(BaseSettings):
     LINKEDIN_CLIENT_ID: str = ""
     LINKEDIN_CLIENT_SECRET: str = ""
 
+    # LinkedIn Profile Scraper (RapidAPI)
+    RAPIDAPI_KEY: str = ""
+    LINKEDIN_SCRAPER_HOST: str = "fresh-linkedin-profile-data.p.rapidapi.com"
+
     # Rate Limiting
     RATE_LIMIT_REQUESTS_PER_MINUTE: int = 60
 
