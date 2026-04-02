@@ -132,7 +132,7 @@ export default function DocumentsPage() {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh", gap: "12px" }}>
         <div className="jr-ai-wizard-spinner" />
-        <p style={{ color: "var(--jr-gray-500)", fontSize: "var(--jr-text-sm)" }}>{msg}</p>
+        <p style={{ color: "var(--jr-ink-500)", fontSize: "var(--jr-text-sm)" }}>{msg}</p>
       </div>
     );
   }
@@ -141,7 +141,7 @@ export default function DocumentsPage() {
     return (
       <>
         {error && (
-          <div style={{ maxWidth: 720, margin: "16px auto 0", padding: "12px 16px", background: "var(--jr-error-light)", color: "var(--jr-error)", borderRadius: 8, fontSize: "var(--jr-text-sm)" }}>
+          <div style={{ maxWidth: 720, margin: "16px auto 0", padding: "12px 16px", background: "var(--jr-error-soft)", color: "var(--jr-error)", borderRadius: 8, fontSize: "var(--jr-text-sm)" }}>
             {error}
           </div>
         )}

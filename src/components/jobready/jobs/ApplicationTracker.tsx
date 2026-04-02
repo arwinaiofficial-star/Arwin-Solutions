@@ -191,7 +191,7 @@ export default function ApplicationTracker() {
       </div>
 
       {apps.length === 0 && (
-        <div className="jr-empty" style={{ marginTop: "var(--jr-space-4)" }}>
+        <div className="jr-empty" style={{ marginTop: "var(--jr-sp-4)" }}>
           <h2 className="jr-empty-title">No applications yet</h2>
           <p className="jr-empty-text">
             Search for jobs and save them to start tracking your applications.
