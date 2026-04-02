@@ -64,22 +64,22 @@ export default function SignupPage() {
 
           <div className="jr-auth-side-copy">
             <span className="jr-page-eyebrow">Create workspace</span>
-            <h1>Career tools that feel enterprise-grade.</h1>
-            <p>Start with a calm onboarding flow, build one strong profile, and let the rest of the product follow from that foundation.</p>
+            <h1>Create your JobReady workspace.</h1>
+            <p>Start with your resume or your job search. The rest of the workflow stays connected.</p>
           </div>
 
           <div className="jr-auth-benefits">
             <div className="jr-auth-benefit">
               <SparklesIcon size={16} />
-              <span>Guided onboarding tuned for your career intent</span>
+              <span>Quick onboarding</span>
             </div>
             <div className="jr-auth-benefit">
               <CheckIcon size={16} />
-              <span>Resume builder, jobs, and applications in one flow</span>
+              <span>Resume, jobs, and applications in one flow</span>
             </div>
             <div className="jr-auth-benefit">
               <CheckIcon size={16} />
-              <span>Mobile screens designed to feel like a native workspace</span>
+              <span>Same workspace on desktop and mobile</span>
             </div>
           </div>
         </section>
@@ -87,7 +87,7 @@ export default function SignupPage() {
         <section className="jr-auth-content">
           <div className="jr-auth-card">
             <h2 className="jr-auth-title">Create your account</h2>
-            <p className="jr-auth-subtitle">Set up your workspace, personalize your path, and begin with a cleaner first-run experience.</p>
+            <p className="jr-auth-subtitle">Set up your account and start your workspace.</p>
 
             {error && (
               <div className="jr-input-error-text jr-auth-alert">

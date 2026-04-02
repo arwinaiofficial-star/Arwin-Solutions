@@ -51,7 +51,7 @@ export default function Dashboard() {
     savedResumeData || createInitialResumeData(user || null);
   const hasResume = Boolean(savedResumeData);
 
-  const { score: resumeScore, hint: resumeHint } = calculateScore(resumeData);
+  const { score: resumeScore } = calculateScore(resumeData);
 
   const counts = {
     saved: apps.filter((a) => a.status === "saved").length,
@@ -68,11 +68,11 @@ export default function Dashboard() {
 
   return (
     <div className="jr-dashboard">
-      <section className="jr-home-hero">
+      <section className="jr-home-hero jr-home-hero-compact">
         <div className="jr-home-hero-copy">
           <span className="jr-page-eyebrow">Workspace overview</span>
           <h2>{getGreeting()}, {user?.name?.split(" ")[0] || "there"}.</h2>
-          <p>{resumeScore < 50 ? "Let’s build a stronger profile so role matching and applications have a better foundation." : "Your resume and pipeline are moving. Keep momentum with the clearest next action below."}</p>
+          <p>{resumeScore < 50 ? "Start with the resume basics, then move into search and applications." : "Your resume is in progress. Use the next action below to keep things moving."}</p>
           <div className="jr-home-hero-actions">
             <Link href={nextStep.href} className="jr-btn jr-btn-primary">
               <SparklesIcon size={16} />
@@ -84,46 +84,13 @@ export default function Dashboard() {
             </Link>
           </div>
         </div>
-
-        <div className="jr-home-hero-panel">
-          <div className="jr-home-hero-panel-top">
-            <span className={`jr-badge ${resumeScore >= 80 ? "jr-badge-green" : resumeScore >= 50 ? "jr-badge-blue" : "jr-badge-yellow"}`}>
-              {resumeScore >= 80 ? "Ready to apply" : hasResume ? "Profile in progress" : "Resume not started"}
-            </span>
-            <div className="jr-journey-score">
-              <svg viewBox="0 0 36 36" className="jr-journey-ring">
-                <circle cx="18" cy="18" r="16" fill="none" stroke="var(--jr-border-soft)" strokeWidth="3" />
-                <circle
-                  cx="18"
-                  cy="18"
-                  r="16"
-                  fill="none"
-                  stroke={resumeScore >= 80 ? "var(--jr-success)" : resumeScore >= 50 ? "var(--jr-blue)" : "var(--jr-warning)"}
-                  strokeWidth="3"
-                  strokeDasharray={`${(resumeScore / 100) * 100.53} 100.53`}
-                  strokeLinecap="round"
-                  transform="rotate(-90 18 18)"
-                />
-              </svg>
-              <span className="jr-journey-score-text">{resumeScore}%</span>
-            </div>
-          </div>
-          <h3>{resumeHint}</h3>
-          <div className="jr-journey-checklist">
-            <JourneyItem done={Boolean(resumeData.fullName && resumeData.email)} label="Identity and contact info" />
-            <JourneyItem done={resumeData.experiences.length > 0} label="Experience added" />
-            <JourneyItem done={resumeData.education.length > 0} label="Education added" />
-            <JourneyItem done={resumeData.skills.length >= 5} label="Core skills listed" />
-            <JourneyItem done={resumeData.summary.length >= 80} label="Summary written" />
-          </div>
-        </div>
       </section>
 
       <div className="jr-stats-row">
-        <StatCard label="Resume" value={`${resumeScore}%`} sub={resumeScore >= 80 ? "ATS-ready" : hasResume ? "In progress" : "Not started"} />
-        <StatCard label="Saved" value={String(counts.saved)} sub="Roles bookmarked" />
+        <StatCard label="Resume" value={`${resumeScore}%`} sub={resumeScore >= 80 ? "Ready to apply" : hasResume ? "In progress" : "Not started"} />
+        <StatCard label="Saved" value={String(counts.saved)} sub="Roles in your shortlist" />
         <StatCard label="Applied" value={String(counts.applied)} sub="Applications sent" />
-        <StatCard label="Interviews" value={String(counts.interview)} sub={counts.offer > 0 ? `${counts.offer} offer${counts.offer > 1 ? "s" : ""}` : "Nothing pending yet"} />
+        <StatCard label="Interviews" value={String(counts.interview)} sub={counts.offer > 0 ? `${counts.offer} offer${counts.offer > 1 ? "s" : ""}` : "No offers yet"} />
       </div>
 
       <div className="jr-dashboard-grid">
@@ -139,28 +106,28 @@ export default function Dashboard() {
               <DocumentIcon size={18} />
               <div>
                 <strong>{hasResume ? "Refine resume" : "Build resume"}</strong>
-                <span>Improve your profile foundation.</span>
+                <span>Add or tighten the essentials.</span>
               </div>
             </Link>
             <Link href="/jobready/app/jobs" className="jr-quick-action">
               <SearchIcon size={18} />
               <div>
                 <strong>Search roles</strong>
-                <span>Browse jobs ranked against your profile.</span>
+                <span>Search and save the roles worth applying to.</span>
               </div>
             </Link>
             <Link href="/jobready/app/applications" className="jr-quick-action">
               <BriefcaseIcon size={18} />
               <div>
                 <strong>Track applications</strong>
-                <span>Move saved jobs through the pipeline.</span>
+                <span>Move roles from saved to interview.</span>
               </div>
             </Link>
             <Link href="/jobready/app/settings" className="jr-quick-action">
               <ArrowRightIcon size={18} />
               <div>
                 <strong>Workspace settings</strong>
-                <span>Update profile and account details.</span>
+                <span>Update your name, location, and password.</span>
               </div>
             </Link>
           </div>
@@ -176,8 +143,8 @@ export default function Dashboard() {
           {recentApps.length === 0 ? (
             <p className="jr-section-empty-copy">
               {resumeScore < 50
-                ? "Finish the resume basics first, then start saving and applying to roles."
-                : "No applications yet. Search for roles and save the ones worth tracking."}
+                ? "Finish the resume basics first, then start saving roles."
+                : "No applications yet. Save a role from Jobs to begin tracking."}
             </p>
           ) : (
             <div className="jr-recent-list">
@@ -210,15 +177,6 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub: st
       <span className="jr-stat-label">{label}</span>
       <span className="jr-stat-value">{value}</span>
       <span className="jr-stat-sub">{sub}</span>
-    </div>
-  );
-}
-
-function JourneyItem({ done, label }: { done: boolean; label: string }) {
-  return (
-    <div className={`jr-journey-item ${done ? "jr-journey-item-done" : ""}`}>
-      <div className="jr-journey-item-check">{done ? "✓" : "○"}</div>
-      <span>{label}</span>
     </div>
   );
 }

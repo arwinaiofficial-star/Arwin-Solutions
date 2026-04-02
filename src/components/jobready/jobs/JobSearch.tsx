@@ -5,11 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { applicationsApi } from "@/lib/api/client";
 import {
-  BriefcaseIcon,
-  DocumentIcon,
   LocationIcon,
   SearchIcon,
-  SparklesIcon,
 } from "@/components/icons/Icons";
 import { JobResult, JobSearchState } from "./types";
 import JobCard from "./JobCard";
@@ -119,66 +116,17 @@ export default function JobSearch() {
     return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
   });
 
-  const suggestionPool = Array.from(
-    new Set([
-      ...(user?.cvData?.skills || []).slice(0, 6),
-      ...(user?.cvData?.experience || [])
-        .map((entry) => entry.title)
-        .filter((value): value is string => Boolean(value))
-        .slice(0, 4),
-    ])
-  ).slice(0, 6);
-
   const roleSummary = user?.cvGenerated
-    ? "Your resume is connected, so match scores can stay grounded in your existing skills and experience."
-    : "Search still works without a resume, but the strongest role matching appears once your profile is complete.";
+    ? "Search by title, skill, or tool. Save roles that belong in your pipeline."
+    : "Search by title or skill now. Matching improves after you finish your resume.";
 
   return (
     <div className="jr-jobs-page">
-      <section className="jr-page-hero jr-jobs-hero">
+      <section className="jr-page-hero jr-jobs-hero jr-page-hero-compact">
         <div className="jr-page-hero-copy">
           <span className="jr-page-eyebrow">Role discovery</span>
           <h2>Find roles that fit your current profile.</h2>
           <p>{roleSummary}</p>
-          {suggestionPool.length > 0 && (
-            <div className="jr-chip-row">
-              {suggestionPool.map((suggestion) => (
-                <button
-                  key={suggestion}
-                  type="button"
-                  className={`jr-filter-chip ${currentQuery === suggestion ? "jr-filter-chip-active" : ""}`}
-                  onClick={() => {
-                    setState((prev) => ({ ...prev, query: suggestion }));
-                    void handleSearch(suggestion);
-                  }}
-                >
-                  <SparklesIcon size={14} />
-                  <span>{suggestion}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="jr-page-hero-aside">
-          <div className="jr-mini-metric">
-            <div className="jr-mini-metric-icon">
-              <DocumentIcon size={16} />
-            </div>
-            <div>
-              <strong>{user?.cvGenerated ? "Resume connected" : "Resume not connected"}</strong>
-              <span>{user?.cvGenerated ? "Skills are ready for better matching." : "Complete your resume to improve match confidence."}</span>
-            </div>
-          </div>
-          <div className="jr-mini-metric">
-            <div className="jr-mini-metric-icon">
-              <BriefcaseIcon size={16} />
-            </div>
-            <div>
-              <strong>{savedJobUrls.size} saved role{savedJobUrls.size === 1 ? "" : "s"}</strong>
-              <span>Everything you save flows straight into the application tracker.</span>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -187,11 +135,11 @@ export default function JobSearch() {
           <div className="jr-search-field jr-search-field-wide">
             <label>Role, skills, or tools</label>
               <input
-              type="text"
-              placeholder="React, Product Manager, Python, Customer Success..."
-              value={currentQuery}
-              onChange={(e) => setState((prev) => ({ ...prev, query: e.target.value }))}
-              onKeyDown={(e) => {
+                type="text"
+                placeholder="Product Manager, React, Python..."
+                value={currentQuery}
+                onChange={(e) => setState((prev) => ({ ...prev, query: e.target.value }))}
+                onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   void handleSearch();
                 }
@@ -226,6 +174,11 @@ export default function JobSearch() {
             {state.loading ? "Searching..." : "Search roles"}
           </button>
         </div>
+        {!state.searched && !state.loading && (
+          <p className="jr-search-inline-note">
+            Search by job title, skills, or tools. Saved roles move straight into Applications.
+          </p>
+        )}
       </div>
 
       {state.searched && !state.loading && (
@@ -279,25 +232,13 @@ export default function JobSearch() {
       )}
 
       {state.searched && !state.loading && sortedResults.length === 0 && (
-        <div className="jr-empty">
+        <div className="jr-empty jr-empty-compact">
           <div className="jr-empty-icon">
             <SearchIcon size={24} />
           </div>
           <h2 className="jr-empty-title">No roles matched this search</h2>
           <p className="jr-empty-text">
             Try a broader title, a different skill cluster, or a wider location to surface more opportunities.
-          </p>
-        </div>
-      )}
-
-      {!state.searched && !state.loading && (
-        <div className="jr-empty">
-          <div className="jr-empty-icon">
-            <SearchIcon size={24} />
-          </div>
-          <h2 className="jr-empty-title">Start with the role you want to explore</h2>
-          <p className="jr-empty-text">
-            Enter skills, job titles, or tools and add a preferred location if needed. Results are ranked by relevance and can be saved directly into your pipeline.
           </p>
         </div>
       )}

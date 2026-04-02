@@ -114,81 +114,75 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       {!isOnboarding && (
-      <aside className="jr-sidebar">
-        <div className="jr-sidebar-panel">
-        <Link href="/jobready/app" className="jr-sidebar-logo">
-          <div className="jr-sidebar-logo-icon">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 2L15.09 8.26H22L17.55 12.5L20.09 18.5H12" />
-            </svg>
-          </div>
-          <div className="jr-sidebar-logo-copy">
-            <span className="jr-sidebar-logo-text">JobReady</span>
-            <span className="jr-sidebar-logo-subtext">Career workspace</span>
-          </div>
-        </Link>
+        <aside className="jr-sidebar">
+          <div className="jr-sidebar-panel">
+            <Link href="/jobready/app" className="jr-sidebar-logo">
+              <div className="jr-sidebar-logo-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 2L15.09 8.26H22L17.55 12.5L20.09 18.5H12" />
+                </svg>
+              </div>
+              <div className="jr-sidebar-logo-copy">
+                <span className="jr-sidebar-logo-text">JobReady</span>
+                <span className="jr-sidebar-logo-subtext">Career workspace</span>
+              </div>
+            </Link>
 
-        <div className="jr-sidebar-overview">
-          <span className="jr-badge jr-badge-blue">From resume to offer</span>
-          <h2>One calm system for every career move.</h2>
-          <p>Build your profile, review roles, and keep the pipeline moving without losing context.</p>
-        </div>
+            <nav className="jr-sidebar-nav">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = isActivePath(pathname, item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`jr-sidebar-link ${isActive ? "jr-sidebar-link-active" : ""}`}
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    <Icon size={18} />
+                    <div className="jr-sidebar-link-copy">
+                      <span>{item.label}</span>
+                      <small>{item.caption}</small>
+                    </div>
+                  </Link>
+                );
+              })}
+            </nav>
 
-        <nav className="jr-sidebar-nav">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = isActivePath(pathname, item.href);
-            return (
+            <div className="jr-sidebar-secondary">
               <Link
-                key={item.href}
-                href={item.href}
-                className={`jr-sidebar-link ${isActive ? "jr-sidebar-link-active" : ""}`}
+                href="/jobready/app/settings"
+                className={`jr-sidebar-link ${pathname.startsWith("/jobready/app/settings") ? "jr-sidebar-link-active" : ""}`}
                 onClick={() => setSidebarOpen(false)}
               >
-                <Icon size={18} />
+                <SettingsIcon size={18} />
                 <div className="jr-sidebar-link-copy">
-                  <span>{item.label}</span>
-                  <small>{item.caption}</small>
+                  <span>Settings</span>
+                  <small>Profile and security</small>
                 </div>
               </Link>
-            );
-          })}
-        </nav>
+            </div>
 
-        <div className="jr-sidebar-secondary">
-          <Link
-            href="/jobready/app/settings"
-            className={`jr-sidebar-link ${pathname.startsWith("/jobready/app/settings") ? "jr-sidebar-link-active" : ""}`}
-            onClick={() => setSidebarOpen(false)}
-          >
-            <SettingsIcon size={18} />
-            <div className="jr-sidebar-link-copy">
-              <span>Settings</span>
-              <small>Profile and security</small>
+            <div className="jr-sidebar-footer">
+              <Link href="/jobready/app/settings" className="jr-sidebar-user">
+                <div className="jr-sidebar-avatar">
+                  {user.name?.charAt(0).toUpperCase() || "U"}
+                </div>
+                <div className="jr-sidebar-user-info">
+                  <div className="jr-sidebar-user-name">{user.name || "User"}</div>
+                  <div className="jr-sidebar-user-email">{user.email}</div>
+                </div>
+              </Link>
+              <button
+                className="jr-btn jr-btn-ghost jr-btn-sm jr-sidebar-signout"
+                onClick={() => logout()}
+              >
+                <LogoutIcon size={16} />
+                <span>Sign out</span>
+              </button>
             </div>
-          </Link>
-        </div>
-
-        <div className="jr-sidebar-footer">
-          <Link href="/jobready/app/settings" className="jr-sidebar-user">
-            <div className="jr-sidebar-avatar">
-              {user.name?.charAt(0).toUpperCase() || "U"}
-            </div>
-            <div className="jr-sidebar-user-info">
-              <div className="jr-sidebar-user-name">{user.name || "User"}</div>
-              <div className="jr-sidebar-user-email">{user.email}</div>
-            </div>
-          </Link>
-          <button
-            className="jr-btn jr-btn-ghost jr-btn-sm jr-sidebar-signout"
-            onClick={() => logout()}
-          >
-            <LogoutIcon size={16} />
-            <span>Sign out</span>
-          </button>
-        </div>
-        </div>
-      </aside>
+          </div>
+        </aside>
       )}
 
       <div className="jr-content">
@@ -221,22 +215,22 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {!isOnboarding && (
-      <nav className="jr-mobile-tabs" aria-label="Primary">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = isActivePath(pathname, item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`jr-mobile-tab ${isActive ? "jr-mobile-tab-active" : ""}`}
-            >
-              <Icon size={18} />
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
+        <nav className="jr-mobile-tabs" aria-label="Primary">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = isActivePath(pathname, item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`jr-mobile-tab ${isActive ? "jr-mobile-tab-active" : ""}`}
+              >
+                <Icon size={18} />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
       )}
     </div>
   );

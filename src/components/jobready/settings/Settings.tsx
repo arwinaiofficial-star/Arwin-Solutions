@@ -78,31 +78,11 @@ export default function Settings() {
 
   return (
     <div className="jr-settings">
-      <section className="jr-page-hero jr-settings-hero">
+      <section className="jr-page-hero jr-settings-hero jr-page-hero-compact">
         <div className="jr-page-hero-copy">
           <span className="jr-page-eyebrow">Workspace controls</span>
-          <h2>Manage the details behind your workspace.</h2>
-          <p>Keep profile information current, secure your account, and make sure your resume starts from the right base data.</p>
-        </div>
-        <div className="jr-page-hero-aside">
-          <div className="jr-mini-metric">
-            <div className="jr-mini-metric-icon">
-              <UserIcon size={16} />
-            </div>
-            <div>
-              <strong>{user?.name || "Profile"}</strong>
-              <span>{user?.email || "No email available"}</span>
-            </div>
-          </div>
-          <div className="jr-mini-metric">
-            <div className="jr-mini-metric-icon">
-              <CheckIcon size={16} />
-            </div>
-            <div>
-              <strong>{user?.cvGenerated ? "Resume available" : "Resume not created yet"}</strong>
-              <span>{user?.createdAt ? `Member since ${new Date(user.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })}` : "Account details available once synced."}</span>
-            </div>
-          </div>
+          <h2>Update your profile and account.</h2>
+          <p>Keep your name, location, and password current.</p>
         </div>
       </section>
 
@@ -114,7 +94,7 @@ export default function Settings() {
             </div>
             <div>
               <h2>Profile</h2>
-              <p>This information pre-fills your resume and keeps the workspace consistent.</p>
+              <p>This information fills your resume and appears across the workspace.</p>
             </div>
           </div>
 
@@ -181,7 +161,7 @@ export default function Settings() {
             </div>
             <div>
               <h2>Security</h2>
-              <p>Update your password and keep the workspace protected.</p>
+              <p>Change your password for this account.</p>
             </div>
           </div>
 
@@ -243,7 +223,7 @@ export default function Settings() {
             </div>
             <div>
               <h2>Account details</h2>
-              <p>Reference information tied to your JobReady membership.</p>
+              <p>Reference details for this account.</p>
             </div>
           </div>
 

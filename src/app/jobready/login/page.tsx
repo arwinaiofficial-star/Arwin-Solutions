@@ -66,22 +66,22 @@ function LoginForm() {
 
         <div className="jr-auth-side-copy">
           <span className="jr-page-eyebrow">Career workspace</span>
-          <h1>Pick up your career workflow where you left it.</h1>
-          <p>Resume edits, job matches, and saved applications stay connected so your search feels like one system instead of five tools stitched together.</p>
+          <h1>Pick up where you left off.</h1>
+          <p>Your resume, saved roles, and application tracker stay in one place.</p>
         </div>
 
         <div className="jr-auth-benefits">
           <div className="jr-auth-benefit">
             <SparklesIcon size={16} />
-            <span>Live resume guidance and ATS scoring</span>
+            <span>Resume draft and ATS score</span>
           </div>
           <div className="jr-auth-benefit">
             <CheckIcon size={16} />
-            <span>Role search tied directly to your profile</span>
+            <span>Role search linked to your profile</span>
           </div>
           <div className="jr-auth-benefit">
             <CheckIcon size={16} />
-            <span>Application tracking in one native-feeling workspace</span>
+            <span>Saved jobs and applications in one tracker</span>
           </div>
         </div>
       </section>
@@ -89,7 +89,7 @@ function LoginForm() {
       <section className="jr-auth-content">
         <div className="jr-auth-card">
           <h2 className="jr-auth-title">Welcome back</h2>
-          <p className="jr-auth-subtitle">Sign in to continue with your resume, saved roles, and application pipeline.</p>
+          <p className="jr-auth-subtitle">Sign in to continue with your resume, jobs, and applications.</p>
 
           {error && (
             <div className="jr-input-error-text jr-auth-alert">
