@@ -120,8 +120,7 @@ export default function JobCard({ job, onSave, onViewDetails, isSaved = false }:
           href={job.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="jr-btn jr-btn-ghost jr-btn-sm"
-          style={{ marginLeft: "auto" }}
+          className="jr-btn jr-btn-ghost jr-btn-sm jr-job-card-cta"
         >
           <ExternalLinkIcon size={14} />
           Apply now

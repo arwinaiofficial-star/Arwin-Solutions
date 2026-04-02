@@ -11,9 +11,9 @@ type Message = { type: "success" | "error"; text: string } | null;
 export default function Settings() {
   const { user, refreshUser } = useAuth();
   const [profile, setProfile] = useState({
-    name: user?.name || "",
-    phone: user?.phone || "",
-    location: user?.location || "",
+    name: null as string | null,
+    phone: null as string | null,
+    location: null as string | null,
   });
   const [passwords, setPasswords] = useState({
     current: "",
@@ -22,15 +22,27 @@ export default function Settings() {
   });
   const [profileMsg, setProfileMsg] = useState<Message>(null);
   const [passwordMsg, setPasswordMsg] = useState<Message>(null);
-  const [saving, setSaving] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [passwordSaving, setPasswordSaving] = useState(false);
+
+  const profileValues = {
+    name: profile.name ?? user?.name ?? "",
+    phone: profile.phone ?? user?.phone ?? "",
+    location: profile.location ?? user?.location ?? "",
+  };
+
+  const profileDirty =
+    profileValues.name !== (user?.name || "") ||
+    profileValues.phone !== (user?.phone || "") ||
+    profileValues.location !== (user?.location || "");
 
   const handleProfileSave = async () => {
-    setSaving(true);
+    setProfileSaving(true);
     setProfileMsg(null);
     const res = await authApi.updateProfile({
-      name: profile.name,
-      phone: profile.phone,
-      location: profile.location,
+      name: profileValues.name,
+      phone: profileValues.phone,
+      location: profileValues.location,
     });
     if (res.error) {
       setProfileMsg({ type: "error", text: res.error });
@@ -40,7 +52,7 @@ export default function Settings() {
         await refreshUser();
       }
     }
-    setSaving(false);
+    setProfileSaving(false);
   };
 
   const handlePasswordChange = async () => {
@@ -53,7 +65,7 @@ export default function Settings() {
       setPasswordMsg({ type: "error", text: "Password must be at least 8 characters." });
       return;
     }
-    setSaving(true);
+    setPasswordSaving(true);
     const res = await authApi.changePassword(passwords.current, passwords.new);
     if (res.error) {
       setPasswordMsg({ type: "error", text: res.error });
@@ -61,7 +73,7 @@ export default function Settings() {
       setPasswordMsg({ type: "success", text: "Password changed." });
       setPasswords({ current: "", new: "", confirm: "" });
     }
-    setSaving(false);
+    setPasswordSaving(false);
   };
 
   return (
@@ -108,15 +120,16 @@ export default function Settings() {
 
           <div className="jr-settings-field">
             <label>Email</label>
-            <input type="email" value={user?.email || ""} disabled />
+            <input className="jr-input" type="email" value={user?.email || ""} disabled />
           </div>
 
           <div className="jr-settings-row">
             <div className="jr-settings-field">
               <label>Full name</label>
               <input
+                className="jr-input"
                 type="text"
-                value={profile.name}
+                value={profileValues.name}
                 onChange={(e) => setProfile((prev) => ({ ...prev, name: e.target.value }))}
                 placeholder="Your full name"
               />
@@ -124,8 +137,9 @@ export default function Settings() {
             <div className="jr-settings-field">
               <label>Phone</label>
               <input
+                className="jr-input"
                 type="tel"
-                value={profile.phone}
+                value={profileValues.phone}
                 onChange={(e) => setProfile((prev) => ({ ...prev, phone: e.target.value }))}
                 placeholder="+91 ..."
               />
@@ -135,8 +149,9 @@ export default function Settings() {
           <div className="jr-settings-field">
             <label>Location</label>
             <input
+              className="jr-input"
               type="text"
-              value={profile.location}
+              value={profileValues.location}
               onChange={(e) => setProfile((prev) => ({ ...prev, location: e.target.value }))}
               placeholder="City, Country"
             />
@@ -146,14 +161,14 @@ export default function Settings() {
             <button
               className="jr-btn jr-btn-primary"
               onClick={handleProfileSave}
-              disabled={saving}
+              disabled={profileSaving || !profileDirty}
             >
-              {saving ? "Saving..." : "Save profile"}
+              {profileSaving ? "Saving..." : "Save profile"}
             </button>
           </div>
 
           {profileMsg && (
-            <div className={`jr-settings-message ${profileMsg.type}`}>
+            <div className={`jr-settings-message ${profileMsg.type}`} aria-live="polite">
               {profileMsg.text}
             </div>
           )}
@@ -173,6 +188,7 @@ export default function Settings() {
           <div className="jr-settings-field">
             <label>Current password</label>
             <input
+              className="jr-input"
               type="password"
               value={passwords.current}
               onChange={(e) => setPasswords((prev) => ({ ...prev, current: e.target.value }))}
@@ -184,6 +200,7 @@ export default function Settings() {
             <div className="jr-settings-field">
               <label>New password</label>
               <input
+                className="jr-input"
                 type="password"
                 value={passwords.new}
                 onChange={(e) => setPasswords((prev) => ({ ...prev, new: e.target.value }))}
@@ -193,6 +210,7 @@ export default function Settings() {
             <div className="jr-settings-field">
               <label>Confirm new password</label>
               <input
+                className="jr-input"
                 type="password"
                 value={passwords.confirm}
                 onChange={(e) => setPasswords((prev) => ({ ...prev, confirm: e.target.value }))}
@@ -205,14 +223,14 @@ export default function Settings() {
             <button
               className="jr-btn jr-btn-secondary"
               onClick={handlePasswordChange}
-              disabled={saving || !passwords.current || !passwords.new}
+              disabled={passwordSaving || !passwords.current || !passwords.new}
             >
-              {saving ? "Updating..." : "Update password"}
+              {passwordSaving ? "Updating..." : "Update password"}
             </button>
           </div>
 
           {passwordMsg && (
-            <div className={`jr-settings-message ${passwordMsg.type}`}>
+            <div className={`jr-settings-message ${passwordMsg.type}`} aria-live="polite">
               {passwordMsg.text}
             </div>
           )}

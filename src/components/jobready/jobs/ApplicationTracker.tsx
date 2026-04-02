@@ -19,6 +19,10 @@ function formatDate(dateStr: string): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+function formatStatusLabel(status: Status): string {
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
 export default function ApplicationTracker() {
   const [apps, setApps] = useState<JobApplicationData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -154,10 +158,10 @@ export default function ApplicationTracker() {
                               <button
                                 className="jr-kanban-action jr-kanban-action-primary"
                                 onClick={() => moveApp(app.id, next)}
-                                title={`Move to ${next}`}
+                                title={`Move to ${formatStatusLabel(next)}`}
                               >
                                 <ArrowRightIcon size={12} />
-                                <span>{next}</span>
+                                <span>{formatStatusLabel(next)}</span>
                               </button>
                             )}
                             {app.job_url && (
@@ -191,7 +195,7 @@ export default function ApplicationTracker() {
       </div>
 
       {apps.length === 0 && (
-        <div className="jr-empty" style={{ marginTop: "var(--jr-sp-4)" }}>
+        <div className="jr-empty jr-empty-spaced">
           <h2 className="jr-empty-title">No applications yet</h2>
           <p className="jr-empty-text">
             Search for jobs and save them to start tracking your applications.

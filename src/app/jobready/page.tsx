@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import "./jobready.css";
 import {
   ArrowRightIcon,
   CheckCircleIcon,
@@ -50,18 +51,18 @@ export default function JobReadyPage() {
         <div className="jr-pg-hero-bg">
           <div className="jr-pg-hero-glow" />
         </div>
-        <div className="container" style={{ position: "relative", zIndex: 2, textAlign: "center" }}>
-          <div className="badge" style={{ marginBottom: "var(--space-md)" }}>
+        <div className="container jr-pg-hero-inner">
+          <div className="badge jr-pg-badge">
             <SparklesIcon size={14} />
             Career Operating System
           </div>
-          <h1 style={{ fontSize: "clamp(2.5rem, 5.5vw, 4rem)", fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.08, marginBottom: "var(--space-md)" }}>
+          <h1 className="jr-pg-title">
             Career tools that feel enterprise-grade,<br />guided like a coach.
           </h1>
-          <p className="text-muted" style={{ fontSize: "1.125rem", maxWidth: "560px", margin: "0 auto var(--space-xl)", lineHeight: 1.7 }}>
+          <p className="text-muted jr-pg-subtitle">
             Resume building, role discovery, and application tracking in one workspace with cleaner flows, stronger mobile behavior, and AI where it creates leverage.
           </p>
-          <div className="flex gap-md justify-center" style={{ flexWrap: "wrap" }}>
+          <div className="jr-pg-actions">
             <Link href="/jobready/signup" className="btn btn-primary btn-lg">
               Start Your Workspace
               <ArrowRightIcon size={18} />
@@ -144,7 +145,7 @@ export default function JobReadyPage() {
               Create your free workspace and start with a resume that&apos;s
               built to get past ATS filters and land interviews.
             </p>
-            <div className="flex gap-md justify-center" style={{ flexWrap: "wrap" }}>
+            <div className="jr-pg-actions">
               <Link href="/jobready/signup" className="btn btn-primary btn-lg">
                 Start Your Workspace
                 <ArrowRightIcon size={18} />

@@ -242,7 +242,7 @@ export default function ResumeEditor({ initialData, onReset }: ResumeEditorProps
           </div>
 
           <div className="jr-resume-actions">
-            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <div className="jr-resume-actions-left">
               <button
                 onClick={handleBack}
                 disabled={activeStep === 1 && !showATS}
@@ -253,8 +253,7 @@ export default function ResumeEditor({ initialData, onReset }: ResumeEditorProps
               {onReset && (
                 <button
                   onClick={() => setShowResetConfirm(true)}
-                  className="jr-btn jr-btn-ghost"
-                  style={{ color: "var(--jr-error)" }}
+                  className="jr-btn jr-btn-ghost jr-btn-danger-text"
                 >
                   Start over
                 </button>

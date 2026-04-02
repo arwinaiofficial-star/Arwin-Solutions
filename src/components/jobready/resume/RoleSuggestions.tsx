@@ -121,10 +121,9 @@ export default function RoleSuggestions({ data }: RoleSuggestionsProps) {
       </div>
 
       <button
-        className="jr-btn jr-btn-ghost jr-btn-sm"
+        className="jr-btn jr-btn-ghost jr-btn-sm jr-role-suggestions-refresh"
         onClick={generateSuggestions}
         disabled={loading}
-        style={{ marginTop: "8px" }}
       >
         {loading ? "Regenerating..." : "Regenerate suggestions"}
       </button>

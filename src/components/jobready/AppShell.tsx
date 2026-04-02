@@ -204,8 +204,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </Link>
           <button
-            className="jr-btn jr-btn-ghost jr-btn-sm"
-            style={{ marginTop: "12px", width: "100%" }}
+            className="jr-btn jr-btn-ghost jr-btn-sm jr-sidebar-signout"
             onClick={() => logout()}
           >
             <LogoutIcon size={16} />

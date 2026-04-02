@@ -105,7 +105,7 @@ export default function ResumeAnalyzer({ data, currentStep, onApplySuggestion }:
       </div>
 
       {error && (
-        <p style={{ color: "var(--jr-error)", fontSize: "var(--jr-text-xs)", marginTop: 8 }}>
+        <p className="jr-resume-analyzer-error">
           Analysis failed: {error}
         </p>
       )}
@@ -150,9 +150,8 @@ export default function ResumeAnalyzer({ data, currentStep, onApplySuggestion }:
 
       {analysis && (
         <button
-          className="jr-btn jr-btn-ghost jr-btn-sm"
+          className="jr-btn jr-btn-ghost jr-btn-sm jr-resume-analyzer-toggle"
           onClick={() => setExpanded(!expanded)}
-          style={{ marginTop: "4px", fontSize: "11px" }}
         >
           {expanded ? "Hide" : "Show"} analysis
         </button>

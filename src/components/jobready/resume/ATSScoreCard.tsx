@@ -110,10 +110,9 @@ export default function ATSScoreCard({ data }: ATSScoreCardProps) {
           )}
 
           <button
-            className="jr-btn jr-btn-ghost jr-btn-sm"
+            className="jr-btn jr-btn-ghost jr-btn-sm jr-ats-card-refresh"
             onClick={calculateATS}
             disabled={loading}
-            style={{ marginTop: "12px" }}
           >
             {loading ? "Re-scanning..." : "Re-check Score"}
           </button>

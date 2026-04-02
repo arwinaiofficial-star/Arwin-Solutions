@@ -254,7 +254,7 @@ export default function ResumeCreationFlow({
               id="jr-file-input"
               type="file"
               accept=".pdf,.docx"
-              style={{ display: "none" }}
+              hidden
               onChange={handleFileInput}
             />
           </div>

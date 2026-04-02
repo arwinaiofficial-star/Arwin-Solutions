@@ -147,7 +147,10 @@ export default function JobSearch() {
                   key={suggestion}
                   type="button"
                   className={`jr-filter-chip ${currentQuery === suggestion ? "jr-filter-chip-active" : ""}`}
-                  onClick={() => setState((prev) => ({ ...prev, query: suggestion }))}
+                  onClick={() => {
+                    setState((prev) => ({ ...prev, query: suggestion }));
+                    void handleSearch(suggestion);
+                  }}
                 >
                   <SparklesIcon size={14} />
                   <span>{suggestion}</span>
@@ -232,12 +235,14 @@ export default function JobSearch() {
           </span>
           <div className="jr-search-sort">
             <button
+              type="button"
               className={state.sortBy === "relevance" ? "active" : ""}
               onClick={() => setState((prev) => ({ ...prev, sortBy: "relevance" }))}
             >
               Best match
             </button>
             <button
+              type="button"
               className={state.sortBy === "date" ? "active" : ""}
               onClick={() => setState((prev) => ({ ...prev, sortBy: "date" }))}
             >

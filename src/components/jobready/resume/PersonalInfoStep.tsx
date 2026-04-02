@@ -61,7 +61,7 @@ export default function PersonalInfoStep({
         <div key={field.key} className="jr-input-group">
           <label className="jr-label">
             {field.label}
-            {field.required && <span style={{ color: "var(--jr-error)" }}>*</span>}
+            {field.required && <span className="jr-required-mark">*</span>}
           </label>
           <input
             type={field.type || "text"}

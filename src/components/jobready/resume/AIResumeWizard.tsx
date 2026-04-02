@@ -205,7 +205,7 @@ Write strong action-verb bullet points with quantifiable results. Include 8-12 r
           />
         )}
         {error && (
-          <p className="jr-input-error-text" style={{ marginTop: 8 }}>{error}</p>
+          <p className="jr-input-error-text jr-form-inline-note">{error}</p>
         )}
       </div>
 
