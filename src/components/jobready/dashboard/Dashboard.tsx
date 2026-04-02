@@ -26,22 +26,31 @@ function getGreeting(): string {
 export default function Dashboard() {
   const { user } = useAuth();
   const [apps, setApps] = useState<JobApplicationData[]>([]);
-  const [resumeData, setResumeData] = useState<ResumeData>(createInitialResumeData(user || null));
-  const [hasResume, setHasResume] = useState(false);
+  const [savedResumeData, setSavedResumeData] = useState<ResumeData | null>(
+    null
+  );
 
   useEffect(() => {
-    resumeApi.getLatest().then((res) => {
-      if (res.data?.data) {
-        setResumeData(mapBackendToResumeData(res.data.data));
-        setHasResume(true);
-      }
-    });
     applicationsApi.list().then((res) => {
       if (res.data) {
         setApps(res.data);
       }
     });
   }, []);
+
+  useEffect(() => {
+    if (!user?.cvGenerated) return;
+
+    resumeApi.getLatest().then((res) => {
+      if (res.data?.data) {
+        setSavedResumeData(mapBackendToResumeData(res.data.data));
+      }
+    });
+  }, [user]);
+
+  const resumeData: ResumeData =
+    savedResumeData || createInitialResumeData(user || null);
+  const hasResume = Boolean(savedResumeData);
 
   const { score: resumeScore, hint: resumeHint } = calculateScore(resumeData);
 

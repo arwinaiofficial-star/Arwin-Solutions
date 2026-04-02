@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/context/AuthContext";
 import { resumeApi } from "@/lib/api/client";
 import { ResumeEditor } from "@/components/jobready/resume";
 import ResumeCreationFlow from "@/components/jobready/resume/ResumeCreationFlow";
@@ -13,12 +14,16 @@ import { mapBackendToResumeData } from "@/components/jobready/resume/types";
 type View = "loading" | "choose" | "ai-wizard" | "examples" | "editor" | "uploading" | "importing";
 
 export default function DocumentsPage() {
+  const { user, isLoading } = useAuth();
   const [view, setView] = useState<View>("loading");
   const [initialData, setInitialData] = useState<ResumeData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // On mount: check DATABASE for existing resume — not user.cvData
+  // Prefer the auth payload to avoid probing the resume endpoint for first-time users.
   useEffect(() => {
+    if (isLoading) return;
+    if (!user?.cvGenerated) return;
+
     let cancelled = false;
     (async () => {
       const result = await resumeApi.getLatest();
@@ -32,7 +37,10 @@ export default function DocumentsPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [isLoading, user?.cvGenerated]);
+
+  const resolvedView: View =
+    view === "loading" && !isLoading && !user?.cvGenerated ? "choose" : view;
 
   const startEditor = useCallback((data?: ResumeData) => {
     if (data) setInitialData(data);
@@ -112,10 +120,14 @@ export default function DocumentsPage() {
     [startEditor]
   );
 
-  if (view === "loading" || view === "uploading" || view === "importing") {
+  if (
+    resolvedView === "loading" ||
+    resolvedView === "uploading" ||
+    resolvedView === "importing"
+  ) {
     const msg =
-      view === "uploading" ? "Parsing your resume..." :
-      view === "importing" ? "Importing from LinkedIn..." :
+      resolvedView === "uploading" ? "Parsing your resume..." :
+      resolvedView === "importing" ? "Importing from LinkedIn..." :
       "Loading...";
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh", gap: "12px" }}>
@@ -125,7 +137,7 @@ export default function DocumentsPage() {
     );
   }
 
-  if (view === "choose") {
+  if (resolvedView === "choose") {
     return (
       <>
         {error && (
@@ -142,7 +154,7 @@ export default function DocumentsPage() {
     );
   }
 
-  if (view === "ai-wizard") {
+  if (resolvedView === "ai-wizard") {
     return (
       <AIResumeWizard
         onComplete={(data) => startEditor(data)}
@@ -151,7 +163,7 @@ export default function DocumentsPage() {
     );
   }
 
-  if (view === "examples") {
+  if (resolvedView === "examples") {
     return (
       <ExampleTemplates
         onSelect={(data) => startEditor(data)}

@@ -105,6 +105,8 @@ function mapUserDataToProfile(data: UserData): UserProfile {
  * Load CV data from the backend when available, with local fallback support.
  */
 async function loadCVData(hasResume: boolean): Promise<GeneratedCV | null> {
+  if (!hasResume) return null;
+
   try {
     const result = await resumeApi.getLatest();
     if (result.data?.data) {
@@ -115,7 +117,6 @@ async function loadCVData(hasResume: boolean): Promise<GeneratedCV | null> {
     // Resume fallback remains available through resumeApi.getLatest.
   }
 
-  if (!hasResume) return null;
   return null;
 }
 
