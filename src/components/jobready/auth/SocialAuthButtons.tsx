@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AlertIcon } from "@/components/icons/Icons";
 import "@/app/jobready/jobready.css";
 
 // Google icon as inline SVG to avoid external dependencies
@@ -37,12 +38,13 @@ const LINKEDIN_REDIRECT_URI = typeof window !== "undefined"
 
 export default function SocialAuthButtons() {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
+  const googleReady = Boolean(GOOGLE_CLIENT_ID);
+  const linkedInReady = Boolean(LINKEDIN_CLIENT_ID);
+  const hasMissingProvider = !googleReady || !linkedInReady;
 
   const handleGoogleLogin = () => {
-    if (!GOOGLE_CLIENT_ID) {
+    if (!googleReady) {
       console.warn("Google OAuth not configured. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID.");
-      // Fallback: show alert for dev mode
-      alert("Google OAuth is not configured yet. See the setup guide in the console.");
       return;
     }
     setLoadingProvider("google");
@@ -59,9 +61,8 @@ export default function SocialAuthButtons() {
   };
 
   const handleLinkedInLogin = () => {
-    if (!LINKEDIN_CLIENT_ID) {
+    if (!linkedInReady) {
       console.warn("LinkedIn OAuth not configured. Set NEXT_PUBLIC_LINKEDIN_CLIENT_ID.");
-      alert("LinkedIn OAuth is not configured yet. See the setup guide in the console.");
       return;
     }
     setLoadingProvider("linkedin");
@@ -81,7 +82,8 @@ export default function SocialAuthButtons() {
         <button
           className="jr-social-btn"
           onClick={handleGoogleLogin}
-          disabled={!!loadingProvider}
+          disabled={!!loadingProvider || !googleReady}
+          title={googleReady ? undefined : "Google sign-in is unavailable in this environment."}
         >
           <GoogleIcon />
           {loadingProvider === "google" ? "Redirecting..." : "Continue with Google"}
@@ -89,12 +91,19 @@ export default function SocialAuthButtons() {
         <button
           className="jr-social-btn"
           onClick={handleLinkedInLogin}
-          disabled={!!loadingProvider}
+          disabled={!!loadingProvider || !linkedInReady}
+          title={linkedInReady ? undefined : "LinkedIn sign-in is unavailable in this environment."}
         >
           <LinkedInIcon />
           {loadingProvider === "linkedin" ? "Redirecting..." : "Continue with LinkedIn"}
         </button>
       </div>
+      {hasMissingProvider && (
+        <div className="jr-auth-social-note" role="status">
+          <AlertIcon size={14} />
+          <span>Some social sign-in options are unavailable in this environment. Email and password still work normally.</span>
+        </div>
+      )}
       <div className="jr-auth-divider">
         <span>or</span>
       </div>

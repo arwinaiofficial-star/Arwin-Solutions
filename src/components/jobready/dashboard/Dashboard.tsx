@@ -7,7 +7,6 @@ import { applicationsApi, resumeApi, type JobApplicationData } from "@/lib/api/c
 import {
   ArrowRightIcon,
   BriefcaseIcon,
-  ClipboardIcon,
   DocumentIcon,
   SearchIcon,
   SparklesIcon,
@@ -126,36 +125,6 @@ export default function Dashboard() {
         <StatCard label="Applied" value={String(counts.applied)} sub="Applications sent" />
         <StatCard label="Interviews" value={String(counts.interview)} sub={counts.offer > 0 ? `${counts.offer} offer${counts.offer > 1 ? "s" : ""}` : "Nothing pending yet"} />
       </div>
-
-      <section className="jr-journey-board">
-        <div className="jr-journey-board-card">
-          <div className="jr-journey-board-icon">
-            <DocumentIcon size={18} />
-          </div>
-          <div>
-            <h3>1. Build your source of truth</h3>
-            <p>Keep resume data complete so every other part of the product has something real to work from.</p>
-          </div>
-        </div>
-        <div className="jr-journey-board-card">
-          <div className="jr-journey-board-icon">
-            <SearchIcon size={18} />
-          </div>
-          <div>
-            <h3>2. Shortlist better-fit roles</h3>
-            <p>Search using role titles, skills, and tools, then save only the opportunities worth attention.</p>
-          </div>
-        </div>
-        <div className="jr-journey-board-card">
-          <div className="jr-journey-board-icon">
-            <ClipboardIcon size={18} />
-          </div>
-          <div>
-            <h3>3. Keep the pipeline moving</h3>
-            <p>Track every saved role, submitted application, interview, and offer in one place.</p>
-          </div>
-        </div>
-      </section>
 
       <div className="jr-dashboard-grid">
         <section className="jr-dashboard-section">

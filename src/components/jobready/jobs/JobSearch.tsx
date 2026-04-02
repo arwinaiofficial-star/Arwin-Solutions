@@ -182,7 +182,7 @@ export default function JobSearch() {
         </div>
       </section>
 
-      <div className="jr-search-panel">
+      <div className="jr-search-panel jr-search-panel-inline">
         <div className="jr-search-bar">
           <div className="jr-search-field jr-search-field-wide">
             <label>Role, skills, or tools</label>

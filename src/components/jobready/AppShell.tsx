@@ -12,9 +12,7 @@ import {
   LogoutIcon,
   SearchIcon,
   SettingsIcon,
-  SparklesIcon,
 } from "@/components/icons/Icons";
-import { Copilot } from "@/components/jobready/copilot";
 import "@/app/jobready/jobready.css";
 
 const navItems = [
@@ -47,39 +45,27 @@ const navItems = [
 const pageMeta = [
   {
     match: "/jobready/app/onboarding",
-    eyebrow: "Workspace setup",
     title: "Personalize JobReady",
-    description: "Answer a few quick questions so the workspace can guide you to the right first action.",
   },
   {
     match: "/jobready/app/documents",
-    eyebrow: "Resume studio",
     title: "Resume",
-    description: "Create one polished, ATS-ready source of truth and refine it with AI where it actually helps.",
   },
   {
     match: "/jobready/app/jobs",
-    eyebrow: "Role discovery",
     title: "Jobs",
-    description: "Search ranked opportunities, review fit signals, and save the roles that deserve attention.",
   },
   {
     match: "/jobready/app/applications",
-    eyebrow: "Pipeline tracking",
     title: "Applications",
-    description: "Move each role from saved to offer with a clean board that keeps follow-ups visible.",
   },
   {
     match: "/jobready/app/settings",
-    eyebrow: "Account controls",
     title: "Settings",
-    description: "Manage your profile, security, and workspace details from one place.",
   },
   {
     match: "/jobready/app",
-    eyebrow: "Career workspace",
     title: "Home",
-    description: "See resume readiness, job momentum, and the clearest next step without digging through the product.",
   },
 ];
 
@@ -92,6 +78,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const isOnboarding = pathname.startsWith("/jobready/app/onboarding");
 
   useEffect(() => {
     if (!user) return;
@@ -120,24 +107,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     item.match === "/jobready/app" ? pathname === item.match : pathname.startsWith(item.match)
   ) || pageMeta[pageMeta.length - 1];
 
-  const workspaceState = user.cvGenerated
-    ? {
-        label: "Resume ready",
-        tone: "green",
-        detail: "Your profile can now power search and matching.",
-      }
-    : {
-        label: "Setup in progress",
-        tone: "yellow",
-        detail: "Add your resume details to unlock stronger matches.",
-      };
-
   return (
-    <div className={`jr-app jr-layout ${sidebarOpen ? "jr-sidebar-open" : ""}`}>
-      {sidebarOpen && (
+    <div className={`jr-app jr-layout ${sidebarOpen ? "jr-sidebar-open" : ""} ${isOnboarding ? "jr-layout-onboarding" : ""}`}>
+      {sidebarOpen && !isOnboarding && (
         <div className="jr-sidebar-overlay" onClick={() => setSidebarOpen(false)} />
       )}
 
+      {!isOnboarding && (
       <aside className="jr-sidebar">
         <div className="jr-sidebar-panel">
         <Link href="/jobready/app" className="jr-sidebar-logo">
@@ -213,6 +189,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         </div>
       </aside>
+      )}
 
       <div className="jr-content">
         <div className="jr-mobile-header">
@@ -238,36 +215,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </Link>
         </div>
 
-        <header className="jr-topbar">
-          <div className="jr-topbar-copy">
-            <span className="jr-topbar-eyebrow">{page.eyebrow}</span>
-            <h1 className="jr-topbar-title">{page.title}</h1>
-            <p className="jr-topbar-description">{page.description}</p>
-          </div>
-          <div className="jr-topbar-actions">
-            <div className="jr-topbar-status">
-              <span className={`jr-badge jr-badge-${workspaceState.tone}`}>
-                {workspaceState.label}
-              </span>
-              <small>{workspaceState.detail}</small>
-            </div>
-            <Link href="/jobready/app/settings" className="jr-topbar-profile">
-              <div className="jr-sidebar-avatar">
-                {user.name?.charAt(0).toUpperCase() || "U"}
-              </div>
-              <div className="jr-topbar-profile-copy">
-                <strong>{user.name?.split(" ")[0] || "User"}</strong>
-                <span>Workspace settings</span>
-              </div>
-            </Link>
-          </div>
-        </header>
-
         <main className="jr-page">
           {children}
         </main>
       </div>
 
+      {!isOnboarding && (
       <nav className="jr-mobile-tabs" aria-label="Primary">
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -283,34 +236,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           );
         })}
-        <button
-          className="jr-mobile-tab jr-mobile-tab-assistant"
-          type="button"
-          onClick={() => {
-            const event = new CustomEvent("jobready:open-copilot");
-            window.dispatchEvent(event);
-          }}
-        >
-          <SparklesIcon size={18} />
-          <span>Assist</span>
-        </button>
       </nav>
-
-      <div className="jr-desktop-actions-rail">
-        <button
-          className="jr-floating-assist"
-          type="button"
-          onClick={() => {
-            const event = new CustomEvent("jobready:open-copilot");
-            window.dispatchEvent(event);
-          }}
-        >
-          <SparklesIcon size={18} />
-          <span>AI assistant</span>
-        </button>
-      </div>
-
-      <Copilot />
+      )}
     </div>
   );
 }

@@ -1,6 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState, type ComponentType } from "react";
+import {
+  ArrowRightIcon,
+  DocumentIcon,
+  PlusIcon,
+  SparklesIcon,
+  UploadIcon,
+  UserIcon,
+} from "@/components/icons/Icons";
 import "@/app/jobready/jobready.css";
 
 export type CreationMethod =
@@ -18,39 +26,39 @@ interface Props {
 
 const METHODS: {
   id: CreationMethod;
-  icon: string;
+  icon: ComponentType<{ size?: number; className?: string }>;
   title: string;
   desc: string;
   tag?: string;
 }[] = [
   {
     id: "new",
-    icon: "✦",
+    icon: PlusIcon,
     title: "Start from scratch",
     desc: "Build your resume step by step with guided prompts and ATS-friendly formatting.",
   },
   {
     id: "ai-assisted",
-    icon: "⚡",
+    icon: SparklesIcon,
     title: "Create with AI",
     desc: "Answer a few questions and let AI generate a polished, job-ready resume for you.",
     tag: "Recommended",
   },
   {
     id: "upload",
-    icon: "↑",
+    icon: UploadIcon,
     title: "Upload existing resume",
     desc: "Upload a PDF or DOCX and we'll parse it into an editable, ATS-optimized format.",
   },
   {
     id: "linkedin",
-    icon: "in",
+    icon: UserIcon,
     title: "Import from LinkedIn",
     desc: "Paste your LinkedIn profile URL and we'll extract your experience and skills.",
   },
   {
     id: "example",
-    icon: "◎",
+    icon: DocumentIcon,
     title: "Start from an example",
     desc: "Choose from professional templates pre-filled with industry-specific content.",
   },
@@ -61,14 +69,16 @@ export default function ResumeCreationFlow({
   onLinkedInImport,
   onFileUpload,
 }: Props) {
-  const [hoveredId, setHoveredId] = useState<CreationMethod | null>(null);
   const [showLinkedIn, setShowLinkedIn] = useState(false);
   const [linkedInUrl, setLinkedInUrl] = useState("");
   const [linkedInError, setLinkedInError] = useState("");
   const [showUpload, setShowUpload] = useState(false);
+  const [uploadError, setUploadError] = useState("");
   const [dragOver, setDragOver] = useState(false);
+  const fileInputId = useId();
 
   const handleMethodClick = (id: CreationMethod) => {
+    setUploadError("");
     if (id === "linkedin") {
       setShowLinkedIn(true);
       setShowUpload(false);
@@ -105,12 +115,16 @@ export default function ResumeCreationFlow({
     e.preventDefault();
     setDragOver(false);
     const file = e.dataTransfer.files[0];
-    if (file) validateAndUpload(file);
+    if (file) {
+      validateAndUpload(file);
+    }
   };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) validateAndUpload(file);
+    if (file) {
+      validateAndUpload(file);
+    }
   };
 
   const validateAndUpload = (file: File) => {
@@ -119,13 +133,14 @@ export default function ResumeCreationFlow({
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ];
     if (!validTypes.includes(file.type)) {
-      alert("Please upload a PDF or DOCX file.");
+      setUploadError("Please upload a PDF or DOCX file.");
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      alert("File must be under 5 MB.");
+      setUploadError("File must be under 5 MB.");
       return;
     }
+    setUploadError("");
     onFileUpload(file);
   };
 
@@ -161,19 +176,18 @@ export default function ResumeCreationFlow({
         {METHODS.map((m) => (
           <button
             key={m.id}
+            type="button"
             className={`jr-creation-card ${
-              hoveredId === m.id ? "jr-creation-card-hover" : ""
-            } ${
               (m.id === "linkedin" && showLinkedIn) ||
               (m.id === "upload" && showUpload)
                 ? "jr-creation-card-active"
                 : ""
             }`}
             onClick={() => handleMethodClick(m.id)}
-            onMouseEnter={() => setHoveredId(m.id)}
-            onMouseLeave={() => setHoveredId(null)}
           >
-            <div className="jr-creation-card-icon">{m.icon}</div>
+            <div className="jr-creation-card-icon">
+              <m.icon size={22} className="jr-creation-card-icon-svg" />
+            </div>
             <div className="jr-creation-card-content">
               <div className="jr-creation-card-title">
                 {m.title}
@@ -181,7 +195,9 @@ export default function ResumeCreationFlow({
               </div>
               <p className="jr-creation-card-desc">{m.desc}</p>
             </div>
-            <div className="jr-creation-card-arrow">→</div>
+            <div className="jr-creation-card-arrow">
+              <ArrowRightIcon size={16} />
+            </div>
           </button>
         ))}
       </div>
@@ -206,10 +222,11 @@ export default function ResumeCreationFlow({
               }}
               onKeyDown={(e) => e.key === "Enter" && handleLinkedInSubmit()}
             />
-            <button
-              className="jr-btn jr-btn-primary"
-              onClick={handleLinkedInSubmit}
-            >
+          <button
+            type="button"
+            className="jr-btn jr-btn-primary"
+            onClick={handleLinkedInSubmit}
+          >
               Import
             </button>
           </div>
@@ -217,6 +234,7 @@ export default function ResumeCreationFlow({
             <p className="jr-input-error-text">{linkedInError}</p>
           )}
           <button
+            type="button"
             className="jr-creation-panel-cancel"
             onClick={() => setShowLinkedIn(false)}
           >
@@ -241,24 +259,30 @@ export default function ResumeCreationFlow({
             }}
             onDragLeave={() => setDragOver(false)}
             onDrop={handleFileDrop}
-            onClick={() =>
-              document.getElementById("jr-file-input")?.click()
-            }
+            onClick={() => document.getElementById(fileInputId)?.click()}
           >
-            <div className="jr-upload-zone-icon">↑</div>
+            <div className="jr-upload-zone-icon">
+              <UploadIcon size={22} />
+            </div>
             <p className="jr-upload-zone-text">
               Drag and drop your file here, or <span>browse</span>
             </p>
             <p className="jr-upload-zone-hint">PDF or DOCX, max 5 MB</p>
             <input
-              id="jr-file-input"
+              id={fileInputId}
               type="file"
               accept=".pdf,.docx"
               hidden
               onChange={handleFileInput}
             />
           </div>
+          {uploadError && (
+            <p className="jr-input-error-text jr-upload-error" role="alert">
+              {uploadError}
+            </p>
+          )}
           <button
+            type="button"
             className="jr-creation-panel-cancel"
             onClick={() => setShowUpload(false)}
           >
