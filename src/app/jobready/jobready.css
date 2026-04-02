@@ -5018,8 +5018,6 @@
   .jr-filter-chip:active {
     background: var(--jr-blue-wash);
   }
-
-  -webkit-overflow-scrolling: touch;
 }
 
 /* Reduced motion */
