@@ -131,13 +131,30 @@ export default function ResumeCreationFlow({
 
   return (
     <div className="jr-creation-flow">
-      <div className="jr-creation-header">
-        <h1 className="jr-creation-title">Let&apos;s build your resume</h1>
-        <p className="jr-creation-subtitle">
-          Choose how you&apos;d like to get started. Every option produces an
-          ATS-friendly resume that&apos;s optimized for applicant tracking
-          systems.
-        </p>
+      <div className="jr-page-hero jr-resume-entry-hero">
+        <div className="jr-page-hero-copy">
+          <span className="jr-page-eyebrow">Resume studio</span>
+          <h1 className="jr-creation-title">Choose how you want to start.</h1>
+          <p className="jr-creation-subtitle">
+            Every path leads to the same guided editor: clean formatting, live preview, and AI help only where it improves the outcome.
+          </p>
+        </div>
+        <div className="jr-page-hero-aside">
+          <div className="jr-mini-metric">
+            <div className="jr-mini-metric-icon">1</div>
+            <div>
+              <strong>Import or create</strong>
+              <span>Bring existing content in, or start fresh with structured guidance.</span>
+            </div>
+          </div>
+          <div className="jr-mini-metric">
+            <div className="jr-mini-metric-icon">2</div>
+            <div>
+              <strong>Refine with AI</strong>
+              <span>Use targeted help for summaries, skills, and stronger achievement bullets.</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="jr-creation-grid">

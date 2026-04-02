@@ -39,16 +39,24 @@ export default function PersonalInfoStep({
       key: "linkedIn",
       label: "LinkedIn",
       placeholder: "linkedin.com/in/johndoe",
+      type: "url",
     },
     {
       key: "portfolio",
       label: "Portfolio",
       placeholder: "johndoe.com",
+      type: "url",
     },
   ];
 
   return (
-    <div className="jr-resume-form-grid">
+    <div className="jr-resume-stack">
+      <div className="jr-entry-empty jr-entry-empty-compact">
+        <h3>Start with the basics recruiters expect to verify quickly.</h3>
+        <p>Your name, email, location, and professional links anchor the rest of the resume and make it easier to trust.</p>
+      </div>
+
+      <div className="jr-resume-form-grid">
       {fields.map((field) => (
         <div key={field.key} className="jr-input-group">
           <label className="jr-label">
@@ -64,6 +72,7 @@ export default function PersonalInfoStep({
           />
         </div>
       ))}
+      </div>
     </div>
   );
 }

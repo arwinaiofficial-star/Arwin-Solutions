@@ -5,10 +5,11 @@ import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { applicationsApi, resumeApi, type JobApplicationData } from "@/lib/api/client";
 import {
+  ArrowRightIcon,
+  BriefcaseIcon,
+  ClipboardIcon,
   DocumentIcon,
   SearchIcon,
-  BriefcaseIcon,
-  ArrowRightIcon,
   SparklesIcon,
 } from "@/components/icons/Icons";
 import { calculateScore, createInitialResumeData, mapBackendToResumeData } from "@/components/jobready/resume/types";
@@ -28,7 +29,6 @@ export default function Dashboard() {
   const [resumeData, setResumeData] = useState<ResumeData>(createInitialResumeData(user || null));
   const [hasResume, setHasResume] = useState(false);
 
-  // Load resume from DATABASE, not user.cvData
   useEffect(() => {
     resumeApi.getLatest().then((res) => {
       if (res.data?.data) {
@@ -37,7 +37,9 @@ export default function Dashboard() {
       }
     });
     applicationsApi.list().then((res) => {
-      if (res.data) setApps(res.data);
+      if (res.data) {
+        setApps(res.data);
+      }
     });
   }, []);
 
@@ -58,104 +60,146 @@ export default function Dashboard() {
 
   return (
     <div className="jr-dashboard">
-      {/* Greeting */}
-      <div className="jr-dashboard-greeting">
-        <h1>{getGreeting()}, {user?.name?.split(" ")[0] || "there"}</h1>
-        <p>{resumeScore < 50 ? "Let's get your resume ready for opportunities." : "Here's your career progress at a glance."}</p>
-      </div>
-
-      {/* Resume Journey Card */}
-      <div className="jr-journey-card">
-        <div className="jr-journey-header">
-          <div className="jr-journey-info">
-            <h2>{hasResume ? "Resume Progress" : "Start Your Resume"}</h2>
-            <p>{resumeHint}</p>
-          </div>
-          <div className="jr-journey-score">
-            <svg viewBox="0 0 36 36" className="jr-journey-ring">
-              <circle cx="18" cy="18" r="16" fill="none" stroke="var(--jr-gray-100)" strokeWidth="3" />
-              <circle
-                cx="18" cy="18" r="16" fill="none"
-                stroke={resumeScore >= 80 ? "var(--jr-success)" : resumeScore >= 50 ? "var(--jr-blue)" : "var(--jr-warning)"}
-                strokeWidth="3"
-                strokeDasharray={`${(resumeScore / 100) * 100.53} 100.53`}
-                strokeLinecap="round"
-                transform="rotate(-90 18 18)"
-              />
-            </svg>
-            <span className="jr-journey-score-text">{resumeScore}%</span>
+      <section className="jr-home-hero">
+        <div className="jr-home-hero-copy">
+          <span className="jr-page-eyebrow">Workspace overview</span>
+          <h2>{getGreeting()}, {user?.name?.split(" ")[0] || "there"}.</h2>
+          <p>{resumeScore < 50 ? "Let’s build a stronger profile so role matching and applications have a better foundation." : "Your resume and pipeline are moving. Keep momentum with the clearest next action below."}</p>
+          <div className="jr-home-hero-actions">
+            <Link href={nextStep.href} className="jr-btn jr-btn-primary">
+              <SparklesIcon size={16} />
+              {nextStep.cta}
+            </Link>
+            <Link href="/jobready/app/jobs" className="jr-btn jr-btn-secondary">
+              <SearchIcon size={16} />
+              Explore roles
+            </Link>
           </div>
         </div>
 
-        <div className="jr-journey-checklist">
-          <JourneyItem done={!!resumeData.fullName && !!resumeData.email} label="Contact information" />
-          <JourneyItem done={resumeData.experiences.length > 0} label="Work experience" />
-          <JourneyItem done={resumeData.education.length > 0} label="Education" />
-          <JourneyItem done={resumeData.skills.length >= 5} label="Skills (5+ added)" />
-          <JourneyItem done={resumeData.summary.length >= 80} label="Professional summary" />
+        <div className="jr-home-hero-panel">
+          <div className="jr-home-hero-panel-top">
+            <span className={`jr-badge ${resumeScore >= 80 ? "jr-badge-green" : resumeScore >= 50 ? "jr-badge-blue" : "jr-badge-yellow"}`}>
+              {resumeScore >= 80 ? "Ready to apply" : hasResume ? "Profile in progress" : "Resume not started"}
+            </span>
+            <div className="jr-journey-score">
+              <svg viewBox="0 0 36 36" className="jr-journey-ring">
+                <circle cx="18" cy="18" r="16" fill="none" stroke="var(--jr-border-soft)" strokeWidth="3" />
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="16"
+                  fill="none"
+                  stroke={resumeScore >= 80 ? "var(--jr-success)" : resumeScore >= 50 ? "var(--jr-blue)" : "var(--jr-warning)"}
+                  strokeWidth="3"
+                  strokeDasharray={`${(resumeScore / 100) * 100.53} 100.53`}
+                  strokeLinecap="round"
+                  transform="rotate(-90 18 18)"
+                />
+              </svg>
+              <span className="jr-journey-score-text">{resumeScore}%</span>
+            </div>
+          </div>
+          <h3>{resumeHint}</h3>
+          <div className="jr-journey-checklist">
+            <JourneyItem done={Boolean(resumeData.fullName && resumeData.email)} label="Identity and contact info" />
+            <JourneyItem done={resumeData.experiences.length > 0} label="Experience added" />
+            <JourneyItem done={resumeData.education.length > 0} label="Education added" />
+            <JourneyItem done={resumeData.skills.length >= 5} label="Core skills listed" />
+            <JourneyItem done={resumeData.summary.length >= 80} label="Summary written" />
+          </div>
         </div>
+      </section>
 
-        <Link href="/jobready/app/documents" className="jr-btn jr-btn-primary jr-journey-cta">
-          <SparklesIcon size={16} />
-          {nextStep.cta}
-        </Link>
-      </div>
-
-      {/* Stats Row */}
       <div className="jr-stats-row">
-        <div className="jr-stat-card">
-          <span className="jr-stat-label">Resume</span>
-          <span className="jr-stat-value">{resumeScore}%</span>
-          <span className="jr-stat-sub">{resumeScore >= 80 ? "ATS-ready" : hasResume ? "In progress" : "Not started"}</span>
-        </div>
-        <div className="jr-stat-card">
-          <span className="jr-stat-label">Saved</span>
-          <span className="jr-stat-value">{counts.saved}</span>
-          <span className="jr-stat-sub">Jobs saved</span>
-        </div>
-        <div className="jr-stat-card">
-          <span className="jr-stat-label">Applied</span>
-          <span className="jr-stat-value">{counts.applied}</span>
-          <span className="jr-stat-sub">Applications sent</span>
-        </div>
-        <div className="jr-stat-card">
-          <span className="jr-stat-label">Interviews</span>
-          <span className="jr-stat-value">{counts.interview}</span>
-          <span className="jr-stat-sub">{counts.offer > 0 ? `${counts.offer} offer${counts.offer > 1 ? "s" : ""}` : "Keep going"}</span>
-        </div>
+        <StatCard label="Resume" value={`${resumeScore}%`} sub={resumeScore >= 80 ? "ATS-ready" : hasResume ? "In progress" : "Not started"} />
+        <StatCard label="Saved" value={String(counts.saved)} sub="Roles bookmarked" />
+        <StatCard label="Applied" value={String(counts.applied)} sub="Applications sent" />
+        <StatCard label="Interviews" value={String(counts.interview)} sub={counts.offer > 0 ? `${counts.offer} offer${counts.offer > 1 ? "s" : ""}` : "Nothing pending yet"} />
       </div>
 
-      {/* Two Column Grid */}
+      <section className="jr-journey-board">
+        <div className="jr-journey-board-card">
+          <div className="jr-journey-board-icon">
+            <DocumentIcon size={18} />
+          </div>
+          <div>
+            <h3>1. Build your source of truth</h3>
+            <p>Keep resume data complete so every other part of the product has something real to work from.</p>
+          </div>
+        </div>
+        <div className="jr-journey-board-card">
+          <div className="jr-journey-board-icon">
+            <SearchIcon size={18} />
+          </div>
+          <div>
+            <h3>2. Shortlist better-fit roles</h3>
+            <p>Search using role titles, skills, and tools, then save only the opportunities worth attention.</p>
+          </div>
+        </div>
+        <div className="jr-journey-board-card">
+          <div className="jr-journey-board-icon">
+            <ClipboardIcon size={18} />
+          </div>
+          <div>
+            <h3>3. Keep the pipeline moving</h3>
+            <p>Track every saved role, submitted application, interview, and offer in one place.</p>
+          </div>
+        </div>
+      </section>
+
       <div className="jr-dashboard-grid">
-        <div className="jr-dashboard-section">
-          <h2>Quick Actions</h2>
+        <section className="jr-dashboard-section">
+          <div className="jr-section-header">
+            <div>
+              <span className="jr-page-eyebrow">Focused actions</span>
+              <h2>What to do next</h2>
+            </div>
+          </div>
           <div className="jr-quick-actions">
             <Link href="/jobready/app/documents" className="jr-quick-action">
               <DocumentIcon size={18} />
-              {hasResume ? "Edit Resume" : "Build Resume"}
+              <div>
+                <strong>{hasResume ? "Refine resume" : "Build resume"}</strong>
+                <span>Improve your profile foundation.</span>
+              </div>
             </Link>
             <Link href="/jobready/app/jobs" className="jr-quick-action">
               <SearchIcon size={18} />
-              Search Jobs
+              <div>
+                <strong>Search roles</strong>
+                <span>Browse jobs ranked against your profile.</span>
+              </div>
             </Link>
             <Link href="/jobready/app/applications" className="jr-quick-action">
               <BriefcaseIcon size={18} />
-              Track Applications
+              <div>
+                <strong>Track applications</strong>
+                <span>Move saved jobs through the pipeline.</span>
+              </div>
             </Link>
             <Link href="/jobready/app/settings" className="jr-quick-action">
               <ArrowRightIcon size={18} />
-              Settings
+              <div>
+                <strong>Workspace settings</strong>
+                <span>Update profile and account details.</span>
+              </div>
             </Link>
           </div>
-        </div>
+        </section>
 
-        <div className="jr-dashboard-section">
-          <h2>Recent Applications</h2>
+        <section className="jr-dashboard-section">
+          <div className="jr-section-header">
+            <div>
+              <span className="jr-page-eyebrow">Recent activity</span>
+              <h2>Latest applications</h2>
+            </div>
+          </div>
           {recentApps.length === 0 ? (
-            <p style={{ fontSize: "var(--jr-text-sm)", color: "var(--jr-gray-400)" }}>
+            <p className="jr-section-empty-copy">
               {resumeScore < 50
-                ? "Complete your resume first, then start applying."
-                : "No applications yet. Start by searching for jobs."}
+                ? "Finish the resume basics first, then start saving and applying to roles."
+                : "No applications yet. Search for roles and save the ones worth tracking."}
             </p>
           ) : (
             <div className="jr-recent-list">
@@ -176,8 +220,18 @@ export default function Dashboard() {
               ))}
             </div>
           )}
-        </div>
+        </section>
       </div>
+    </div>
+  );
+}
+
+function StatCard({ label, value, sub }: { label: string; value: string; sub: string }) {
+  return (
+    <div className="jr-stat-card">
+      <span className="jr-stat-label">{label}</span>
+      <span className="jr-stat-value">{value}</span>
+      <span className="jr-stat-sub">{sub}</span>
     </div>
   );
 }
@@ -195,12 +249,11 @@ function getNextStep(
   score: number,
   hasResume: boolean,
   counts: { saved: number; applied: number }
-): { cta: string } {
-  if (!hasResume) return { cta: "Create your resume" };
-  if (score < 30) return { cta: "Add your contact info" };
-  if (score < 50) return { cta: "Add work experience" };
-  if (score < 70) return { cta: "Complete your resume" };
-  if (score < 85) return { cta: "Polish your resume" };
-  if (counts.saved === 0 && counts.applied === 0) return { cta: "Check ATS score" };
-  return { cta: "View your resume" };
+): { cta: string; href: string } {
+  if (!hasResume) return { cta: "Create your resume", href: "/jobready/app/documents" };
+  if (score < 30) return { cta: "Add core details", href: "/jobready/app/documents" };
+  if (score < 50) return { cta: "Add experience", href: "/jobready/app/documents" };
+  if (score < 70) return { cta: "Complete your resume", href: "/jobready/app/documents" };
+  if (counts.saved === 0 && counts.applied === 0) return { cta: "Start job search", href: "/jobready/app/jobs" };
+  return { cta: "Review applications", href: "/jobready/app/applications" };
 }

@@ -12,6 +12,7 @@ interface JobCardProps {
   job: JobResult;
   onSave?: (job: JobResult) => void;
   onViewDetails?: (job: JobResult) => void;
+  isSaved?: boolean;
 }
 
 function getMatchClass(score: number): string {
@@ -30,11 +31,21 @@ function timeAgo(dateStr?: string): string {
   return `${Math.floor(days / 30)}mo ago`;
 }
 
-export default function JobCard({ job, onSave, onViewDetails }: JobCardProps) {
+export default function JobCard({ job, onSave, onViewDetails, isSaved = false }: JobCardProps) {
+  const matchLevel = getMatchClass(job.relevanceScore);
+
   return (
     <div className="jr-job-card">
       <div className="jr-job-card-header">
         <div className="jr-job-card-info">
+          <div className="jr-job-card-topline">
+            <span className={`jr-match-pill jr-match-pill-${matchLevel}`}>
+              {matchLevel === "high" ? "Strong match" : matchLevel === "medium" ? "Good match" : "Stretch match"}
+            </span>
+            {job.source && (
+              <span className="jr-badge jr-badge-gray">{job.source}</span>
+            )}
+          </div>
           <h3 className="jr-job-card-title">{job.title}</h3>
           <p className="jr-job-card-company">{job.company}</p>
           <div className="jr-job-card-meta">
@@ -56,13 +67,16 @@ export default function JobCard({ job, onSave, onViewDetails }: JobCardProps) {
                 {timeAgo(job.postedAt)}
               </span>
             )}
-            {job.source && (
-              <span className="jr-badge jr-badge-gray">{job.source}</span>
+            {job.jobType && (
+              <span>
+                <BriefcaseIcon size={12} />
+                {job.jobType}
+              </span>
             )}
           </div>
         </div>
         <div className="jr-job-card-match">
-          <div className={`jr-match-circle ${getMatchClass(job.relevanceScore)}`}>
+          <div className={`jr-match-circle ${matchLevel}`}>
             {job.relevanceScore}%
           </div>
           <span className="jr-match-label">Match</span>
@@ -95,10 +109,11 @@ export default function JobCard({ job, onSave, onViewDetails }: JobCardProps) {
         )}
         {onSave && (
           <button
-            className="jr-btn jr-btn-primary jr-btn-sm"
+            className={`jr-btn ${isSaved ? "jr-btn-secondary" : "jr-btn-primary"} jr-btn-sm`}
             onClick={() => onSave(job)}
+            disabled={isSaved}
           >
-            Save
+            {isSaved ? "Saved" : "Save"}
           </button>
         )}
         <a
@@ -109,7 +124,7 @@ export default function JobCard({ job, onSave, onViewDetails }: JobCardProps) {
           style={{ marginLeft: "auto" }}
         >
           <ExternalLinkIcon size={14} />
-          Apply
+          Apply now
         </a>
       </div>
     </div>

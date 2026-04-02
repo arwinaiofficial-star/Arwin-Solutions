@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { applicationsApi, type JobApplicationData } from "@/lib/api/client";
-import { ExternalLinkIcon, TrashIcon } from "@/components/icons/Icons";
+import { ArrowRightIcon, BriefcaseIcon, ExternalLinkIcon, SparklesIcon, TrashIcon } from "@/components/icons/Icons";
 import "@/app/jobready/jobready.css";
 
 const COLUMNS = [
@@ -23,13 +23,20 @@ export default function ApplicationTracker() {
   const [apps, setApps] = useState<JobApplicationData[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadApps = useCallback(async () => {
-    const res = await applicationsApi.list();
-    if (res.data) setApps(res.data);
-    setLoading(false);
-  }, []);
+  useEffect(() => {
+    let cancelled = false;
 
-  useEffect(() => { loadApps(); }, [loadApps]);
+    (async () => {
+      const res = await applicationsApi.list();
+      if (cancelled) return;
+      if (res.data) setApps(res.data);
+      setLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const moveApp = useCallback(async (id: string, newStatus: Status) => {
     setApps((prev) =>
@@ -80,7 +87,34 @@ export default function ApplicationTracker() {
 
   return (
     <div className="jr-tracker">
-      {/* Stats Row */}
+      <section className="jr-page-hero jr-applications-hero">
+        <div className="jr-page-hero-copy">
+          <span className="jr-page-eyebrow">Pipeline tracking</span>
+          <h2>Keep every opportunity moving.</h2>
+          <p>Saved roles, live applications, interviews, and offers stay in one board so follow-ups never disappear.</p>
+        </div>
+        <div className="jr-page-hero-aside">
+          <div className="jr-mini-metric">
+            <div className="jr-mini-metric-icon">
+              <BriefcaseIcon size={16} />
+            </div>
+            <div>
+              <strong>{apps.length} tracked role{apps.length === 1 ? "" : "s"}</strong>
+              <span>{counts.applied > 0 ? `${counts.applied} already applied.` : "Save roles from search to start the board."}</span>
+            </div>
+          </div>
+          <div className="jr-mini-metric">
+            <div className="jr-mini-metric-icon">
+              <SparklesIcon size={16} />
+            </div>
+            <div>
+              <strong>{counts.interview + counts.offer} high-priority</strong>
+              <span>Interview and offer stages stay visible at the top of your workflow.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <div className="jr-tracker-stats">
         {COLUMNS.map((col) => (
           <div key={col.key} className="jr-tracker-stat">
@@ -90,7 +124,7 @@ export default function ApplicationTracker() {
         ))}
       </div>
 
-      {/* Kanban Board */}
+      <div className="jr-board-wrap">
       <div className="jr-kanban">
         {COLUMNS.map((col) => {
           const colApps = apps.filter((a) => a.status === col.key);
@@ -102,7 +136,7 @@ export default function ApplicationTracker() {
               </div>
               <div className="jr-kanban-cards">
                 {colApps.length === 0 ? (
-                  <div className="jr-kanban-empty">No applications</div>
+                  <div className="jr-kanban-empty">No roles in this stage yet</div>
                 ) : (
                   colApps.map((app) => {
                     const next = getNextStatus(app.status as Status);
@@ -110,6 +144,7 @@ export default function ApplicationTracker() {
                       <div key={app.id} className="jr-kanban-card">
                         <h4 className="jr-kanban-card-title">{app.job_title}</h4>
                         <p className="jr-kanban-card-company">{app.company}</p>
+                        {app.location && <p className="jr-kanban-card-location">{app.location}</p>}
                         <div className="jr-kanban-card-footer">
                           <span className="jr-kanban-card-date">
                             {formatDate(app.applied_at)}
@@ -117,10 +152,12 @@ export default function ApplicationTracker() {
                           <div className="jr-kanban-card-actions">
                             {next && (
                               <button
+                                className="jr-kanban-action jr-kanban-action-primary"
                                 onClick={() => moveApp(app.id, next)}
                                 title={`Move to ${next}`}
                               >
-                                →
+                                <ArrowRightIcon size={12} />
+                                <span>{next}</span>
                               </button>
                             )}
                             {app.job_url && (
@@ -128,12 +165,13 @@ export default function ApplicationTracker() {
                                 href={app.job_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                style={{ display: "inline-flex", padding: "2px 6px", fontSize: "10px", border: "1px solid var(--jr-gray-200)", borderRadius: "4px", background: "var(--jr-white)", color: "var(--jr-gray-500)", textDecoration: "none" }}
+                                className="jr-kanban-action"
                               >
                                 <ExternalLinkIcon size={10} />
                               </a>
                             )}
                             <button
+                              className="jr-kanban-action"
                               onClick={() => removeApp(app.id)}
                               title="Remove"
                             >
@@ -150,8 +188,8 @@ export default function ApplicationTracker() {
           );
         })}
       </div>
+      </div>
 
-      {/* Empty State for whole tracker */}
       {apps.length === 0 && (
         <div className="jr-empty" style={{ marginTop: "var(--jr-space-4)" }}>
           <h2 className="jr-empty-title">No applications yet</h2>

@@ -1,10 +1,16 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { applicationsApi } from "@/lib/api/client";
-import { SearchIcon } from "@/components/icons/Icons";
+import {
+  BriefcaseIcon,
+  DocumentIcon,
+  LocationIcon,
+  SearchIcon,
+  SparklesIcon,
+} from "@/components/icons/Icons";
 import { JobResult, JobSearchState } from "./types";
 import JobCard from "./JobCard";
 import JobDetailModal from "./JobDetailModal";
@@ -22,37 +28,32 @@ export default function JobSearch() {
     sortBy: "relevance",
   });
   const [selectedJob, setSelectedJob] = useState<JobResult | null>(null);
-  const [autoSearched, setAutoSearched] = useState(false);
+  const [savedJobUrls, setSavedJobUrls] = useState<Set<string>>(new Set());
+  const lastAutoSearchRef = useRef<string | null>(null);
 
-  // Pre-fill from URL params (e.g., from role suggestions) or user skills
   useEffect(() => {
-    const urlQuery = searchParams.get("q");
-    if (urlQuery) {
-      setState((prev) => ({ ...prev, query: urlQuery }));
-    } else if (user?.cvData) {
-      const cv = user.cvData as unknown as Record<string, unknown>;
-      const skills = cv?.skills as string[] | undefined;
-      if (skills && skills.length > 0) {
-        setState((prev) => ({
-          ...prev,
-          query: skills.slice(0, 5).join(", "),
-        }));
-      }
-    }
-  }, [user, searchParams]);
+    let cancelled = false;
+    applicationsApi.list().then((res) => {
+      if (cancelled || !res.data) return;
+      const savedUrls = res.data
+        .map((application) => application.job_url)
+        .filter((value): value is string => Boolean(value));
+      setSavedJobUrls(new Set(savedUrls));
+    });
 
-  // Auto-search if query came from URL params (role suggestions)
-  useEffect(() => {
-    const urlQuery = searchParams.get("q");
-    if (urlQuery && state.query === urlQuery && !autoSearched && !state.searched) {
-      setAutoSearched(true);
-      handleSearch();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.query]);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const handleSearch = useCallback(async () => {
-    if (!state.query.trim()) return;
+  const urlQuery = searchParams.get("q") || "";
+  const prefilledQuery = urlQuery || (user?.cvData?.skills || []).slice(0, 5).join(", ");
+  const currentQuery = state.query || prefilledQuery;
+
+  const handleSearch = useCallback(async (queryOverride?: string) => {
+    const effectiveQuery = (queryOverride ?? (state.query || prefilledQuery)).trim();
+    if (!effectiveQuery) return;
+
     setState((prev) => ({ ...prev, loading: true, searched: true }));
 
     try {
@@ -60,7 +61,7 @@ export default function JobSearch() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          skills: state.query,
+          skills: effectiveQuery,
           location: state.location || undefined,
         }),
       });
@@ -77,20 +78,40 @@ export default function JobSearch() {
     } catch {
       setState((prev) => ({ ...prev, results: [], loading: false }));
     }
-  }, [state.query, state.location]);
+  }, [prefilledQuery, state.location, state.query]);
 
-  const handleSave = useCallback(async (job: JobResult) => {
-    await applicationsApi.create({
-      job_title: job.title,
-      company: job.company,
-      location: job.location,
-      job_url: job.url,
-      salary: job.salary,
-      source: job.source,
-      status: "saved",
-      description: job.description,
-    });
-  }, []);
+  useEffect(() => {
+    if (!urlQuery || state.searched || lastAutoSearchRef.current === urlQuery) return;
+    lastAutoSearchRef.current = urlQuery;
+
+    const timeoutId = window.setTimeout(() => {
+      void handleSearch(urlQuery);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [handleSearch, state.searched, urlQuery]);
+
+  const handleSave = useCallback(
+    async (job: JobResult) => {
+      if (savedJobUrls.has(job.url)) return;
+
+      await applicationsApi.create({
+        job_title: job.title,
+        company: job.company,
+        location: job.location,
+        job_url: job.url,
+        salary: job.salary,
+        source: job.source,
+        status: "saved",
+        description: job.description,
+      });
+
+      setSavedJobUrls((prev) => new Set(prev).add(job.url));
+    },
+    [savedJobUrls]
+  );
 
   const sortedResults = [...state.results].sort((a, b) => {
     if (state.sortBy === "relevance") return b.relevanceScore - a.relevanceScore;
@@ -98,44 +119,115 @@ export default function JobSearch() {
     return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
   });
 
+  const suggestionPool = Array.from(
+    new Set([
+      ...(user?.cvData?.skills || []).slice(0, 6),
+      ...(user?.cvData?.experience || [])
+        .map((entry) => entry.title)
+        .filter((value): value is string => Boolean(value))
+        .slice(0, 4),
+    ])
+  ).slice(0, 6);
+
+  const roleSummary = user?.cvGenerated
+    ? "Your resume is connected, so match scores can stay grounded in your existing skills and experience."
+    : "Search still works without a resume, but the strongest role matching appears once your profile is complete.";
+
   return (
     <div className="jr-jobs-page">
-      {/* Search Bar */}
-      <div className="jr-search-bar">
-        <div className="jr-search-field" style={{ flex: 2 }}>
-          <label>Skills & Keywords</label>
-          <input
-            type="text"
-            placeholder="React, Python, Machine Learning..."
-            value={state.query}
-            onChange={(e) => setState((prev) => ({ ...prev, query: e.target.value }))}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          />
+      <section className="jr-page-hero jr-jobs-hero">
+        <div className="jr-page-hero-copy">
+          <span className="jr-page-eyebrow">Role discovery</span>
+          <h2>Find roles that fit your current profile.</h2>
+          <p>{roleSummary}</p>
+          {suggestionPool.length > 0 && (
+            <div className="jr-chip-row">
+              {suggestionPool.map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  className={`jr-filter-chip ${currentQuery === suggestion ? "jr-filter-chip-active" : ""}`}
+                  onClick={() => setState((prev) => ({ ...prev, query: suggestion }))}
+                >
+                  <SparklesIcon size={14} />
+                  <span>{suggestion}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-        <div className="jr-search-field">
-          <label>Location</label>
-          <input
-            type="text"
-            placeholder="City or Remote"
-            value={state.location}
-            onChange={(e) => setState((prev) => ({ ...prev, location: e.target.value }))}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          />
+
+        <div className="jr-page-hero-aside">
+          <div className="jr-mini-metric">
+            <div className="jr-mini-metric-icon">
+              <DocumentIcon size={16} />
+            </div>
+            <div>
+              <strong>{user?.cvGenerated ? "Resume connected" : "Resume not connected"}</strong>
+              <span>{user?.cvGenerated ? "Skills are ready for better matching." : "Complete your resume to improve match confidence."}</span>
+            </div>
+          </div>
+          <div className="jr-mini-metric">
+            <div className="jr-mini-metric-icon">
+              <BriefcaseIcon size={16} />
+            </div>
+            <div>
+              <strong>{savedJobUrls.size} saved role{savedJobUrls.size === 1 ? "" : "s"}</strong>
+              <span>Everything you save flows straight into the application tracker.</span>
+            </div>
+          </div>
         </div>
-        <button
-          className="jr-btn jr-btn-primary"
-          onClick={handleSearch}
-          disabled={state.loading || !state.query.trim()}
-        >
-          <SearchIcon size={16} />
-          {state.loading ? "Searching..." : "Search"}
-        </button>
+      </section>
+
+      <div className="jr-search-panel">
+        <div className="jr-search-bar">
+          <div className="jr-search-field jr-search-field-wide">
+            <label>Role, skills, or tools</label>
+              <input
+              type="text"
+              placeholder="React, Product Manager, Python, Customer Success..."
+              value={currentQuery}
+              onChange={(e) => setState((prev) => ({ ...prev, query: e.target.value }))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  void handleSearch();
+                }
+              }}
+            />
+          </div>
+          <div className="jr-search-field">
+            <label>Location</label>
+            <div className="jr-search-input-icon">
+              <LocationIcon size={14} />
+              <input
+                type="text"
+                placeholder="City, region, or Remote"
+                value={state.location}
+                onChange={(e) => setState((prev) => ({ ...prev, location: e.target.value }))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    void handleSearch();
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <button
+            className="jr-btn jr-btn-primary"
+            onClick={() => {
+              void handleSearch();
+            }}
+            disabled={state.loading || !currentQuery.trim()}
+          >
+            <SearchIcon size={16} />
+            {state.loading ? "Searching..." : "Search roles"}
+          </button>
+        </div>
       </div>
 
-      {/* Results Meta */}
       {state.searched && !state.loading && (
         <div className="jr-search-meta">
-          <span>
+          <span className="jr-search-results-count">
             {sortedResults.length} job{sortedResults.length !== 1 ? "s" : ""} found
           </span>
           <div className="jr-search-sort">
@@ -143,23 +235,22 @@ export default function JobSearch() {
               className={state.sortBy === "relevance" ? "active" : ""}
               onClick={() => setState((prev) => ({ ...prev, sortBy: "relevance" }))}
             >
-              Best Match
+              Best match
             </button>
             <button
               className={state.sortBy === "date" ? "active" : ""}
               onClick={() => setState((prev) => ({ ...prev, sortBy: "date" }))}
             >
-              Most Recent
+              Most recent
             </button>
           </div>
         </div>
       )}
 
-      {/* Loading Skeleton */}
       {state.loading && (
         <div className="jr-jobs-list">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="jr-skeleton-card">
+          {[1, 2, 3].map((item) => (
+            <div key={item} className="jr-skeleton-card">
               <div className="jr-skeleton jr-skeleton-line long" />
               <div className="jr-skeleton jr-skeleton-line medium" />
               <div className="jr-skeleton jr-skeleton-line short" />
@@ -168,7 +259,6 @@ export default function JobSearch() {
         </div>
       )}
 
-      {/* Results */}
       {!state.loading && sortedResults.length > 0 && (
         <div className="jr-jobs-list">
           {sortedResults.map((job) => (
@@ -177,38 +267,36 @@ export default function JobSearch() {
               job={job}
               onSave={handleSave}
               onViewDetails={setSelectedJob}
+              isSaved={savedJobUrls.has(job.url)}
             />
           ))}
         </div>
       )}
 
-      {/* Empty State */}
       {state.searched && !state.loading && sortedResults.length === 0 && (
         <div className="jr-empty">
           <div className="jr-empty-icon">
             <SearchIcon size={24} />
           </div>
-          <h2 className="jr-empty-title">No jobs found</h2>
+          <h2 className="jr-empty-title">No roles matched this search</h2>
           <p className="jr-empty-text">
-            Try adjusting your keywords or location to find more results.
+            Try a broader title, a different skill cluster, or a wider location to surface more opportunities.
           </p>
         </div>
       )}
 
-      {/* Initial State */}
       {!state.searched && !state.loading && (
         <div className="jr-empty">
           <div className="jr-empty-icon">
             <SearchIcon size={24} />
           </div>
-          <h2 className="jr-empty-title">Search for jobs</h2>
+          <h2 className="jr-empty-title">Start with the role you want to explore</h2>
           <p className="jr-empty-text">
-            Enter your skills and location to find matching opportunities. Results are aggregated from multiple sources.
+            Enter skills, job titles, or tools and add a preferred location if needed. Results are ranked by relevance and can be saved directly into your pipeline.
           </p>
         </div>
       )}
 
-      {/* Detail Modal */}
       {selectedJob && (
         <JobDetailModal
           job={selectedJob}

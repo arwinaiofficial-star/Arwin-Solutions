@@ -16,7 +16,7 @@ export default function ResumeScore({ score, hint }: ResumeScoreProps) {
         {score}
       </div>
       <div className="jr-score-info">
-        <div className="jr-score-label">Resume Completeness</div>
+        <div className="jr-score-label">Resume completeness</div>
         <div className="jr-score-hint">{hint}</div>
       </div>
     </div>

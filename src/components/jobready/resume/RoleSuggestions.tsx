@@ -33,7 +33,7 @@ export default function RoleSuggestions({ data }: RoleSuggestionsProps) {
       );
 
       if (result.data?.reply) {
-        const parsed = parseRoles(result.data.reply, data);
+        const parsed = parseRoles(result.data.reply);
         setRoles(parsed);
       } else {
         setRoles(localRoleSuggestions(data));
@@ -132,7 +132,7 @@ export default function RoleSuggestions({ data }: RoleSuggestionsProps) {
   );
 }
 
-function parseRoles(reply: string, data: ResumeData): SuggestedRole[] {
+function parseRoles(reply: string): SuggestedRole[] {
   try {
     const jsonMatch = reply.match(/\[[\s\S]*\]/);
     if (jsonMatch) {

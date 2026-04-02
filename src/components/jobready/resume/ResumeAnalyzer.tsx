@@ -66,7 +66,7 @@ export default function ResumeAnalyzer({ data, currentStep, onApplySuggestion }:
     }
 
     const reply = result.data?.reply || "";
-    const parsed = parseAnalysis(reply, currentStep, data);
+    const parsed = parseAnalysis(reply, currentStep);
     setAnalysis(parsed);
     setLoading(false);
   };
@@ -190,7 +190,7 @@ function buildStepSummary(step: number, data: ResumeData): string {
 /**
  * Parse AI response into structured analysis
  */
-function parseAnalysis(reply: string, step: number, data: ResumeData): AnalysisResult {
+function parseAnalysis(reply: string, step: number): AnalysisResult {
   // Try JSON extraction first
   try {
     const jsonMatch = reply.match(/\{[\s\S]*\}/);

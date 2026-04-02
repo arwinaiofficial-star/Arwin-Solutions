@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { resumeApi } from "@/lib/api/client";
-import { ResumeData, ExperienceEntry } from "./types";
+import { PlusIcon, SparklesIcon, TrashIcon } from "@/components/icons/Icons";
+import { ExperienceEntry, ResumeData } from "./types";
 
 interface ExperienceStepProps {
   data: ResumeData;
@@ -24,7 +25,7 @@ export default function ExperienceStep({
       startDate: "",
       endDate: "",
       current: false,
-      highlights: [],
+      highlights: [""],
     };
     onUpdate([...data.experiences, newExp]);
   };
@@ -43,26 +44,24 @@ export default function ExperienceStep({
 
   const addHighlight = (expId: string) => {
     updateExperience(expId, "highlights", [
-      ...(data.experiences.find((e) => e.id === expId)?.highlights || []),
+      ...(data.experiences.find((entry) => entry.id === expId)?.highlights || []),
       "",
     ]);
   };
 
   const removeHighlight = (expId: string, index: number) => {
-    const exp = data.experiences.find((e) => e.id === expId);
-    if (exp) {
-      const newHighlights = exp.highlights.filter((_, i) => i !== index);
-      updateExperience(expId, "highlights", newHighlights);
-    }
+    const exp = data.experiences.find((entry) => entry.id === expId);
+    if (!exp) return;
+    const newHighlights = exp.highlights.filter((_, i) => i !== index);
+    updateExperience(expId, "highlights", newHighlights);
   };
 
   const updateHighlight = (expId: string, index: number, value: string) => {
-    const exp = data.experiences.find((e) => e.id === expId);
-    if (exp) {
-      const newHighlights = [...exp.highlights];
-      newHighlights[index] = value;
-      updateExperience(expId, "highlights", newHighlights);
-    }
+    const exp = data.experiences.find((entry) => entry.id === expId);
+    if (!exp) return;
+    const newHighlights = [...exp.highlights];
+    newHighlights[index] = value;
+    updateExperience(expId, "highlights", newHighlights);
   };
 
   const enhanceHighlights = async (exp: ExperienceEntry) => {
@@ -80,61 +79,144 @@ export default function ExperienceStep({
       if (result.data?.suggestions) {
         updateExperience(exp.id, "highlights", result.data.suggestions);
       }
-    } catch {
-      // Silently fail
     } finally {
       setEnhancingId(null);
     }
   };
 
+  if (data.experiences.length === 0) {
+    return (
+      <div className="jr-entry-empty">
+        <h3>Add the roles that prove your value.</h3>
+        <p>Focus on achievements, scope, and impact. Start with your most recent role and use measurable bullets whenever possible.</p>
+        <button onClick={addExperience} className="jr-btn jr-btn-primary">
+          <PlusIcon size={16} />
+          Add your first role
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div>
-      {data.experiences.map((exp) => (
+    <div className="jr-entry-stack">
+      {data.experiences.map((exp, index) => (
         <div key={exp.id} className="jr-entry-card">
           <div className="jr-entry-card-header">
             <div>
-              <div className="jr-entry-card-title">
-                <input type="text" className="jr-input" placeholder="Job Title" value={exp.title} onChange={(e) => updateExperience(exp.id, "title", e.target.value)} />
-              </div>
-              <div className="jr-entry-card-subtitle">
-                <input type="text" className="jr-input" placeholder="Company" value={exp.company} onChange={(e) => updateExperience(exp.id, "company", e.target.value)} />
-              </div>
+              <div className="jr-entry-card-title">Experience {index + 1}</div>
+              <div className="jr-entry-card-subtitle">Describe the work that best supports the roles you want now.</div>
             </div>
-            <button onClick={() => removeExperience(exp.id)} className="jr-btn-ghost jr-btn-sm">Remove</button>
+            <button onClick={() => removeExperience(exp.id)} className="jr-btn jr-btn-ghost jr-btn-sm">
+              <TrashIcon size={14} />
+              Remove
+            </button>
           </div>
 
           <div className="jr-resume-form-grid">
-            <input type="text" className="jr-input" placeholder="Location" value={exp.location} onChange={(e) => updateExperience(exp.id, "location", e.target.value)} />
-            <input type="month" className="jr-input" value={exp.startDate} onChange={(e) => updateExperience(exp.id, "startDate", e.target.value)} />
-            {!exp.current && <input type="month" className="jr-input" value={exp.endDate} onChange={(e) => updateExperience(exp.id, "endDate", e.target.value)} />}
-            <label className="jr-label">
-              <input type="checkbox" checked={exp.current} onChange={(e) => updateExperience(exp.id, "current", e.target.checked)} />
-              {" "}Currently working here
-            </label>
+            <div className="jr-input-group">
+              <label className="jr-label">Job title</label>
+              <input
+                type="text"
+                className="jr-input"
+                placeholder="Senior Product Designer"
+                value={exp.title}
+                onChange={(e) => updateExperience(exp.id, "title", e.target.value)}
+              />
+            </div>
+            <div className="jr-input-group">
+              <label className="jr-label">Company</label>
+              <input
+                type="text"
+                className="jr-input"
+                placeholder="Company name"
+                value={exp.company}
+                onChange={(e) => updateExperience(exp.id, "company", e.target.value)}
+              />
+            </div>
+            <div className="jr-input-group">
+              <label className="jr-label">Location</label>
+              <input
+                type="text"
+                className="jr-input"
+                placeholder="Hyderabad, India"
+                value={exp.location}
+                onChange={(e) => updateExperience(exp.id, "location", e.target.value)}
+              />
+            </div>
+            <div className="jr-input-group">
+              <label className="jr-label">Start date</label>
+              <input
+                type="month"
+                className="jr-input"
+                value={exp.startDate}
+                onChange={(e) => updateExperience(exp.id, "startDate", e.target.value)}
+              />
+            </div>
+            {!exp.current && (
+              <div className="jr-input-group">
+                <label className="jr-label">End date</label>
+                <input
+                  type="month"
+                  className="jr-input"
+                  value={exp.endDate}
+                  onChange={(e) => updateExperience(exp.id, "endDate", e.target.value)}
+                />
+              </div>
+            )}
           </div>
 
+          <label className="jr-inline-toggle">
+            <input
+              type="checkbox"
+              checked={exp.current}
+              onChange={(e) => updateExperience(exp.id, "current", e.target.checked)}
+            />
+            <span>Currently working here</span>
+          </label>
+
           <div className="jr-highlights">
-            <h4 className="jr-label">Highlights & Achievements</h4>
+            <div className="jr-highlights-header">
+              <div>
+                <h4 className="jr-label">Highlights and achievements</h4>
+                <p>Use action verbs, outcomes, and metrics where you have them.</p>
+              </div>
+              <button
+                onClick={() => enhanceHighlights(exp)}
+                disabled={enhancingId === exp.id || !exp.title || exp.highlights.length === 0}
+                className="jr-ai-btn"
+              >
+                <SparklesIcon size={14} />
+                {enhancingId === exp.id ? "Enhancing..." : "AI enhance"}
+              </button>
+            </div>
+
             {exp.highlights.map((highlight, idx) => (
               <div key={idx} className="jr-highlight-row">
                 <span className="jr-highlight-bullet">•</span>
-                <input type="text" className="jr-input" placeholder="Achievement or responsibility" value={highlight} onChange={(e) => updateHighlight(exp.id, idx, e.target.value)} />
-                <button onClick={() => removeHighlight(exp.id, idx)} className="jr-btn-ghost jr-btn-sm">✕</button>
+                <input
+                  type="text"
+                  className="jr-input"
+                  placeholder="Improved conversion by 28% after redesigning the onboarding flow"
+                  value={highlight}
+                  onChange={(e) => updateHighlight(exp.id, idx, e.target.value)}
+                />
+                <button onClick={() => removeHighlight(exp.id, idx)} className="jr-btn jr-btn-ghost jr-btn-sm">
+                  <TrashIcon size={14} />
+                </button>
               </div>
             ))}
-            <button onClick={() => addHighlight(exp.id)} className="jr-btn-secondary jr-btn-sm">+ Add Highlight</button>
-            <button onClick={() => enhanceHighlights(exp)} disabled={enhancingId === exp.id || !exp.title || exp.highlights.length === 0} className="jr-ai-btn">
-              {enhancingId === exp.id ? "Enhancing..." : "✨ AI Enhance"}
+
+            <button onClick={() => addHighlight(exp.id)} className="jr-btn jr-btn-secondary jr-btn-sm">
+              <PlusIcon size={14} />
+              Add highlight
             </button>
           </div>
         </div>
       ))}
 
-      <button
-        onClick={addExperience}
-        className="jr-btn-primary"
-      >
-        + Add Experience
+      <button onClick={addExperience} className="jr-btn jr-btn-primary">
+        <PlusIcon size={16} />
+        Add another role
       </button>
     </div>
   );

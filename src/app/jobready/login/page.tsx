@@ -4,7 +4,7 @@ import { useState, type FormEvent, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { RocketIcon } from "@/components/icons/Icons";
+import { CheckIcon, RocketIcon, SparklesIcon } from "@/components/icons/Icons";
 import SocialAuthButtons from "@/components/jobready/auth/SocialAuthButtons";
 import "@/app/jobready/jobready.css";
 
@@ -21,7 +21,6 @@ function LoginForm() {
     if (isAuthenticated) router.push("/jobready/app");
   }, [isAuthenticated, router]);
 
-  // Handle OAuth error from callback redirect
   useEffect(() => {
     const oauthError = searchParams.get("error");
     if (oauthError) {
@@ -56,61 +55,88 @@ function LoginForm() {
   };
 
   return (
-    <div className="jr-auth-card">
-      <Link href="/jobready" className="jr-auth-logo" aria-label="Back to JobReady">
-        <div className="jr-auth-logo-icon">
-          <RocketIcon size={20} />
-        </div>
-        <div className="jr-auth-logo-text">JobReady</div>
-      </Link>
+    <div className="jr-auth-shell">
+      <section className="jr-auth-side">
+        <Link href="/jobready" className="jr-auth-logo" aria-label="Back to JobReady">
+          <div className="jr-auth-logo-icon">
+            <RocketIcon size={20} />
+          </div>
+          <div className="jr-auth-logo-text">JobReady</div>
+        </Link>
 
-      <h1 className="jr-auth-title">Sign In</h1>
-      <p className="jr-auth-subtitle">Access your resume, job matches, and application pipeline.</p>
-
-      {error && (
-        <div className="jr-input-error-text" style={{ marginBottom: "16px", padding: "12px", backgroundColor: "var(--jr-error-light)", borderRadius: "8px" }}>
-          {error}
-        </div>
-      )}
-
-      <SocialAuthButtons />
-
-      <form onSubmit={handleSubmit} className="jr-auth-form">
-        <div className="jr-input-group">
-          <label htmlFor="email" className="jr-label">Email</label>
-          <input
-            type="email"
-            id="email"
-            className="jr-input"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            required
-          />
+        <div className="jr-auth-side-copy">
+          <span className="jr-page-eyebrow">Career workspace</span>
+          <h1>Pick up your career workflow where you left it.</h1>
+          <p>Resume edits, job matches, and saved applications stay connected so your search feels like one system instead of five tools stitched together.</p>
         </div>
 
-        <div className="jr-input-group">
-          <label htmlFor="password" className="jr-label">Password</label>
-          <input
-            type="password"
-            id="password"
-            className="jr-input"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter your password"
-            required
-            minLength={6}
-          />
+        <div className="jr-auth-benefits">
+          <div className="jr-auth-benefit">
+            <SparklesIcon size={16} />
+            <span>Live resume guidance and ATS scoring</span>
+          </div>
+          <div className="jr-auth-benefit">
+            <CheckIcon size={16} />
+            <span>Role search tied directly to your profile</span>
+          </div>
+          <div className="jr-auth-benefit">
+            <CheckIcon size={16} />
+            <span>Application tracking in one native-feeling workspace</span>
+          </div>
         </div>
+      </section>
 
-        <button type="submit" className="jr-btn jr-btn-primary jr-btn-full jr-btn-lg" disabled={isLoading}>
-          {isLoading ? "Signing in..." : "Sign In"}
-        </button>
-      </form>
+      <section className="jr-auth-content">
+        <div className="jr-auth-card">
+          <h2 className="jr-auth-title">Welcome back</h2>
+          <p className="jr-auth-subtitle">Sign in to continue with your resume, saved roles, and application pipeline.</p>
 
-      <div className="jr-auth-footer">
-        <p>New to JobReady? <Link href="/jobready/signup">Create an account</Link></p>
-      </div>
+          {error && (
+            <div className="jr-input-error-text jr-auth-alert">
+              {error}
+            </div>
+          )}
+
+          <SocialAuthButtons />
+
+          <form onSubmit={handleSubmit} className="jr-auth-form">
+            <div className="jr-input-group">
+              <label htmlFor="email" className="jr-label">Email</label>
+              <input
+                type="email"
+                id="email"
+                className="jr-input"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                required
+              />
+            </div>
+
+            <div className="jr-input-group">
+              <label htmlFor="password" className="jr-label">Password</label>
+              <input
+                type="password"
+                id="password"
+                className="jr-input"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                required
+                minLength={6}
+              />
+            </div>
+
+            <button type="submit" className="jr-btn jr-btn-primary jr-btn-full jr-btn-lg" disabled={isLoading}>
+              {isLoading ? "Signing in..." : "Sign in"}
+            </button>
+          </form>
+
+          <div className="jr-auth-footer">
+            <p>New to JobReady? <Link href="/jobready/signup">Create your account</Link></p>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

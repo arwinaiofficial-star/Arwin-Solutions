@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { Fragment, useState, useRef, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { resumeApi } from "@/lib/api/client";
 import { useAuth } from "@/context/AuthContext";
-import { SparklesIcon, SendIcon, XIcon } from "@/components/icons/Icons";
+import { BotIcon, SendIcon, SparklesIcon, XIcon } from "@/components/icons/Icons";
 import "@/app/jobready/jobready.css";
 
 interface Message {
@@ -43,6 +43,15 @@ const QUICK_ACTIONS: Record<string, Array<{ label: string; prompt: string }>> = 
   settings: [],
 };
 
+const CONTEXT_LABELS: Record<string, string> = {
+  dashboard: "Workspace coach",
+  resume_builder: "Resume strategist",
+  job_search: "Role matching assistant",
+  application_tracker: "Pipeline advisor",
+  settings: "Support assistant",
+  general: "Career assistant",
+};
+
 export default function Copilot() {
   const { user } = useAuth();
   const pathname = usePathname();
@@ -63,6 +72,12 @@ export default function Copilot() {
   useEffect(() => {
     if (open) inputRef.current?.focus();
   }, [open]);
+
+  useEffect(() => {
+    const handleOpen = () => setOpen(true);
+    window.addEventListener("jobready:open-copilot", handleOpen);
+    return () => window.removeEventListener("jobready:open-copilot", handleOpen);
+  }, []);
 
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || loading) return;
@@ -121,26 +136,21 @@ export default function Copilot() {
     sendMessage(input);
   };
 
+  const contextLabel = CONTEXT_LABELS[currentContext] || CONTEXT_LABELS.general;
+
   return (
     <>
-      {/* Floating Toggle Button */}
-      {!open && (
-        <button
-          className="jr-copilot-toggle"
-          onClick={() => setOpen(true)}
-          title="AI Career Assistant"
-        >
-          <SparklesIcon size={20} />
-        </button>
-      )}
-
-      {/* Copilot Panel */}
       {open && (
         <div className="jr-copilot-panel">
           <div className="jr-copilot-header">
             <div className="jr-copilot-header-info">
-              <SparklesIcon size={16} />
-              <span>Career Assistant</span>
+              <div className="jr-copilot-badge">
+                <BotIcon size={16} />
+              </div>
+              <div className="jr-copilot-header-copy">
+                <span>{contextLabel}</span>
+                <small>{pageTitleFromPath(pathname)}</small>
+              </div>
             </div>
             <button className="jr-btn jr-btn-ghost jr-btn-sm" onClick={() => setOpen(false)}>
               <XIcon size={16} />
@@ -150,7 +160,10 @@ export default function Copilot() {
           <div className="jr-copilot-messages">
             {messages.length === 0 && (
               <div className="jr-copilot-welcome">
-                <p>Hi{user?.name ? `, ${user.name.split(" ")[0]}` : ""}! I can help with your resume, job search, and career questions.</p>
+                <div className="jr-copilot-welcome-icon">
+                  <SparklesIcon size={18} />
+                </div>
+                <p>Hi{user?.name ? `, ${user.name.split(" ")[0]}` : ""}. I can help with your resume, job search strategy, interview preparation, and next-best actions.</p>
                 {quickActions.length > 0 && (
                   <div className="jr-copilot-quick-actions">
                     {quickActions.map((action) => (
@@ -169,7 +182,9 @@ export default function Copilot() {
 
             {messages.map((msg) => (
               <div key={msg.id} className={`jr-copilot-msg jr-copilot-msg-${msg.role}`}>
-                <div className="jr-copilot-msg-content">{msg.content}</div>
+                <div className="jr-copilot-msg-content">
+                  {renderMessageContent(msg.content)}
+                </div>
               </div>
             ))}
 
@@ -188,7 +203,7 @@ export default function Copilot() {
             <input
               ref={inputRef}
               type="text"
-              placeholder="Ask anything about your career..."
+              placeholder="Ask about your resume, role fit, or application plan..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
               disabled={loading}
@@ -201,4 +216,92 @@ export default function Copilot() {
       )}
     </>
   );
+}
+
+function pageTitleFromPath(pathname: string): string {
+  if (pathname.startsWith("/jobready/app/documents")) return "Resume";
+  if (pathname.startsWith("/jobready/app/jobs")) return "Jobs";
+  if (pathname.startsWith("/jobready/app/applications")) return "Applications";
+  if (pathname.startsWith("/jobready/app/settings")) return "Settings";
+  if (pathname.startsWith("/jobready/app/onboarding")) return "Onboarding";
+  return "Home";
+}
+
+function renderMessageContent(content: string) {
+  const lines = content.split("\n");
+  const blocks: Array<{ type: "list" | "paragraph"; lines: string[] }> = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const isListItem = /^[-*•]\s+/.test(trimmed);
+    const blockType = isListItem ? "list" : "paragraph";
+    const current = blocks[blocks.length - 1];
+
+    if (current && current.type === blockType) {
+      current.lines.push(trimmed);
+    } else {
+      blocks.push({ type: blockType, lines: [trimmed] });
+    }
+  }
+
+  return blocks.map((block, index) => {
+    if (block.type === "list") {
+      return (
+        <ul key={`list-${index}`} className="jr-copilot-rich-list">
+          {block.lines.map((line, lineIndex) => (
+            <li key={`${index}-${lineIndex}`}>{renderInlineTokens(line.replace(/^[-*•]\s+/, ""))}</li>
+          ))}
+        </ul>
+      );
+    }
+
+    return (
+      <p key={`p-${index}`} className="jr-copilot-rich-paragraph">
+        {renderInlineTokens(block.lines.join(" "))}
+      </p>
+    );
+  });
+}
+
+function renderInlineTokens(text: string) {
+  const tokenPattern = /(\*\*([^*]+)\*\*)|(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))/g;
+  const nodes: React.ReactNode[] = [];
+  let lastIndex = 0;
+
+  for (const match of text.matchAll(tokenPattern)) {
+    const [fullMatch, , boldText, , linkLabel, linkUrl] = match;
+    const start = match.index ?? 0;
+
+    if (start > lastIndex) {
+      nodes.push(text.slice(lastIndex, start));
+    }
+
+    if (boldText) {
+      nodes.push(<strong key={`${start}-bold`}>{boldText}</strong>);
+    } else if (linkLabel && linkUrl) {
+      nodes.push(
+        <a
+          key={`${start}-link`}
+          href={linkUrl}
+          target="_blank"
+          rel="noreferrer noopener"
+        >
+          {linkLabel}
+        </a>
+      );
+    } else {
+      nodes.push(fullMatch);
+    }
+
+    lastIndex = start + fullMatch.length;
+  }
+
+  if (lastIndex < text.length) {
+    nodes.push(text.slice(lastIndex));
+  }
+
+  return nodes.map((node, index) => (
+    <Fragment key={typeof node === "string" ? `${index}-${node}` : index}>{node}</Fragment>
+  ));
 }

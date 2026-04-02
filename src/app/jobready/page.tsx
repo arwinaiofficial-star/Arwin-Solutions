@@ -53,18 +53,17 @@ export default function JobReadyPage() {
         <div className="container" style={{ position: "relative", zIndex: 2, textAlign: "center" }}>
           <div className="badge" style={{ marginBottom: "var(--space-md)" }}>
             <SparklesIcon size={14} />
-            AI-Powered Career Platform
+            Career Operating System
           </div>
           <h1 style={{ fontSize: "clamp(2.5rem, 5.5vw, 4rem)", fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.08, marginBottom: "var(--space-md)" }}>
-            Your career, intelligently<br />managed.
+            Career tools that feel enterprise-grade,<br />guided like a coach.
           </h1>
           <p className="text-muted" style={{ fontSize: "1.125rem", maxWidth: "560px", margin: "0 auto var(--space-xl)", lineHeight: 1.7 }}>
-            Resume building, job search, and application tracking — unified in one
-            workspace. Powered by AI. Designed for professionals.
+            Resume building, role discovery, and application tracking in one workspace with cleaner flows, stronger mobile behavior, and AI where it creates leverage.
           </p>
           <div className="flex gap-md justify-center" style={{ flexWrap: "wrap" }}>
             <Link href="/jobready/signup" className="btn btn-primary btn-lg">
-              Get Started Free
+              Start Your Workspace
               <ArrowRightIcon size={18} />
             </Link>
             <Link href="/jobready/login" className="btn btn-secondary btn-lg">
@@ -81,7 +80,7 @@ export default function JobReadyPage() {
             <div className="eyebrow mb-sm">How It Works</div>
             <h2>Three tools. One workspace.</h2>
             <p className="text-muted max-w-screen-md mx-auto" style={{ fontSize: "1.0625rem" }}>
-              Everything you need to go from resume to offer — without switching between five different platforms.
+              One guided workflow from resume to shortlist to pipeline management, without bouncing between disconnected tools.
             </p>
           </div>
 
@@ -147,7 +146,7 @@ export default function JobReadyPage() {
             </p>
             <div className="flex gap-md justify-center" style={{ flexWrap: "wrap" }}>
               <Link href="/jobready/signup" className="btn btn-primary btn-lg">
-                Create Your Workspace
+                Start Your Workspace
                 <ArrowRightIcon size={18} />
               </Link>
               <Link href="/jobready/login" className="btn btn-outline btn-lg">
