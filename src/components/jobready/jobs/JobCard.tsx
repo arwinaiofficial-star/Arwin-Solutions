@@ -4,17 +4,17 @@ import { JobResult } from "./types";
 import {
   LocationIcon,
   ClockIcon,
-  ExternalLinkIcon,
   BriefcaseIcon,
+  SearchIcon,
 } from "@/components/icons/Icons";
 
 interface JobCardProps {
   job: JobResult;
   onSave?: (job: JobResult) => void;
-  onApply?: (job: JobResult) => void;
   onViewDetails?: (job: JobResult) => void;
   trackingStatus?: string | null;
   actionLoading?: "save" | "apply" | null;
+  selected?: boolean;
 }
 
 function getMatchClass(score: number): string {
@@ -35,42 +35,37 @@ function timeAgo(dateStr?: string): string {
 
 function summarizeDescription(description: string): string {
   const cleaned = description.replace(/\s+/g, " ").trim();
-  if (cleaned.length <= 160) return cleaned;
-  return `${cleaned.slice(0, 157).trimEnd()}...`;
+  if (cleaned.length <= 130) return cleaned;
+  return `${cleaned.slice(0, 127).trimEnd()}...`;
+}
+
+function formatStatus(status: string | null) {
+  if (!status) return "Not tracked";
+  return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
 export default function JobCard({
   job,
   onSave,
-  onApply,
   onViewDetails,
   trackingStatus = null,
   actionLoading = null,
+  selected = false,
 }: JobCardProps) {
   const matchLevel = getMatchClass(job.relevanceScore);
   const isTracked = Boolean(trackingStatus);
-  const saveLabel =
-    trackingStatus === "applied" || trackingStatus === "interview" || trackingStatus === "offer"
-      ? "Tracked"
-      : trackingStatus === "saved"
-        ? "Saved"
-        : "Save";
-  const applyLabel =
-    trackingStatus === "applied" || trackingStatus === "interview" || trackingStatus === "offer"
-      ? "Open role"
-      : "Open & apply";
 
   return (
-    <div className="jr-job-card">
+    <div className={`jr-job-card ${selected ? "jr-job-card-selected" : ""}`}>
       <div className="jr-job-card-header">
         <div className="jr-job-card-info">
           <div className="jr-job-card-topline">
             <span className={`jr-match-pill jr-match-pill-${matchLevel}`}>
-              {matchLevel === "high" ? "Strong match" : matchLevel === "medium" ? "Good match" : "Stretch match"}
+              {matchLevel === "high" ? "Strong fit" : matchLevel === "medium" ? "Good fit" : "Stretch"}
             </span>
-            {job.source && (
-              <span className="jr-badge jr-badge-gray">{job.source}</span>
-            )}
+            <span className={`jr-job-card-status jr-job-card-status-${trackingStatus || "none"}`}>
+              {formatStatus(trackingStatus)}
+            </span>
           </div>
           <h3 className="jr-job-card-title">{job.title}</h3>
           <p className="jr-job-card-company">{job.company}</p>
@@ -101,22 +96,21 @@ export default function JobCard({
             )}
           </div>
         </div>
-        <div className="jr-job-card-match">
-          <div className={`jr-match-circle ${matchLevel}`}>
-            {job.relevanceScore}%
-          </div>
-          <span className="jr-match-label">Match</span>
+
+        <div className={`jr-job-card-score jr-job-card-score-${matchLevel}`}>
+          <strong>{job.relevanceScore}%</strong>
+          <span>match</span>
         </div>
       </div>
 
-      {job.description && (
-        <p className="jr-job-card-desc">{summarizeDescription(job.description)}</p>
-      )}
+      {job.description && <p className="jr-job-card-desc">{summarizeDescription(job.description)}</p>}
 
       {job.tags && job.tags.length > 0 && (
         <div className="jr-job-card-tags">
           {job.tags.slice(0, 4).map((tag) => (
-            <span key={tag} className="jr-badge jr-badge-blue">{tag}</span>
+            <span key={tag} className="jr-badge jr-badge-blue">
+              {tag}
+            </span>
           ))}
           {job.tags.length > 4 && (
             <span className="jr-badge jr-badge-gray">+{job.tags.length - 4}</span>
@@ -125,32 +119,22 @@ export default function JobCard({
       )}
 
       <div className="jr-job-card-actions">
-        {onViewDetails && (
-          <button
-            className="jr-btn jr-btn-secondary jr-btn-sm"
-            onClick={() => onViewDetails(job)}
-          >
-            Details
-          </button>
-        )}
+        <button
+          className={`jr-btn ${selected ? "jr-btn-primary" : "jr-btn-secondary"} jr-btn-sm`}
+          onClick={() => onViewDetails?.(job)}
+        >
+          <SearchIcon size={14} />
+          {selected ? "Selected" : "Review"}
+        </button>
         {onSave && (
           <button
-            className={`jr-btn ${isTracked ? "jr-btn-secondary" : "jr-btn-primary"} jr-btn-sm`}
+            className={`jr-btn ${isTracked ? "jr-btn-secondary" : "jr-btn-ghost"} jr-btn-sm`}
             onClick={() => onSave(job)}
             disabled={isTracked || actionLoading !== null}
           >
-            {actionLoading === "save" ? "Saving..." : saveLabel}
+            {actionLoading === "save" ? "Saving..." : isTracked ? "Tracked" : "Save"}
           </button>
         )}
-        <button
-          type="button"
-          className="jr-btn jr-btn-ghost jr-btn-sm jr-job-card-cta"
-          onClick={() => onApply?.(job)}
-          disabled={!onApply || actionLoading !== null}
-        >
-          <ExternalLinkIcon size={14} />
-          {actionLoading === "apply" ? "Opening..." : applyLabel}
-        </button>
       </div>
     </div>
   );

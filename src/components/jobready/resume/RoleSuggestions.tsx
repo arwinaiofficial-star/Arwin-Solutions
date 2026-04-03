@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { resumeApi } from "@/lib/api/client";
 import { ResumeData } from "./types";
@@ -10,7 +10,7 @@ interface RoleSuggestionsProps {
   data: ResumeData;
 }
 
-interface SuggestedRole {
+export interface SuggestedRole {
   title: string;
   reason: string;
   matchStrength: "strong" | "moderate" | "stretch";
@@ -18,10 +18,15 @@ interface SuggestedRole {
 
 export default function RoleSuggestions({ data }: RoleSuggestionsProps) {
   const router = useRouter();
-  const [roles, setRoles] = useState<SuggestedRole[]>([]);
+  const [roles, setRoles] = useState<SuggestedRole[]>(() => buildRoleSuggestions(data));
   const [customRole, setCustomRole] = useState("");
   const [loading, setLoading] = useState(false);
-  const [generated, setGenerated] = useState(false);
+  const [aiEnhanced, setAiEnhanced] = useState(false);
+
+  useEffect(() => {
+    setRoles(buildRoleSuggestions(data));
+    setAiEnhanced(false);
+  }, [data]);
 
   const generateSuggestions = async () => {
     setLoading(true);
@@ -34,21 +39,22 @@ export default function RoleSuggestions({ data }: RoleSuggestionsProps) {
 
       if (result.data?.reply) {
         const parsed = parseRoles(result.data.reply);
-        setRoles(parsed);
+        setRoles(parsed.length > 0 ? parsed : buildRoleSuggestions(data));
       } else {
-        setRoles(localRoleSuggestions(data));
+        setRoles(buildRoleSuggestions(data));
       }
     } catch {
-      setRoles(localRoleSuggestions(data));
+      setRoles(buildRoleSuggestions(data));
     } finally {
       setLoading(false);
-      setGenerated(true);
+      setAiEnhanced(true);
     }
   };
 
   const searchForRole = (role: string) => {
-    // Navigate to jobs page — the search query will be set via URL state
-    router.push(`/jobready/app/jobs?q=${encodeURIComponent(role)}`);
+    const query = role.trim();
+    if (!query) return;
+    router.push(`/jobready/app/jobs?q=${encodeURIComponent(query)}`);
   };
 
   const matchColors: Record<string, string> = {
@@ -57,59 +63,59 @@ export default function RoleSuggestions({ data }: RoleSuggestionsProps) {
     stretch: "yellow",
   };
 
-  if (!generated) {
-    return (
-      <div className="jr-role-suggestions">
-        <div className="jr-role-prompt">
-          <h3>What roles should you target?</h3>
-          <p>Let AI analyze your resume and suggest job roles that match your skills and experience.</p>
-          <button
-            className="jr-btn jr-btn-primary jr-btn-sm"
-            onClick={generateSuggestions}
-            disabled={loading}
-          >
-            <SparklesIcon size={14} />
-            {loading ? "Analyzing..." : "Suggest Roles"}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="jr-role-suggestions">
+    <section className="jr-role-suggestions">
+      <div className="jr-role-header">
+        <div>
+          <span className="jr-page-eyebrow">Role paths</span>
+          <h3>Start with one focused search path.</h3>
+          <p>These suggestions come from your current resume draft, so you can move straight into jobs.</p>
+        </div>
+        <button
+          className="jr-btn jr-btn-secondary jr-btn-sm"
+          onClick={generateSuggestions}
+          disabled={loading}
+        >
+          <SparklesIcon size={14} />
+          {loading ? "Refreshing..." : aiEnhanced ? "Refresh with AI" : "Improve with AI"}
+        </button>
+      </div>
+
       <div className="jr-role-list">
-        {roles.map((role, i) => (
-          <div key={i} className="jr-role-card">
+        {roles.map((role) => (
+          <div key={role.title} className="jr-role-card">
             <div className="jr-role-card-info">
               <div className="jr-role-card-header">
                 <h4>{role.title}</h4>
                 <span className={`jr-badge jr-badge-${matchColors[role.matchStrength] || "gray"}`}>
-                  {role.matchStrength}
+                  {role.matchStrength === "strong"
+                    ? "Strong fit"
+                    : role.matchStrength === "moderate"
+                      ? "Good fit"
+                      : "Stretch"}
                 </span>
               </div>
               <p>{role.reason}</p>
             </div>
             <button
-              className="jr-btn jr-btn-ghost jr-btn-sm"
+              className="jr-btn jr-btn-secondary jr-btn-sm"
               onClick={() => searchForRole(role.title)}
-              title="Search for this role"
             >
               <SearchIcon size={14} />
+              Search jobs
             </button>
           </div>
         ))}
       </div>
 
-      {/* Custom role input */}
       <div className="jr-role-custom">
         <input
           type="text"
           className="jr-input"
-          placeholder="Or enter a specific role..."
+          placeholder="Or search a specific role title"
           value={customRole}
-          onChange={(e) => setCustomRole(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && customRole.trim() && searchForRole(customRole)}
+          onChange={(event) => setCustomRole(event.target.value)}
+          onKeyDown={(event) => event.key === "Enter" && customRole.trim() && searchForRole(customRole)}
         />
         <button
           className="jr-btn jr-btn-primary jr-btn-sm"
@@ -119,15 +125,7 @@ export default function RoleSuggestions({ data }: RoleSuggestionsProps) {
           <ArrowRightIcon size={14} />
         </button>
       </div>
-
-      <button
-        className="jr-btn jr-btn-ghost jr-btn-sm jr-role-suggestions-refresh"
-        onClick={generateSuggestions}
-        disabled={loading}
-      >
-        {loading ? "Regenerating..." : "Regenerate suggestions"}
-      </button>
-    </div>
+    </section>
   );
 }
 
@@ -136,12 +134,13 @@ function parseRoles(reply: string): SuggestedRole[] {
     const jsonMatch = reply.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]) as SuggestedRole[];
-      return parsed.filter((r) => r.title && r.reason).slice(0, 6);
+      return parsed.filter((role) => role.title && role.reason).slice(0, 6);
     }
-  } catch { /* fall through */ }
+  } catch {
+    // Fall through to text parsing.
+  }
 
-  // Parse unstructured text as roles
-  const lines = reply.split("\n").filter((l) => l.trim().length > 5);
+  const lines = reply.split("\n").filter((line) => line.trim().length > 5);
   return lines.slice(0, 5).map((line) => ({
     title: line.replace(/^[-•*\d.]+\s*/, "").split(/[-–:]/).shift()?.trim() || line.trim(),
     reason: "Based on your skills and experience.",
@@ -149,33 +148,67 @@ function parseRoles(reply: string): SuggestedRole[] {
   }));
 }
 
-function localRoleSuggestions(data: ResumeData): SuggestedRole[] {
-  const skills = data.skills.map((s) => s.toLowerCase());
+export function buildRoleSuggestions(data: ResumeData): SuggestedRole[] {
+  const skills = data.skills.map((skill) => skill.toLowerCase());
   const suggestions: SuggestedRole[] = [];
 
-  // Infer from skills
-  if (skills.some((s) => ["react", "javascript", "typescript", "next.js", "vue", "angular"].includes(s))) {
-    suggestions.push({ title: "Frontend Developer", reason: "Your JavaScript/React skills are directly relevant.", matchStrength: "strong" });
-  }
-  if (skills.some((s) => ["python", "django", "flask", "fastapi", "node.js", "express"].includes(s))) {
-    suggestions.push({ title: "Backend Developer", reason: "Your server-side framework experience is a strong fit.", matchStrength: "strong" });
-  }
-  if (skills.some((s) => ["react", "node.js", "python", "sql", "aws", "docker"].includes(s)) && skills.length >= 6) {
-    suggestions.push({ title: "Full Stack Developer", reason: "You have both frontend and backend skills.", matchStrength: "strong" });
-  }
-  if (skills.some((s) => ["machine learning", "python", "tensorflow", "pytorch", "data science"].includes(s))) {
-    suggestions.push({ title: "ML Engineer", reason: "Your machine learning and data skills align well.", matchStrength: "strong" });
-  }
-  if (skills.some((s) => ["product management", "agile", "scrum", "roadmap"].includes(s))) {
-    suggestions.push({ title: "Product Manager", reason: "Your product and agile experience is relevant.", matchStrength: "moderate" });
+  if (skills.some((skill) => ["react", "javascript", "typescript", "next.js", "vue", "angular"].includes(skill))) {
+    suggestions.push({
+      title: "Frontend Developer",
+      reason: "Your frontend stack maps directly to hands-on product roles.",
+      matchStrength: "strong",
+    });
   }
 
-  // Always suggest a few generic ones based on experience level
-  if (data.experiences.length >= 3) {
-    suggestions.push({ title: "Technical Lead", reason: "Your experience level suggests readiness for leadership.", matchStrength: "stretch" });
+  if (skills.some((skill) => ["python", "django", "flask", "fastapi", "node.js", "express"].includes(skill))) {
+    suggestions.push({
+      title: "Backend Developer",
+      reason: "Your server-side framework experience supports backend-heavy openings.",
+      matchStrength: "strong",
+    });
   }
+
+  if (
+    skills.some((skill) => ["react", "node.js", "python", "sql", "aws", "docker"].includes(skill)) &&
+    skills.length >= 6
+  ) {
+    suggestions.push({
+      title: "Full Stack Developer",
+      reason: "You already show both frontend and backend capability in one profile.",
+      matchStrength: "strong",
+    });
+  }
+
+  if (skills.some((skill) => ["machine learning", "python", "tensorflow", "pytorch", "data science"].includes(skill))) {
+    suggestions.push({
+      title: "ML Engineer",
+      reason: "Your ML stack suggests a strong fit for model and platform roles.",
+      matchStrength: "strong",
+    });
+  }
+
+  if (skills.some((skill) => ["product management", "agile", "scrum", "roadmap"].includes(skill))) {
+    suggestions.push({
+      title: "Product Manager",
+      reason: "Your product and delivery language supports PM-oriented searches.",
+      matchStrength: "moderate",
+    });
+  }
+
+  if (data.experiences.length >= 3) {
+    suggestions.push({
+      title: "Technical Lead",
+      reason: "Your experience level points toward leadership or ownership roles.",
+      matchStrength: "stretch",
+    });
+  }
+
   if (data.experiences.length <= 1) {
-    suggestions.push({ title: "Associate Software Engineer", reason: "A great entry point to build your career.", matchStrength: "moderate" });
+    suggestions.push({
+      title: "Associate Software Engineer",
+      reason: "This is a clean entry point while your profile keeps building depth.",
+      matchStrength: "moderate",
+    });
   }
 
   return suggestions.slice(0, 6);

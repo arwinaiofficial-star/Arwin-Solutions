@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { resumeApi } from "@/lib/api/client";
 import { ResumeData } from "./types";
 import { SparklesIcon, CheckIcon, AlertIcon } from "@/components/icons/Icons";
 
 interface ATSScoreCardProps {
   data: ResumeData;
+  onResultChange?: (result: ATSResult) => void;
 }
 
-interface ATSResult {
+export interface ATSResult {
   score: number;
   verdict: "proceed" | "improve";
   strengths: string[];
@@ -18,9 +19,19 @@ interface ATSResult {
   missingKeywords: string[];
 }
 
-export default function ATSScoreCard({ data }: ATSScoreCardProps) {
+export default function ATSScoreCard({ data, onResultChange }: ATSScoreCardProps) {
+  const localResult = useMemo(() => buildLocalATSScore(data), [data]);
   const [result, setResult] = useState<ATSResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const activeResult = result ?? localResult;
+
+  useEffect(() => {
+    setResult(null);
+  }, [data]);
+
+  useEffect(() => {
+    onResultChange?.(activeResult);
+  }, [activeResult, onResultChange]);
 
   const calculateATS = async () => {
     setLoading(true);
@@ -32,93 +43,118 @@ export default function ATSScoreCard({ data }: ATSScoreCardProps) {
       );
 
       if (res.data?.reply) {
-        const parsed = parseATSResult(res.data.reply, data);
-        setResult(parsed);
+        setResult(parseATSResult(res.data.reply, data));
       } else {
-        setResult(localATSScore(data));
+        setResult(localResult);
       }
     } catch {
-      setResult(localATSScore(data));
+      setResult(localResult);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="jr-ats-card">
-      {!result ? (
-        <div className="jr-ats-prompt">
-          <h3>ATS Compatibility Check</h3>
-          <p>See how your resume performs with Applicant Tracking Systems used by 75% of employers.</p>
-          <button
-            className="jr-btn jr-btn-primary jr-btn-sm"
-            onClick={calculateATS}
-            disabled={loading}
-          >
-            <SparklesIcon size={14} />
-            {loading ? "Scanning..." : "Check ATS Score"}
-          </button>
+    <section className="jr-ats-card">
+      <div className="jr-ats-card-top">
+        <div className="jr-ats-card-copy">
+          <span className="jr-page-eyebrow">ATS review</span>
+          <h3>Check whether this draft is ready for live applications.</h3>
+          <p>
+            Start with the instant local read, then run a deeper AI scan when you want a second pass.
+          </p>
         </div>
-      ) : (
-        <div className="jr-ats-result">
-          <div className="jr-ats-score-ring" data-level={
-            result.score >= 80 ? "high" : result.score >= 50 ? "medium" : "low"
-          }>
-            <span className="jr-ats-score-value">{result.score}</span>
-            <span className="jr-ats-score-label">ATS Score</span>
-          </div>
+        <div
+          className="jr-ats-score-block"
+          data-level={activeResult.score >= 80 ? "high" : activeResult.score >= 50 ? "medium" : "low"}
+        >
+          <strong>{activeResult.score}</strong>
+          <span>ATS score</span>
+        </div>
+      </div>
 
-          <div className={`jr-ats-verdict ${result.verdict}`}>
-            {result.verdict === "proceed" ? (
-              <><CheckIcon size={14} /> Your resume is ready for applications</>
+      <div className="jr-ats-score-meter" aria-hidden="true">
+        <div style={{ width: `${activeResult.score}%` }} />
+      </div>
+
+      <div className={`jr-ats-verdict jr-ats-verdict-${activeResult.verdict}`} role="status">
+        {activeResult.verdict === "proceed" ? (
+          <>
+            <CheckIcon size={14} /> Strong enough to start applying while you keep refining.
+          </>
+        ) : (
+          <>
+            <AlertIcon size={14} /> Tighten the flagged areas before relying on this draft for live applications.
+          </>
+        )}
+      </div>
+
+      <div className="jr-ats-grid">
+        <div className="jr-ats-section">
+          <h4>Working well</h4>
+          <div className="jr-ats-item-list">
+            {activeResult.strengths.length > 0 ? (
+              activeResult.strengths.map((strength, index) => (
+                <div key={index} className="jr-ats-item jr-ats-strength">
+                  <CheckIcon size={12} />
+                  <span>{strength}</span>
+                </div>
+              ))
             ) : (
-              <><AlertIcon size={14} /> Consider improving before applying</>
+              <div className="jr-ats-item">
+                <span>Add more detail to surface concrete strengths.</span>
+              </div>
             )}
           </div>
+        </div>
 
-          {result.strengths.length > 0 && (
-            <div className="jr-ats-section">
-              <h4>Strengths</h4>
-              {result.strengths.map((s, i) => (
-                <div key={i} className="jr-ats-item jr-ats-strength">
-                  <CheckIcon size={12} /> <span>{s}</span>
+        <div className="jr-ats-section">
+          <h4>Fix before sending</h4>
+          <div className="jr-ats-item-list">
+            {activeResult.weaknesses.length > 0 ? (
+              activeResult.weaknesses.map((weakness, index) => (
+                <div key={index} className="jr-ats-item jr-ats-weakness">
+                  <AlertIcon size={12} />
+                  <span>{weakness}</span>
                 </div>
-              ))}
-            </div>
-          )}
-
-          {result.weaknesses.length > 0 && (
-            <div className="jr-ats-section">
-              <h4>To Improve</h4>
-              {result.weaknesses.map((w, i) => (
-                <div key={i} className="jr-ats-item jr-ats-weakness">
-                  <AlertIcon size={12} /> <span>{w}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {result.missingKeywords.length > 0 && (
-            <div className="jr-ats-section">
-              <h4>Consider Adding</h4>
-              <div className="jr-ats-keywords">
-                {result.missingKeywords.map((k) => (
-                  <span key={k} className="jr-badge jr-badge-yellow">{k}</span>
-                ))}
+              ))
+            ) : (
+              <div className="jr-ats-item jr-ats-strength">
+                <CheckIcon size={12} />
+                <span>No critical ATS gaps detected in the current draft.</span>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+        </div>
+      </div>
 
-          <button
-            className="jr-btn jr-btn-ghost jr-btn-sm jr-ats-card-refresh"
-            onClick={calculateATS}
-            disabled={loading}
-          >
-            {loading ? "Re-scanning..." : "Re-check Score"}
-          </button>
+      {activeResult.missingKeywords.length > 0 && (
+        <div className="jr-ats-section">
+          <h4>Common keywords to add honestly</h4>
+          <div className="jr-ats-keywords">
+            {activeResult.missingKeywords.map((keyword) => (
+              <span key={keyword} className="jr-badge jr-badge-yellow">
+                {keyword}
+              </span>
+            ))}
+          </div>
         </div>
       )}
-    </div>
+
+      <div className="jr-ats-actions">
+        <div className="jr-text-muted">
+          {result ? "AI scan included." : "Instant assessment shown."}
+        </div>
+        <button
+          className="jr-btn jr-btn-secondary jr-btn-sm"
+          onClick={calculateATS}
+          disabled={loading}
+        >
+          <SparklesIcon size={14} />
+          {loading ? "Scanning..." : result ? "Refresh AI scan" : "Run AI scan"}
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -139,83 +175,80 @@ function parseATSResult(reply: string, data: ResumeData): ATSResult {
         };
       }
     }
-  } catch { /* fall through */ }
-  return localATSScore(data);
+  } catch {
+    // Fall through to local scoring.
+  }
+
+  return buildLocalATSScore(data);
 }
 
-function localATSScore(data: ResumeData): ATSResult {
+export function buildLocalATSScore(data: ResumeData): ATSResult {
   let score = 0;
   const strengths: string[] = [];
   const weaknesses: string[] = [];
 
-  // Contact info
   if (data.fullName && data.email && data.phone) {
     score += 15;
     strengths.push("Complete contact information");
   } else {
-    weaknesses.push("Incomplete contact information");
+    weaknesses.push("Complete your core contact details");
   }
 
-  // Summary
   if (data.summary.length >= 80) {
     score += 15;
-    strengths.push("Professional summary present");
+    strengths.push("Professional summary is present");
   } else if (data.summary.length > 0) {
     score += 8;
-    weaknesses.push("Summary is too brief — aim for 2-3 sentences");
+    weaknesses.push("Expand the summary into 2-3 focused sentences");
   } else {
-    weaknesses.push("Missing professional summary");
+    weaknesses.push("Add a professional summary");
   }
 
-  // Experience
   if (data.experiences.length > 0) {
     score += 10;
-    const withHighlights = data.experiences.filter((e) => e.highlights.length >= 2);
+    const withHighlights = data.experiences.filter((experience) => experience.highlights.length >= 2);
     if (withHighlights.length === data.experiences.length) {
       score += 15;
-      strengths.push("Experience entries have detailed bullet points");
+      strengths.push("Experience entries have supporting bullet points");
     } else {
       score += 5;
-      weaknesses.push("Some experience entries need more bullet points");
+      weaknesses.push("Strengthen experience entries with 2-4 outcome bullets");
     }
-    const withDates = data.experiences.filter((e) => e.startDate);
+
+    const withDates = data.experiences.filter((experience) => experience.startDate);
     if (withDates.length === data.experiences.length) {
       score += 5;
     } else {
-      weaknesses.push("Add dates to all experience entries");
+      weaknesses.push("Add dates to every experience entry");
     }
   } else {
-    weaknesses.push("No work experience listed");
+    weaknesses.push("Add at least one work experience entry");
   }
 
-  // Education
   if (data.education.length > 0) {
     score += 10;
-    strengths.push("Education section present");
+    strengths.push("Education section is present");
   } else {
-    weaknesses.push("No education listed");
+    weaknesses.push("Add your education history");
   }
 
-  // Skills
   if (data.skills.length >= 5) {
     score += 15;
-    strengths.push(`${data.skills.length} skills listed`);
+    strengths.push(`${data.skills.length} skills captured`);
   } else if (data.skills.length > 0) {
     score += 8;
-    weaknesses.push("Add more skills — aim for 8-15");
+    weaknesses.push("Add more relevant skills and tools");
   } else {
-    weaknesses.push("No skills listed");
+    weaknesses.push("Add your core skills");
   }
 
-  // LinkedIn
   if (data.linkedIn) {
     score += 5;
     strengths.push("LinkedIn profile included");
   }
 
-  // Formatting: ATS-friendly checks
-  score += 10; // Our editor uses clean formatting by default
-  strengths.push("Clean, ATS-compatible formatting");
+  score += 10;
+  strengths.push("Editor formatting is ATS-friendly by default");
 
   const finalScore = Math.min(100, score);
 
@@ -225,6 +258,6 @@ function localATSScore(data: ResumeData): ATSResult {
     strengths,
     weaknesses,
     keywords: data.skills.slice(0, 10),
-    missingKeywords: finalScore < 70 ? ["Quantified achievements", "Action verbs", "Industry keywords"] : [],
+    missingKeywords: finalScore < 70 ? ["Quantified outcomes", "Action verbs", "Role keywords"] : [],
   };
 }
