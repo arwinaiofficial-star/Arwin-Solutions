@@ -70,9 +70,9 @@ export default function Dashboard() {
     <div className="jr-dashboard">
       <section className="jr-home-hero jr-home-hero-compact">
         <div className="jr-home-hero-copy">
-          <span className="jr-page-eyebrow">Workspace overview</span>
+          <span className="jr-page-eyebrow">Overview</span>
           <h2>{getGreeting()}, {user?.name?.split(" ")[0] || "there"}.</h2>
-          <p>{resumeScore < 50 ? "Start with the resume basics, then move into search and applications." : "Your resume is in progress. Use the next action below to keep things moving."}</p>
+          <p>{nextStep.summary}</p>
           <div className="jr-home-hero-actions">
             <Link href={nextStep.href} className="jr-btn jr-btn-primary">
               <SparklesIcon size={16} />
@@ -80,54 +80,51 @@ export default function Dashboard() {
             </Link>
             <Link href="/jobready/app/jobs" className="jr-btn jr-btn-secondary">
               <SearchIcon size={16} />
-              Explore roles
+              Search roles
             </Link>
           </div>
         </div>
       </section>
 
       <div className="jr-stats-row">
-        <StatCard label="Resume" value={`${resumeScore}%`} sub={resumeScore >= 80 ? "Ready to apply" : hasResume ? "In progress" : "Not started"} />
-        <StatCard label="Saved" value={String(counts.saved)} sub="Roles in your shortlist" />
-        <StatCard label="Applied" value={String(counts.applied)} sub="Applications sent" />
-        <StatCard label="Interviews" value={String(counts.interview)} sub={counts.offer > 0 ? `${counts.offer} offer${counts.offer > 1 ? "s" : ""}` : "No offers yet"} />
+        <StatCard label="Resume" value={`${resumeScore}%`} sub={resumeScore >= 80 ? "Ready" : hasResume ? "In progress" : "Not started"} />
+        <StatCard label="Saved" value={String(counts.saved)} sub="Shortlist" />
+        <StatCard label="Applied" value={String(counts.applied)} sub="Sent" />
+        <StatCard label="Interviews" value={String(counts.interview)} sub={counts.offer > 0 ? `${counts.offer} offer${counts.offer > 1 ? "s" : ""}` : "No offers"} />
       </div>
 
       <div className="jr-dashboard-grid">
         <section className="jr-dashboard-section">
           <div className="jr-section-header">
-            <div>
-              <span className="jr-page-eyebrow">Focused actions</span>
-              <h2>What to do next</h2>
-            </div>
+            <h2>Shortcuts</h2>
           </div>
           <div className="jr-quick-actions">
             <Link href="/jobready/app/documents" className="jr-quick-action">
               <DocumentIcon size={18} />
               <div>
                 <strong>{hasResume ? "Refine resume" : "Build resume"}</strong>
-                <span>Add or tighten the essentials.</span>
+                <span>Open the editor.</span>
               </div>
             </Link>
             <Link href="/jobready/app/jobs" className="jr-quick-action">
               <SearchIcon size={18} />
               <div>
                 <strong>Search roles</strong>
-                <span>Search and save the roles worth applying to.</span>
+                <span>Save the right ones.</span>
               </div>
             </Link>
             <Link href="/jobready/app/applications" className="jr-quick-action">
               <BriefcaseIcon size={18} />
               <div>
-                <strong>Track applications</strong>
-                <span>Move roles from saved to interview.</span>
+                <strong>Review pipeline</strong>
+                <span>Move roles forward.</span>
               </div>
             </Link>
             <Link href="/jobready/app/settings" className="jr-quick-action">
               <ArrowRightIcon size={18} />
               <div>
                 <strong>Workspace settings</strong>
-                <span>Update your name, location, and password.</span>
+                <span>Profile and security.</span>
               </div>
             </Link>
           </div>
@@ -135,16 +132,13 @@ export default function Dashboard() {
 
         <section className="jr-dashboard-section">
           <div className="jr-section-header">
-            <div>
-              <span className="jr-page-eyebrow">Recent activity</span>
-              <h2>Latest applications</h2>
-            </div>
+            <h2>Recent roles</h2>
           </div>
           {recentApps.length === 0 ? (
             <p className="jr-section-empty-copy">
               {resumeScore < 50
-                ? "Finish the resume basics first, then start saving roles."
-                : "No applications yet. Save a role from Jobs to begin tracking."}
+                ? "Finish the resume basics, then start saving roles."
+                : "No tracked roles yet. Save one from Jobs to begin."}
             </p>
           ) : (
             <div className="jr-recent-list">
@@ -185,11 +179,45 @@ function getNextStep(
   score: number,
   hasResume: boolean,
   counts: { saved: number; applied: number }
-): { cta: string; href: string } {
-  if (!hasResume) return { cta: "Create your resume", href: "/jobready/app/documents" };
-  if (score < 30) return { cta: "Add core details", href: "/jobready/app/documents" };
-  if (score < 50) return { cta: "Add experience", href: "/jobready/app/documents" };
-  if (score < 70) return { cta: "Complete your resume", href: "/jobready/app/documents" };
-  if (counts.saved === 0 && counts.applied === 0) return { cta: "Start job search", href: "/jobready/app/jobs" };
-  return { cta: "Review applications", href: "/jobready/app/applications" };
+): { cta: string; href: string; summary: string } {
+  if (!hasResume) {
+    return {
+      cta: "Create your resume",
+      href: "/jobready/app/documents",
+      summary: "Start with the resume. Jobs and tracking work better once the basics are in place.",
+    };
+  }
+  if (score < 30) {
+    return {
+      cta: "Add core details",
+      href: "/jobready/app/documents",
+      summary: "Fill in the essentials first so your draft is usable everywhere else in the product.",
+    };
+  }
+  if (score < 50) {
+    return {
+      cta: "Add experience",
+      href: "/jobready/app/documents",
+      summary: "Your draft exists. Add work history next so matching and applications get stronger.",
+    };
+  }
+  if (score < 70) {
+    return {
+      cta: "Complete your resume",
+      href: "/jobready/app/documents",
+      summary: "Tighten the remaining sections, then move into jobs and applications.",
+    };
+  }
+  if (counts.saved === 0 && counts.applied === 0) {
+    return {
+      cta: "Start job search",
+      href: "/jobready/app/jobs",
+      summary: "Your resume is in shape. Start searching and save the roles worth tracking.",
+    };
+  }
+  return {
+    cta: "Review applications",
+    href: "/jobready/app/applications",
+    summary: "You already have movement in the pipeline. Review the board and move roles forward.",
+  };
 }

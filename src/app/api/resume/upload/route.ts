@@ -1,12 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { fetchBackend } from "@/lib/api/backend";
 import { getAuthorizationHeader } from "@/lib/api/authCookies";
+import {
+  buildResumeDataFromRawText,
+  hasMeaningfulResumeExtraction,
+  mergeResumeExtraction,
+} from "@/lib/resumeExtraction";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type MammothModule = {
   extractRawText: (input: { buffer: Buffer }) => Promise<{ value: string }>;
+};
+
+type PdfParseInstance = {
+  getText: () => Promise<{ text: string }>;
+  destroy: () => Promise<void>;
+};
+
+type PdfParseModule = {
+  PDFParse: {
+    new (input: { data: Buffer }): PdfParseInstance;
+    setWorker: (workerPath: string) => string;
+  };
 };
 
 function loadMammoth(): MammothModule | null {
@@ -16,6 +35,21 @@ function loadMammoth(): MammothModule | null {
     return runtimeRequire("mammoth");
   } catch {
     return null;
+  }
+}
+
+async function extractPdfText(buffer: Buffer): Promise<string> {
+  const runtimeRequire = eval("require") as NodeRequire;
+  const pdfModule = runtimeRequire("pdf-parse") as PdfParseModule;
+  const packageEntry = runtimeRequire.resolve("pdf-parse");
+  const workerPath = path.join(path.dirname(packageEntry), "pdf.worker.mjs");
+  pdfModule.PDFParse.setWorker(pathToFileURL(workerPath).href);
+  const parser = new pdfModule.PDFParse({ data: buffer });
+  try {
+    const result = await parser.getText();
+    return result.text || "";
+  } finally {
+    await parser.destroy();
   }
 }
 
@@ -54,11 +88,7 @@ export async function POST(request: NextRequest) {
 
     if (isPDF) {
       try {
-        // pdf-parse doesn't have proper ESM types, use require
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const pdfParse = require("pdf-parse") as (buf: Buffer) => Promise<{ text: string }>;
-        const pdfData = await pdfParse(buffer);
-        rawText = pdfData.text;
+        rawText = await extractPdfText(buffer);
       } catch (pdfError) {
         console.error("pdf-parse failed:", pdfError);
         // Fallback: try basic text extraction from buffer
@@ -133,10 +163,13 @@ export async function POST(request: NextRequest) {
             }
           }
         }
+        const heuristicData = buildResumeDataFromRawText(rawText);
+        const mergedData = mergeResumeExtraction(extractedData, heuristicData);
+
         return NextResponse.json({
           success: true,
           rawText: rawText.slice(0, 3000),
-          extractedData,
+          extractedData: hasMeaningfulResumeExtraction(mergedData) ? mergedData : extractedData,
           fileName: file.name,
         });
       } else {
@@ -146,11 +179,13 @@ export async function POST(request: NextRequest) {
       console.error("Backend extraction failed:", backendError);
     }
 
+    const heuristicData = buildResumeDataFromRawText(rawText);
+
     // If backend extraction fails, return raw text so frontend can still populate summary
     return NextResponse.json({
       success: true,
       rawText: rawText.slice(0, 3000),
-      extractedData: null,
+      extractedData: hasMeaningfulResumeExtraction(heuristicData) ? heuristicData : null,
       fileName: file.name,
     });
   } catch (error) {

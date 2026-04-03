@@ -11,8 +11,10 @@ import {
 interface JobCardProps {
   job: JobResult;
   onSave?: (job: JobResult) => void;
+  onApply?: (job: JobResult) => void;
   onViewDetails?: (job: JobResult) => void;
-  isSaved?: boolean;
+  trackingStatus?: string | null;
+  actionLoading?: "save" | "apply" | null;
 }
 
 function getMatchClass(score: number): string {
@@ -31,8 +33,32 @@ function timeAgo(dateStr?: string): string {
   return `${Math.floor(days / 30)}mo ago`;
 }
 
-export default function JobCard({ job, onSave, onViewDetails, isSaved = false }: JobCardProps) {
+function summarizeDescription(description: string): string {
+  const cleaned = description.replace(/\s+/g, " ").trim();
+  if (cleaned.length <= 160) return cleaned;
+  return `${cleaned.slice(0, 157).trimEnd()}...`;
+}
+
+export default function JobCard({
+  job,
+  onSave,
+  onApply,
+  onViewDetails,
+  trackingStatus = null,
+  actionLoading = null,
+}: JobCardProps) {
   const matchLevel = getMatchClass(job.relevanceScore);
+  const isTracked = Boolean(trackingStatus);
+  const saveLabel =
+    trackingStatus === "applied" || trackingStatus === "interview" || trackingStatus === "offer"
+      ? "Tracked"
+      : trackingStatus === "saved"
+        ? "Saved"
+        : "Save";
+  const applyLabel =
+    trackingStatus === "applied" || trackingStatus === "interview" || trackingStatus === "offer"
+      ? "Open role"
+      : "Open & apply";
 
   return (
     <div className="jr-job-card">
@@ -84,16 +110,16 @@ export default function JobCard({ job, onSave, onViewDetails, isSaved = false }:
       </div>
 
       {job.description && (
-        <p className="jr-job-card-desc">{job.description}</p>
+        <p className="jr-job-card-desc">{summarizeDescription(job.description)}</p>
       )}
 
       {job.tags && job.tags.length > 0 && (
         <div className="jr-job-card-tags">
-          {job.tags.slice(0, 5).map((tag) => (
+          {job.tags.slice(0, 4).map((tag) => (
             <span key={tag} className="jr-badge jr-badge-blue">{tag}</span>
           ))}
-          {job.tags.length > 5 && (
-            <span className="jr-badge jr-badge-gray">+{job.tags.length - 5}</span>
+          {job.tags.length > 4 && (
+            <span className="jr-badge jr-badge-gray">+{job.tags.length - 4}</span>
           )}
         </div>
       )}
@@ -109,22 +135,22 @@ export default function JobCard({ job, onSave, onViewDetails, isSaved = false }:
         )}
         {onSave && (
           <button
-            className={`jr-btn ${isSaved ? "jr-btn-secondary" : "jr-btn-primary"} jr-btn-sm`}
+            className={`jr-btn ${isTracked ? "jr-btn-secondary" : "jr-btn-primary"} jr-btn-sm`}
             onClick={() => onSave(job)}
-            disabled={isSaved}
+            disabled={isTracked || actionLoading !== null}
           >
-            {isSaved ? "Saved" : "Save"}
+            {actionLoading === "save" ? "Saving..." : saveLabel}
           </button>
         )}
-        <a
-          href={job.url}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          type="button"
           className="jr-btn jr-btn-ghost jr-btn-sm jr-job-card-cta"
+          onClick={() => onApply?.(job)}
+          disabled={!onApply || actionLoading !== null}
         >
           <ExternalLinkIcon size={14} />
-          Apply now
-        </a>
+          {actionLoading === "apply" ? "Opening..." : applyLabel}
+        </button>
       </div>
     </div>
   );

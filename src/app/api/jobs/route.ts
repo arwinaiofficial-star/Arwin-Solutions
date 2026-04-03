@@ -226,39 +226,92 @@ interface RemotiveJob {
   description: string;
 }
 
+function buildRemotiveSearchVariants(skills: string[]): string[] {
+  const variants = new Set<string>();
+
+  const push = (value: string) => {
+    const trimmed = value.trim().toLowerCase();
+    if (!trimmed || trimmed.length < 3) return;
+    variants.add(trimmed);
+  };
+
+  for (const skill of skills) {
+    const normalized = skill.trim().toLowerCase();
+    if (!normalized) continue;
+
+    push(normalized);
+
+    const tokens = normalized
+      .split(/\s+/)
+      .map((token) => token.trim())
+      .filter((token) => token.length >= 3);
+
+    for (const token of tokens) {
+      push(token);
+    }
+
+    if (tokens.includes("software") && tokens.includes("engineer")) {
+      push("software developer");
+      push("developer");
+    }
+
+    if (tokens.includes("frontend")) {
+      push("frontend");
+      push("react");
+    }
+
+    if (tokens.includes("designer") || tokens.includes("ux") || tokens.includes("ui")) {
+      push("designer");
+      push("product design");
+    }
+  }
+
+  return [...variants].slice(0, 6);
+}
+
 async function fetchRemotiveJobs(skills: string[]): Promise<Job[]> {
   try {
-    const searchTerm = skills.slice(0, 3).join(",").toLowerCase();
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+    const searchTerms = buildRemotiveSearchVariants(skills);
+    const results = new Map<string, Job>();
 
-    const response = await fetch(
-      `https://remotive.com/api/remote-jobs?search=${encodeURIComponent(searchTerm)}&limit=30`,
-      {
-        headers: { Accept: "application/json" },
-        signal: controller.signal,
+    for (const searchTerm of searchTerms) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+
+      const response = await fetch(
+        `https://remotive.com/api/remote-jobs?search=${encodeURIComponent(searchTerm)}&limit=30`,
+        {
+          headers: { Accept: "application/json" },
+          signal: controller.signal,
+        }
+      );
+      clearTimeout(timeoutId);
+
+      if (!response.ok) continue;
+
+      const data = await response.json();
+      const jobs: RemotiveJob[] = data.jobs || [];
+
+      for (const job of jobs) {
+        const mappedJob = {
+          id: `remotive-${job.id}`,
+          title: job.title,
+          company: job.company_name,
+          location: job.candidate_required_location || "Remote",
+          description: stripHtml(job.description).slice(0, MAX_DESCRIPTION_LENGTH),
+          url: job.url,
+          source: "Remotive",
+          salary: job.salary || undefined,
+          jobType: job.job_type,
+          postedAt: formatDate(job.publication_date),
+          tags: job.tags?.slice(0, 5) || [],
+        };
+        results.set(mappedJob.id, mappedJob);
       }
-    );
-    clearTimeout(timeoutId);
+      if (results.size >= 40) break;
+    }
 
-    if (!response.ok) return [];
-
-    const data = await response.json();
-    const jobs: RemotiveJob[] = data.jobs || [];
-
-    return jobs.map((job) => ({
-      id: `remotive-${job.id}`,
-      title: job.title,
-      company: job.company_name,
-      location: job.candidate_required_location || "Remote",
-      description: stripHtml(job.description).slice(0, MAX_DESCRIPTION_LENGTH),
-      url: job.url,
-      source: "Remotive",
-      salary: job.salary || undefined,
-      jobType: job.job_type,
-      postedAt: formatDate(job.publication_date),
-      tags: job.tags?.slice(0, 5) || [],
-    }));
+    return [...results.values()];
   } catch (error) {
     logger.error("Error fetching Remotive jobs", { error: error instanceof Error ? error.message : "Unknown" });
     return [];

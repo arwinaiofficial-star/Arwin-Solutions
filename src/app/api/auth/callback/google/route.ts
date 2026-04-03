@@ -76,7 +76,10 @@ export async function GET(req: NextRequest) {
     }
 
     // 5. Set auth cookies using the standard helper and redirect
-    const response = NextResponse.redirect(`${baseUrl}/jobready/app`);
+    const destination = backendData.is_new_user
+      ? `${baseUrl}/jobready/app/onboarding`
+      : `${baseUrl}/jobready/app`;
+    const response = NextResponse.redirect(destination);
     applyAuthCookies(response, {
       access_token: tokens.access_token,
       refresh_token: tokens.refresh_token || "",

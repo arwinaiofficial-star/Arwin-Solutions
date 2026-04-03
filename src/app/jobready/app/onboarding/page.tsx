@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { markOnboardingCompleted } from "@/lib/jobreadyOnboarding";
 import {
   ArrowRightIcon,
   BriefcaseIcon,
@@ -119,6 +120,7 @@ export default function OnboardingPage() {
   };
 
   const completeOnboarding = () => {
+    markOnboardingCompleted(user?.id);
     if (startMethod === "upload" || startMethod === "build") {
       router.push("/jobready/app/documents");
       return;

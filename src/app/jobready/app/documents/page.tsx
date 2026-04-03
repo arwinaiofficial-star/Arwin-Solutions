@@ -10,6 +10,7 @@ import ExampleTemplates from "@/components/jobready/resume/ExampleTemplates";
 import type { ResumeData } from "@/components/jobready/resume/types";
 import type { CreationMethod } from "@/components/jobready/resume/ResumeCreationFlow";
 import { mapBackendToResumeData } from "@/components/jobready/resume/types";
+import { prefillResumeWithUser } from "@/components/jobready/resume/prefillWithUser";
 
 type View = "loading" | "choose" | "ai-wizard" | "examples" | "editor" | "uploading" | "importing";
 
@@ -43,10 +44,10 @@ export default function DocumentsPage() {
     view === "loading" && !isLoading && !user?.cvGenerated ? "choose" : view;
 
   const startEditor = useCallback((data?: ResumeData) => {
-    if (data) setInitialData(data);
+    if (data) setInitialData(prefillResumeWithUser(data, user));
     else setInitialData(null);
     setView("editor");
-  }, []);
+  }, [user]);
 
   // Reset: delete from DB, go back to choose
   const handleReset = useCallback(async () => {

@@ -27,6 +27,7 @@ function formatStatusLabel(status: Status): string {
 export default function ApplicationTracker() {
   const [apps, setApps] = useState<JobApplicationData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeStage, setActiveStage] = useState<Status>("saved");
 
   useEffect(() => {
     let cancelled = false;
@@ -68,6 +69,54 @@ export default function ApplicationTracker() {
     {} as Record<Status, number>
   );
 
+  const renderApplicationCard = (app: JobApplicationData) => {
+    const next = getNextStatus(app.status as Status);
+
+    return (
+      <div key={app.id} className="jr-kanban-card">
+        <h4 className="jr-kanban-card-title">{app.job_title}</h4>
+        <p className="jr-kanban-card-company">{app.company}</p>
+        {app.location && <p className="jr-kanban-card-location">{app.location}</p>}
+        <div className="jr-kanban-card-footer">
+          <span className="jr-kanban-card-date">
+            {formatDate(app.applied_at)}
+          </span>
+          <div className="jr-kanban-card-actions">
+            {next && (
+              <button
+                className="jr-kanban-action jr-kanban-action-primary"
+                onClick={() => moveApp(app.id, next)}
+                title={`Move to ${formatStatusLabel(next)}`}
+              >
+                <ArrowRightIcon size={12} />
+                <span>{formatStatusLabel(next)}</span>
+              </button>
+            )}
+            {app.job_url && (
+              <a
+                href={app.job_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="jr-kanban-action"
+                aria-label={`Open ${app.job_title}`}
+              >
+                <ExternalLinkIcon size={10} />
+              </a>
+            )}
+            <button
+              className="jr-kanban-action"
+              onClick={() => removeApp(app.id)}
+              title="Remove"
+              aria-label={`Remove ${app.job_title}`}
+            >
+              <TrashIcon size={10} />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="jr-tracker">
@@ -94,9 +143,9 @@ export default function ApplicationTracker() {
     <div className="jr-tracker">
       <section className="jr-page-hero jr-applications-hero jr-page-hero-compact">
         <div className="jr-page-hero-copy">
-          <span className="jr-page-eyebrow">Pipeline tracking</span>
-          <h2>Keep every opportunity moving.</h2>
-          <p>Move saved roles through applied, interview, and offer in one place.</p>
+          <span className="jr-page-eyebrow">Applications</span>
+          <h2>Keep your pipeline moving.</h2>
+          <p>Saved roles, active applications, interviews, and offers stay in one place.</p>
         </div>
       </section>
 
@@ -122,7 +171,46 @@ export default function ApplicationTracker() {
             ))}
           </div>
 
-          <div className="jr-board-wrap">
+          <div className="jr-tracker-stage-switcher" role="tablist" aria-label="Application stages">
+            {COLUMNS.map((col) => (
+              <button
+                key={col.key}
+                type="button"
+                className={`jr-tracker-stage-btn ${activeStage === col.key ? "jr-tracker-stage-btn-active" : ""}`}
+                onClick={() => setActiveStage(col.key)}
+                role="tab"
+                aria-selected={activeStage === col.key}
+              >
+                <span>{col.label}</span>
+                <strong>{counts[col.key]}</strong>
+              </button>
+            ))}
+          </div>
+
+          <section className="jr-tracker-mobile-stage" aria-live="polite">
+            <div className="jr-tracker-mobile-stage-head">
+              <div>
+                <span className="jr-page-eyebrow">{formatStatusLabel(activeStage)}</span>
+                <h3>{counts[activeStage]} role{counts[activeStage] !== 1 ? "s" : ""}</h3>
+              </div>
+              <span className="jr-tracker-mobile-stage-count">
+                {counts[activeStage]}
+              </span>
+            </div>
+            <div className="jr-tracker-mobile-list">
+              {apps.filter((app) => app.status === activeStage).length === 0 ? (
+                <div className="jr-kanban-empty">
+                  No roles in {formatStatusLabel(activeStage)} yet
+                </div>
+              ) : (
+                apps
+                  .filter((app) => app.status === activeStage)
+                  .map((app) => renderApplicationCard(app))
+              )}
+            </div>
+          </section>
+
+          <div className="jr-board-wrap jr-tracker-desktop-board">
             <div className="jr-kanban">
               {COLUMNS.map((col) => {
                 const colApps = apps.filter((a) => a.status === col.key);
@@ -136,50 +224,7 @@ export default function ApplicationTracker() {
                       {colApps.length === 0 ? (
                         <div className="jr-kanban-empty">No roles in this stage yet</div>
                       ) : (
-                        colApps.map((app) => {
-                          const next = getNextStatus(app.status as Status);
-                          return (
-                            <div key={app.id} className="jr-kanban-card">
-                              <h4 className="jr-kanban-card-title">{app.job_title}</h4>
-                              <p className="jr-kanban-card-company">{app.company}</p>
-                              {app.location && <p className="jr-kanban-card-location">{app.location}</p>}
-                              <div className="jr-kanban-card-footer">
-                                <span className="jr-kanban-card-date">
-                                  {formatDate(app.applied_at)}
-                                </span>
-                                <div className="jr-kanban-card-actions">
-                                  {next && (
-                                    <button
-                                      className="jr-kanban-action jr-kanban-action-primary"
-                                      onClick={() => moveApp(app.id, next)}
-                                      title={`Move to ${formatStatusLabel(next)}`}
-                                    >
-                                      <ArrowRightIcon size={12} />
-                                      <span>{formatStatusLabel(next)}</span>
-                                    </button>
-                                  )}
-                                  {app.job_url && (
-                                    <a
-                                      href={app.job_url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="jr-kanban-action"
-                                    >
-                                      <ExternalLinkIcon size={10} />
-                                    </a>
-                                  )}
-                                  <button
-                                    className="jr-kanban-action"
-                                    onClick={() => removeApp(app.id)}
-                                    title="Remove"
-                                  >
-                                    <TrashIcon size={10} />
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })
+                        colApps.map((app) => renderApplicationCard(app))
                       )}
                     </div>
                   </div>

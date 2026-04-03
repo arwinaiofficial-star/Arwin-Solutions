@@ -29,6 +29,7 @@ async def social_login(
     db: AsyncSession = Depends(get_db),
 ):
     """Authenticate via social provider. Creates account if new user."""
+    is_new_user = False
     # Check if user already exists
     result = await db.execute(select(User).where(User.email == data.email))
     user = result.scalar_one_or_none()
@@ -43,6 +44,7 @@ async def social_login(
         # New user — create account with a random password
         # (social users don't need a password, but field is required)
         import secrets
+        is_new_user = True
         user = User(
             email=data.email,
             hashed_password=hash_password(secrets.token_urlsafe(32)),
@@ -79,4 +81,8 @@ async def social_login(
         has_resume=has_resume,
     )
 
-    return {"user": user_response.model_dump(), "tokens": tokens.model_dump()}
+    return {
+        "user": user_response.model_dump(),
+        "tokens": tokens.model_dump(),
+        "is_new_user": is_new_user,
+    }

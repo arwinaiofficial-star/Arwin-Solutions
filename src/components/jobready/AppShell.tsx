@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { hasPendingOnboarding } from "@/lib/jobreadyOnboarding";
 import { trackEvent } from "@/lib/analytics";
 import {
   ClipboardIcon,
@@ -91,6 +92,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, isLoading, router]);
 
+  useEffect(() => {
+    if (
+      isLoading ||
+      !user?.id ||
+      pathname.startsWith("/jobready/app/onboarding") ||
+      pathname !== "/jobready/app"
+    ) {
+      return;
+    }
+
+    if (hasPendingOnboarding(user.id)) {
+      router.replace("/jobready/app/onboarding");
+    }
+  }, [isLoading, pathname, router, user?.id]);
+
   if (isLoading || !user) {
     return (
       <div className="jr-app">
@@ -110,11 +126,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className={`jr-app jr-layout ${sidebarOpen ? "jr-sidebar-open" : ""} ${isOnboarding ? "jr-layout-onboarding" : ""}`}>
       {sidebarOpen && !isOnboarding && (
-        <div className="jr-sidebar-overlay" onClick={() => setSidebarOpen(false)} />
+        <div
+          className={`jr-sidebar-overlay ${sidebarOpen ? "visible" : ""}`}
+          onClick={() => setSidebarOpen(false)}
+        />
       )}
 
       {!isOnboarding && (
-        <aside className="jr-sidebar">
+        <aside className={`jr-sidebar ${sidebarOpen ? "open" : ""}`}>
           <div className="jr-sidebar-panel">
             <Link href="/jobready/app" className="jr-sidebar-logo">
               <div className="jr-sidebar-logo-icon">

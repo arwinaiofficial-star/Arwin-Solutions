@@ -37,7 +37,7 @@ const STEPS = [
 ];
 
 export default function ResumeEditor({ initialData, onReset }: ResumeEditorProps) {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [activeStep, setActiveStep] = useState(1);
   const [data, setData] = useState<ResumeData>(
     initialData || createInitialResumeData(user || null)
@@ -48,7 +48,9 @@ export default function ResumeEditor({ initialData, onReset }: ResumeEditorProps
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [mobilePane, setMobilePane] = useState<"form" | "preview">("form");
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const didInitSaveRef = useRef(false);
+  const didHydrateRef = useRef(false);
+  const didStartAutosaveRef = useRef(false);
+  const didRefreshUserRef = useRef(false);
 
   const saveToDatabase = useCallback(async (resumeData: ResumeData) => {
     setSaving(true);
@@ -57,12 +59,33 @@ export default function ResumeEditor({ initialData, onReset }: ResumeEditorProps
     setSaving(false);
     if (result.error) {
       setSaveError(result.error);
+      return;
     }
-  }, []);
+
+    if (!didRefreshUserRef.current && refreshUser) {
+      didRefreshUserRef.current = true;
+      void refreshUser();
+    }
+  }, [refreshUser]);
 
   useEffect(() => {
-    if (!didInitSaveRef.current) {
-      didInitSaveRef.current = true;
+    if (didHydrateRef.current) return;
+    didHydrateRef.current = true;
+
+    const timeoutId = window.setTimeout(() => {
+      void saveToDatabase(data);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [data, saveToDatabase]);
+
+  useEffect(() => {
+    if (!didHydrateRef.current) return;
+
+    if (!didStartAutosaveRef.current) {
+      didStartAutosaveRef.current = true;
       return;
     }
 
@@ -127,8 +150,8 @@ export default function ResumeEditor({ initialData, onReset }: ResumeEditorProps
       <section className="jr-page-hero jr-resume-hero">
         <div className="jr-page-hero-copy">
           <span className="jr-page-eyebrow">Resume workspace</span>
-          <h2>Build a profile that is easy to trust and easy to screen.</h2>
-          <p>Work section by section, review the live preview as you go, and use AI help when you need a sharper draft instead of blank-page friction.</p>
+          <h2>Build a resume that is easy to review.</h2>
+          <p>Edit section by section, preview changes live, and use AI only when it adds leverage.</p>
         </div>
         <div className="jr-page-hero-aside">
           <div className="jr-mini-metric">
@@ -218,26 +241,25 @@ export default function ResumeEditor({ initialData, onReset }: ResumeEditorProps
           </div>
 
           <div className="jr-resume-section">
-            {!showATS && (
-              <ResumeAnalyzer
-                key={`analyzer-step-${activeStep}`}
-                data={data}
-                currentStep={activeStep}
-                onApplySuggestion={handleFieldChange}
-              />
-            )}
-
             {showATS ? (
               <div className="jr-resume-stack">
                 <ATSScoreCard data={data} />
                 <RoleSuggestions data={data} />
               </div>
             ) : (
-              renderStep({
-                activeStep,
-                data,
-                onFieldChange: handleFieldChange,
-              })
+              <>
+                {renderStep({
+                  activeStep,
+                  data,
+                  onFieldChange: handleFieldChange,
+                })}
+                <ResumeAnalyzer
+                  key={`analyzer-step-${activeStep}`}
+                  data={data}
+                  currentStep={activeStep}
+                  onApplySuggestion={handleFieldChange}
+                />
+              </>
             )}
           </div>
 

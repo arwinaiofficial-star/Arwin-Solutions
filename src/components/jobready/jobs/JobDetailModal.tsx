@@ -12,9 +12,19 @@ interface JobDetailModalProps {
   job: JobResult;
   onClose: () => void;
   onSave: (job: JobResult) => void;
+  onApply: (job: JobResult) => void;
+  trackingStatus?: string | null;
+  actionLoading?: "save" | "apply" | null;
 }
 
-export default function JobDetailModal({ job, onClose, onSave }: JobDetailModalProps) {
+export default function JobDetailModal({
+  job,
+  onClose,
+  onSave,
+  onApply,
+  trackingStatus = null,
+  actionLoading = null,
+}: JobDetailModalProps) {
   return (
     <div className="jr-modal-overlay" onClick={onClose}>
       <div className="jr-modal jr-job-detail-modal" onClick={(e) => e.stopPropagation()}>
@@ -68,19 +78,31 @@ export default function JobDetailModal({ job, onClose, onSave }: JobDetailModalP
           <div className="jr-job-detail-actions">
             <button
               className="jr-btn jr-btn-primary"
-              onClick={() => { onSave(job); onClose(); }}
+              onClick={() => { onSave(job); }}
+              disabled={Boolean(trackingStatus) || actionLoading !== null}
             >
-              Save to Tracker
+              {actionLoading === "save"
+                ? "Saving..."
+                : trackingStatus
+                  ? "Tracked"
+                  : "Save to Tracker"}
             </button>
-            <a
-              href={job.url}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
               className="jr-btn jr-btn-secondary"
+              onClick={() => {
+                onApply(job);
+                onClose();
+              }}
+              disabled={actionLoading !== null}
             >
               <ExternalLinkIcon size={14} />
-              Apply on {job.source}
-            </a>
+              {actionLoading === "apply"
+                ? "Opening..."
+                : trackingStatus === "applied" || trackingStatus === "interview" || trackingStatus === "offer"
+                  ? "Open role"
+                  : `Open & apply`}
+            </button>
           </div>
         </div>
       </div>

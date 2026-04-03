@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { CheckIcon, RocketIcon, SparklesIcon } from "@/components/icons/Icons";
 import SocialAuthButtons from "@/components/jobready/auth/SocialAuthButtons";
+import { hasPendingOnboarding, markOnboardingPending } from "@/lib/jobreadyOnboarding";
 import "@/app/jobready/jobready.css";
 
 export default function SignupPage() {
@@ -15,12 +16,13 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { signup, isAuthenticated } = useAuth();
+  const { signup, isAuthenticated, user } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (isAuthenticated) router.push("/jobready/app");
-  }, [isAuthenticated, router]);
+    if (!isAuthenticated || !user?.id) return;
+    router.push(hasPendingOnboarding(user.id) ? "/jobready/app/onboarding" : "/jobready/app");
+  }, [isAuthenticated, router, user?.id]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -40,6 +42,13 @@ export default function SignupPage() {
     try {
       const result = await signup(email, password, name);
       if (result.success) {
+        if (typeof window !== "undefined") {
+          const nextUserId =
+            window.localStorage.getItem("jobready_user_scope");
+          if (nextUserId) {
+            markOnboardingPending(nextUserId);
+          }
+        }
         router.push("/jobready/app/onboarding");
       } else {
         setError(result.error || "An account with this email already exists.");

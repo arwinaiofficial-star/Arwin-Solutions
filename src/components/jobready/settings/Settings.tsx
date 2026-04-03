@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { authApi } from "@/lib/api/client";
-import { CheckIcon, SettingsIcon, UserIcon } from "@/components/icons/Icons";
+import { CheckIcon, SettingsIcon } from "@/components/icons/Icons";
 import "@/app/jobready/jobready.css";
 
 type Message = { type: "success" | "error"; text: string } | null;
@@ -35,6 +35,13 @@ export default function Settings() {
     profileValues.name !== (user?.name || "") ||
     profileValues.phone !== (user?.phone || "") ||
     profileValues.location !== (user?.location || "");
+  const memberSince = user?.createdAt
+    ? new Date(user.createdAt).toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })
+    : "Unavailable";
 
   const handleProfileSave = async () => {
     setProfileSaving(true);
@@ -80,9 +87,24 @@ export default function Settings() {
     <div className="jr-settings">
       <section className="jr-page-hero jr-settings-hero jr-page-hero-compact">
         <div className="jr-page-hero-copy">
-          <span className="jr-page-eyebrow">Workspace controls</span>
-          <h2>Update your profile and account.</h2>
-          <p>Keep your name, location, and password current.</p>
+          <span className="jr-page-eyebrow">Settings</span>
+          <h2>Manage your account.</h2>
+          <p>Profile details, password, and workspace status live here.</p>
+        </div>
+      </section>
+
+      <section className="jr-settings-summary">
+        <div className="jr-settings-summary-item">
+          <span>Workspace email</span>
+          <strong>{user?.email || "Unavailable"}</strong>
+        </div>
+        <div className="jr-settings-summary-item">
+          <span>Member since</span>
+          <strong>{memberSince}</strong>
+        </div>
+        <div className="jr-settings-summary-item">
+          <span>Resume status</span>
+          <strong>{user?.cvGenerated ? "Created" : "Not started"}</strong>
         </div>
       </section>
 
@@ -214,41 +236,6 @@ export default function Settings() {
               {passwordMsg.text}
             </div>
           )}
-        </section>
-
-        <section className="jr-settings-section">
-          <div className="jr-settings-section-head">
-            <div className="jr-settings-section-icon">
-              <UserIcon size={18} />
-            </div>
-            <div>
-              <h2>Account details</h2>
-              <p>Reference details for this account.</p>
-            </div>
-          </div>
-
-          <div className="jr-settings-readonly-list">
-            <div className="jr-settings-readonly-item">
-              <span>Member since</span>
-              <strong>
-                {user?.createdAt
-                  ? new Date(user.createdAt).toLocaleDateString("en-US", {
-                      month: "long",
-                      day: "numeric",
-                      year: "numeric",
-                    })
-                  : "Unavailable"}
-              </strong>
-            </div>
-            <div className="jr-settings-readonly-item">
-              <span>Resume status</span>
-              <strong>{user?.cvGenerated ? "Created" : "Not started"}</strong>
-            </div>
-            <div className="jr-settings-readonly-item">
-              <span>Workspace email</span>
-              <strong>{user?.email || "Unavailable"}</strong>
-            </div>
-          </div>
         </section>
       </div>
     </div>

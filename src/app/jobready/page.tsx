@@ -9,41 +9,34 @@ import {
 export const metadata: Metadata = {
   title: "JobReady | Arwin",
   description:
-    "Build a resume, search for relevant roles, and track every application in one workflow with JobReady by Arwin.",
+    "Create a resume, search jobs, and track applications in one connected workflow with JobReady by Arwin.",
 };
 
 const featureCards = [
   {
     num: "01",
     title: "Resume builder",
-    desc: "Create a resume from scratch, upload an existing file, or import from LinkedIn into one editable source of truth.",
+    desc: "Start from scratch, upload a file, import LinkedIn, or open a template in one editor.",
     color: "#2563eb",
   },
   {
     num: "02",
     title: "Job search",
-    desc: "Search by title, skill, or tool, then save only the roles worth tracking.",
+    desc: "Search by title, skill, or tool, then keep only the roles worth pursuing.",
     color: "#10b981",
   },
   {
     num: "03",
     title: "Application tracker",
-    desc: "Move each role from saved to applied, interview, and offer without losing the thread.",
+    desc: "Move each role through saved, applied, interview, and offer in one place.",
     color: "#7c3aed",
   },
 ];
 
 const workflowSteps = [
-  "Start with a resume or bring in the one you already have.",
-  "Search roles and save the shortlist that actually fits.",
-  "Track every application in one board until the process is done.",
-];
-
-const fitPoints = [
-  "One workspace instead of separate resume, search, and tracker tools",
-  "Fast mobile flow for checking jobs and updating status on the go",
-  "Clear first-run path for new users instead of a noisy dashboard",
-  "Simple enough for candidates, structured enough for teams to review",
+  "Bring in a resume or create one from scratch.",
+  "Search roles and keep the shortlist tight.",
+  "Open, apply, and track every role in one workspace.",
 ];
 
 export default function JobReadyPage() {
@@ -60,13 +53,13 @@ export default function JobReadyPage() {
               JobReady by Arwin
             </div>
             <h1 style={{ maxWidth: "920px", margin: "0 auto var(--space-md)" }}>
-              Build your resume, shortlist better roles, and track every application in one place.
+              Create a resume, find matching roles, and track every application in one workflow.
             </h1>
             <p
               className="text-muted max-w-screen-md mx-auto"
               style={{ fontSize: "1.0625rem", maxWidth: "720px", marginBottom: "var(--space-xl)" }}
             >
-              JobReady keeps resume editing, role discovery, and application tracking in one connected workflow.
+              JobReady keeps the candidate journey in one place so users do not jump between separate resume, search, and tracker tools.
             </p>
             <div className="flex gap-md justify-center" style={{ flexWrap: "wrap" }}>
               <Link href="/jobready/signup" className="btn btn-primary btn-lg">
@@ -85,9 +78,9 @@ export default function JobReadyPage() {
         <div className="container">
           <div className="text-center mb-xl">
             <div className="eyebrow mb-sm">Product Overview</div>
-            <h2>Three connected parts of the same workflow.</h2>
+            <h2>One product, three working parts.</h2>
             <p className="text-muted max-w-screen-md mx-auto" style={{ fontSize: "1.0625rem" }}>
-              Each screen does one job well, and the data carries forward instead of making users start over.
+              Each part does one clear job and hands context to the next step instead of making users start over.
             </p>
           </div>
 
@@ -120,9 +113,9 @@ export default function JobReadyPage() {
           <div className="grid grid-2" style={{ alignItems: "start", gap: "var(--space-xl)" }}>
             <div>
               <div className="eyebrow mb-sm">How It Works</div>
-              <h2>Simple enough to explain in one minute.</h2>
+              <h2>A clean three-step flow.</h2>
               <p className="text-muted" style={{ fontSize: "1.0625rem", maxWidth: "460px" }}>
-                Users start with the resume, move into search, and then track progress in one board. Nothing is hidden behind a complex setup.
+                Users start with the resume, move into jobs, and keep the pipeline current without leaving the workspace.
               </p>
             </div>
             <div className="solution-card">
@@ -141,31 +134,10 @@ export default function JobReadyPage() {
 
       <section className="section">
         <div className="container">
-          <div className="grid grid-2" style={{ alignItems: "start", gap: "var(--space-xl)" }}>
-            <div>
-              <div className="eyebrow mb-sm">Why It Lands</div>
-              <h2>Clear enough for candidates, structured enough for reviewers.</h2>
-            </div>
-            <div className="solution-card">
-              <ul className="feature-list" style={{ marginBottom: 0 }}>
-                {fitPoints.map((item) => (
-                  <li key={item}>
-                    <CheckCircleIcon size={18} color="#2563eb" className="feature-icon" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="section">
-        <div className="container">
           <div className="cta-card">
             <SparklesIcon size={32} color="var(--color-primary-light)" />
             <h2 style={{ marginTop: "var(--space-md)", marginBottom: "var(--space-md)" }}>
-              Open JobReady and walk the full flow in one account.
+              Open JobReady and run the full flow in one account.
             </h2>
             <p
               className="text-muted"
