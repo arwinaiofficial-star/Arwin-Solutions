@@ -461,7 +461,7 @@ function DocumentForm({
             {doc.document_number}
           </span>
         </h2>
-        <div style={{ display: "flex", gap: "0.5rem" }}>
+        <div className="form-header-actions">
           <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
           <button className="btn btn-primary" onClick={() => onPreview(doc)}>Preview & Download</button>
           <button className="btn btn-success" onClick={handleSave} disabled={saving}>
@@ -586,12 +586,24 @@ function DocumentForm({
         </div>
         {doc.items.map((item, i) => (
           <div key={item.id} className="line-item-row">
-            <input className="form-input" placeholder="Item description" value={item.description} onChange={(e) => updateItem(i, "description", e.target.value)} />
-            <input type="number" className="form-input" min="0" step="0.5" value={item.quantity} onChange={(e) => updateItem(i, "quantity", parseFloat(e.target.value) || 0)} />
-            <select className="form-select" value={item.unit} onChange={(e) => updateItem(i, "unit", e.target.value)}>
-              {UNIT_OPTIONS.map((u) => (<option key={u.value} value={u.value}>{u.label}</option>))}
-            </select>
-            <input type="number" className="form-input" min="0" step="100" value={item.rate} onChange={(e) => updateItem(i, "rate", parseFloat(e.target.value) || 0)} />
+            <div className="line-field">
+              <span className="line-field-label">Description</span>
+              <input className="form-input" placeholder="Item description" value={item.description} onChange={(e) => updateItem(i, "description", e.target.value)} />
+            </div>
+            <div className="line-field">
+              <span className="line-field-label">Qty</span>
+              <input type="number" className="form-input" min="0" step="0.5" value={item.quantity} onChange={(e) => updateItem(i, "quantity", parseFloat(e.target.value) || 0)} />
+            </div>
+            <div className="line-field">
+              <span className="line-field-label">Unit</span>
+              <select className="form-select" value={item.unit} onChange={(e) => updateItem(i, "unit", e.target.value)}>
+                {UNIT_OPTIONS.map((u) => (<option key={u.value} value={u.value}>{u.label}</option>))}
+              </select>
+            </div>
+            <div className="line-field">
+              <span className="line-field-label">Rate (₹)</span>
+              <input type="number" className="form-input" min="0" step="100" value={item.rate} onChange={(e) => updateItem(i, "rate", parseFloat(e.target.value) || 0)} />
+            </div>
             <div className="line-item-amount">{formatCurrency(item.amount)}</div>
             <button className="line-item-remove" onClick={() => removeItem(i)} title="Remove" disabled={doc.items.length <= 1}>×</button>
           </div>
