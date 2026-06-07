@@ -47,7 +47,7 @@ export const metadata: Metadata = {
     title: "Arwin Group — Technology & Intelligence Partner",
     description:
       "15+ years of digital transformation. Arwin Forge, FinLens, JobReady, Maya Design System — serving government, education, and enterprise sectors.",
-    url: "https://arwinaisolutions.com",
+    url: "https://arwinai.com",
     siteName: "Arwin Group",
     locale: "en_US",
     type: "website",

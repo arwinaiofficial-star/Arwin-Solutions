@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from app.core.config import settings
 from app.core.database import Base
 from app.models.user import User, Resume, ChatSession, JobCache  # noqa: F401
+from app.models.billing import BillingDocument, BillingCounter  # noqa: F401
 
 config = context.config
 

@@ -18,6 +18,7 @@ from app.api.interviews import router as interviews_router
 from app.api.salary import router as salary_router
 from app.api.pathways import router as pathways_router
 from app.api.events import router as events_router
+from app.api.billing import router as billing_router
 
 
 @asynccontextmanager
@@ -58,6 +59,7 @@ app.include_router(interviews_router, prefix=settings.API_PREFIX)
 app.include_router(salary_router, prefix=settings.API_PREFIX)
 app.include_router(pathways_router, prefix=settings.API_PREFIX)
 app.include_router(events_router, prefix=settings.API_PREFIX)
+app.include_router(billing_router, prefix=settings.API_PREFIX)
 
 
 @app.get("/")
