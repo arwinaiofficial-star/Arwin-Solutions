@@ -1,3 +1,5 @@
+import { recentProjects } from "@/lib/content";
+
 export type ClientSector = "Government" | "Education" | "Enterprise";
 
 export type ClientLogo = {
@@ -9,7 +11,7 @@ export type ClientLogo = {
   highlight: string;
 };
 
-export const clientLogos: ClientLogo[] = [
+const portfolioClientLogos: ClientLogo[] = [
   {
     name: "NTPC",
     slug: "ntpc",
@@ -186,6 +188,34 @@ export const clientLogos: ClientLogo[] = [
     imageScale: 1.12,
     highlight: "High-traffic pilgrimage portals handling services, bookings, and information.",
   },
+];
+
+const recentProjectClientLogos: ClientLogo[] = recentProjects.flatMap((project) => {
+  const logo = project.clientLogo;
+
+  if (!logo || logo.includeInMarquee === false) {
+    return [];
+  }
+
+  return [
+    {
+      name: logo.name ?? project.name,
+      slug: logo.slug,
+      image: logo.image,
+      sector: logo.sector,
+      imageScale: logo.imageScale,
+      highlight: logo.highlight,
+    },
+  ];
+});
+
+const recentProjectClientSlugs = new Set(
+  recentProjectClientLogos.map((client) => client.slug),
+);
+
+export const clientLogos: ClientLogo[] = [
+  ...recentProjectClientLogos,
+  ...portfolioClientLogos.filter((client) => !recentProjectClientSlugs.has(client.slug)),
 ];
 
 export const clientLogoRows = [

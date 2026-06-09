@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { recentProjects, stats } from "@/lib/content";
 import {
@@ -14,7 +15,41 @@ import {
 } from "@/components/icons/SiteIcons";
 import { WorkLogoShowcase } from "@/components/ClientLogos";
 
+function ProjectPreview({
+  image,
+  index,
+  name,
+  previewUrl,
+}: {
+  image: string;
+  index: number;
+  name: string;
+  previewUrl?: string;
+}) {
+  if (!previewUrl) {
+    return <img src={image} alt={name} className="project-card-img" />;
+  }
+
+  return (
+    <div className="project-live-preview" aria-hidden="true">
+      <iframe
+        src={previewUrl}
+        title={`${name} live website preview`}
+        className="project-live-preview-frame"
+        loading={index === 0 ? "eager" : "lazy"}
+        referrerPolicy="no-referrer"
+        sandbox="allow-scripts allow-same-origin"
+        scrolling="no"
+        tabIndex={-1}
+      />
+    </div>
+  );
+}
+
 export default function WorkPageClient() {
+  const [activeProjectIndex, setActiveProjectIndex] = useState(0);
+  const activeProject = recentProjects[activeProjectIndex] ?? recentProjects[0];
+
   return (
     <>
       {/* Hero */}
@@ -63,56 +98,91 @@ export default function WorkPageClient() {
             </p>
           </div>
 
-          <div className="grid grid-2">
-            {recentProjects.map((project, index) => (
-              <div key={index} className="project-card">
-                <div className="project-card-image">
-                  <div className="browser-chrome">
-                    <span className="browser-dot" />
-                    <span className="browser-dot" />
-                    <span className="browser-dot" />
-                    <span className="browser-url">{project.url.replace(/^https?:\/\//, '')}</span>
-                  </div>
-                  <img src={project.image} alt={project.name} className="project-card-img" />
-                </div>
-                <div className="project-card-body">
-                  <div style={{ marginBottom: "var(--space-sm)" }}>
-                    <span className="badge badge-accent" style={{ marginBottom: "var(--space-xs)" }}>{project.category}</span>
-                    <h3 style={{ fontSize: "1.25rem", marginBottom: "0.25rem" }}>{project.name}</h3>
-                    <a
-                      href={project.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ color: "var(--color-primary-light)", fontWeight: 500, fontSize: "0.875rem", display: "inline-flex", alignItems: "center", gap: "0.25rem" }}
+          <div className="success-story-browser">
+            <div className="success-story-nav-wrap">
+              <div className="success-story-nav" aria-label="Select a success story">
+                {recentProjects.map((project, index) => {
+                  const isActive = index === activeProjectIndex;
+
+                  return (
+                    <button
+                      key={project.url}
+                      type="button"
+                      className={`success-story-tab${isActive ? " active" : ""}`}
+                      aria-pressed={isActive}
+                      onClick={() => setActiveProjectIndex(index)}
                     >
-                      Visit Live <ExternalLinkIcon size={14} />
-                    </a>
-                  </div>
+                      <span className="success-story-tab-index">{String(index + 1).padStart(2, "0")}</span>
+                      <span className="success-story-tab-meta">{project.year} · {project.category}</span>
+                      <strong>{project.name}</strong>
+                      <span className="success-story-tab-url">{project.url.replace(/^https?:\/\//, "")}</span>
+                    </button>
+                  );
+                })}
+              </div>
 
-                  <p className="card-description mb-md" style={{ fontSize: "0.9375rem" }}>{project.description}</p>
+              <div className="success-story-count" aria-live="polite">
+                <span>{String(activeProjectIndex + 1).padStart(2, "0")}</span>
+                <small>/ {String(recentProjects.length).padStart(2, "0")}</small>
+              </div>
+            </div>
 
-                  <ul className="feature-list mb-md">
-                    {project.features.slice(0, 4).map((feature, idx) => (
-                      <li key={idx} style={{ fontSize: "0.875rem" }}>
-                        <CheckCircleIcon size={14} color="var(--color-success)" className="feature-icon" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
+            <article className="success-story-panel">
+              <div className="project-card-image success-story-media">
+                <div className="browser-chrome">
+                  <span className="browser-dot" />
+                  <span className="browser-dot" />
+                  <span className="browser-dot" />
+                  <span className="browser-url">{activeProject.url.replace(/^https?:\/\//, "")}</span>
+                </div>
+                <ProjectPreview
+                  image={activeProject.image}
+                  index={0}
+                  name={activeProject.name}
+                  previewUrl={activeProject.previewUrl}
+                />
+              </div>
 
-                  <div style={{ background: "var(--color-surface-elevated)", padding: "var(--space-sm)", borderRadius: "var(--radius-md)", marginBottom: "var(--space-md)" }}>
-                    <div style={{ fontSize: "0.75rem", fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.05em", color: "var(--color-text-light)", marginBottom: "0.25rem" }}>Outcome</div>
-                    <p style={{ color: "var(--color-text-muted)", marginBottom: 0, fontSize: "0.875rem" }}>{project.outcome}</p>
-                  </div>
+              <div className="success-story-content">
+                <div className="success-story-meta-row">
+                  <span className="badge badge-accent">{activeProject.category}</span>
+                  <span className="success-story-year">{activeProject.year}</span>
+                </div>
 
-                  <div style={{ display: "flex", flexWrap: "wrap" as const, gap: "0.375rem", marginTop: "auto" }}>
-                    {project.technologies.map((tech, idx) => (
-                      <span key={idx} className="tech-tag">{tech}</span>
-                    ))}
-                  </div>
+                <h3 className="success-story-title">{activeProject.name}</h3>
+                <a
+                  href={activeProject.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="success-story-link"
+                >
+                  Visit Live <ExternalLinkIcon size={14} />
+                </a>
+
+                <p className="success-story-description">{activeProject.description}</p>
+
+                <div className="success-story-section-label">Capabilities</div>
+                <ul className="feature-list success-story-feature-list">
+                  {activeProject.features.map((feature, idx) => (
+                    <li key={idx}>
+                      <CheckCircleIcon size={14} color="var(--color-success)" className="feature-icon" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="success-story-outcome">
+                  <div className="success-story-section-label">Outcome</div>
+                  <p>{activeProject.outcome}</p>
+                </div>
+
+                <div className="success-story-tech-list">
+                  {activeProject.technologies.map((tech, idx) => (
+                    <span key={idx} className="tech-tag">{tech}</span>
+                  ))}
                 </div>
               </div>
-            ))}
+            </article>
           </div>
         </div>
       </section>

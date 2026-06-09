@@ -37,7 +37,7 @@ export const homeContent = {
         detail: "Since 2011",
       },
       {
-        value: "26+",
+        value: "27+",
         label: "Projects Delivered",
         detail: "Government, Education, Enterprise",
       },
@@ -231,12 +231,65 @@ export const aboutContent = {
 };
 
 // ===== WORK/PROJECTS CONTENT =====
-export const recentProjects = [
+export type RecentProjectClientLogo = {
+  name?: string;
+  slug: string;
+  image: string;
+  sector: "Government" | "Education" | "Enterprise";
+  imageScale?: number;
+  highlight: string;
+  includeInMarquee?: boolean;
+};
+
+export type RecentProject = {
+  name: string;
+  category: string;
+  url: string;
+  image: string;
+  previewUrl?: string;
+  description: string;
+  year: number;
+  features: string[];
+  technologies: string[];
+  outcome: string;
+  clientLogo?: RecentProjectClientLogo;
+};
+
+export const recentProjects: RecentProject[] = [
+  {
+    name: "Learning & Ability Counselling Centre",
+    category: "Healthcare & Counselling Platform",
+    url: "https://www.lacc.org.in/",
+    image: "/logos/cleaned/lacc.png",
+    previewUrl: "https://www.lacc.org.in/",
+    description:
+      "Delivered a warm, professional website and Payload-powered CMS for LACC, bringing counselling services, developmental support, Neuro Bridge Foundation updates, articles, gallery, and enquiries into one maintainable digital platform.",
+    year: 2026,
+    features: [
+      "Counselling and therapy service pages",
+      "Payload CMS for articles, updates, and gallery",
+      "Foundation storytelling for Neuro Bridge Foundation",
+      "Structured enquiry and consultation pathways",
+      "Responsive care-focused user experience",
+    ],
+    technologies: ["Next.js", "Payload CMS", "Vercel"],
+    outcome:
+      "Gave the centre a polished public presence with CMS workflows for publishing insights, foundation updates, gallery items, and consultation information.",
+    clientLogo: {
+      slug: "lacc",
+      image: "/logos/cleaned/lacc.png",
+      sector: "Enterprise",
+      imageScale: 1.08,
+      highlight:
+        "Counselling-centre website with CMS-backed services, insights, foundation updates, gallery, and enquiry workflows.",
+    },
+  },
   {
     name: "Bhatrajula Kalyana Vedika",
     category: "Community Matrimony Platform",
     url: "https://bhatrajulakalyanavedika.com/",
     image: "/Bhatrajula Kalyana Vedika@4x.png",
+    previewUrl: "https://bhatrajulakalyanavedika.com/",
     description:
       "Created a comprehensive matrimony platform from scratch for the Bhatraju community, boosting registrations and providing an easy-to-use matchmaking process with strong foundation for data communication.",
     year: 2025,
@@ -256,6 +309,7 @@ export const recentProjects = [
     category: "Educational Institution",
     url: "https://vidyabharatisvp.com/",
     image: "/Vidya Bharati Vignana Kendra@4x.png",
+    previewUrl: "https://vidyabharatisvp.com/",
     description:
       "Complete website rebrand with new design language and in-house CMS panel for content management, resulting in boosted admissions and improved user experience.",
     year: 2025,
@@ -389,8 +443,13 @@ export const legacyProjects = {
 
   enterprise: {
     title: "Enterprise & Healthcare",
-    count: 6,
+    count: 7,
     projects: [
+      {
+        name: "Learning & Ability Counselling Centre",
+        description:
+          "Delivered a care-focused counselling and foundation website with CMS-managed services, articles, updates, gallery, and enquiry workflows.",
+      },
       {
         name: "Kapil Group",
         description:
@@ -438,7 +497,7 @@ export const timeline = [
     year: "2011\u20132024",
     title: "15 Years of Digital Excellence",
     description:
-      "Delivered 26+ digital transformation projects across government, education, and enterprise sectors throughout India.",
+      "Delivered 27+ digital transformation projects across government, education, and enterprise sectors throughout India.",
     milestone: false,
   },
   {
@@ -459,7 +518,7 @@ export const timeline = [
     year: "2026",
     title: "FinLens & BuiltIQ Launch",
     description:
-      "Launched FinLens \u2014 free financial tools and expert-led education. Launched BuiltIQ \u2014 construction intelligence and BIM tools. Sai Vinil and Anirudh Chakrahari begin contributing. Ecosystem expands to 4 Solutions + 2 Products.",
+      "Launched FinLens \u2014 free financial tools and expert-led education. Launched BuiltIQ \u2014 construction intelligence and BIM tools. Delivered LACC for counselling and community-care publishing. Sai Vinil and Anirudh Chakrahari begin contributing. Ecosystem expands to 4 Solutions + 2 Products.",
     milestone: true,
   },
 ];
@@ -644,10 +703,10 @@ export const jobreadyContent = {
 // ===== STATS =====
 export const stats = {
   yearsInBusiness: new Date().getFullYear() - companyInfo.founded,
-  projectsCompleted: 26,
+  projectsCompleted: 27,
   governmentProjects: 9,
   educationProjects: 11,
-  enterpriseProjects: 6,
+  enterpriseProjects: 7,
   solutions: 4,
   products: 2,
 };
