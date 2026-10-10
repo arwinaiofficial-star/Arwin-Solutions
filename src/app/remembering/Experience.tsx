@@ -234,13 +234,23 @@ export default function Experience({ media, fontClass }: { media: MediaItem[]; f
 
   const remove = async (id: string) => {
     if (!window.confirm("Delete this memory?")) return;
-    await fetch(`/api/memories?id=${encodeURIComponent(id)}`, {
-      method: "DELETE",
-      headers: { "x-admin-key": adminKey },
-    });
+    try {
+      const res = await fetch(`/api/memories?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: { "x-admin-key": adminKey },
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        window.alert(`Could not delete: ${json.error ?? res.status}`);
+        return;
+      }
+    } catch {
+      window.alert("Could not delete. Please check your connection.");
+      return;
+    }
     await load();
   };
-
+  
   const readAll = () => listRef.current?.scrollIntoView({ behavior: "smooth" });
 
   return (
