@@ -17,8 +17,8 @@ function clean(value: unknown, max: number) {
 }
 
 function isAdmin(req: Request) {
-  const key = process.env.MEMORY_ADMIN_KEY;
-  const given = req.headers.get("x-admin-key") ?? "";
+  const key = process.env.MEMORY_ADMIN_KEY?.trim();
+  const given = (req.headers.get("x-admin-key") ?? "").trim();
   if (!key || given.length !== key.length) return false;
   return timingSafeEqual(Buffer.from(given), Buffer.from(key));
 }
