@@ -35,6 +35,20 @@ type Particle = { left: number; size: number; dur: number; delay: number };
 
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 
+// Spreads items evenly over the first screen, then shuffles which item gets which place.
+function makeSlots(cols: number, rows: number) {
+  const slots: { x: number; y: number }[] = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      slots.push({ x: -6 + (c + 0.5) * (84 / cols) + rnd(-3, 3), y: 1 + (r + 0.5) * (88 / rows) + rnd(-4, 4) });
+    }
+  }
+  for (let i = slots.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [slots[i], slots[j]] = [slots[j], slots[i]];
+  }
+  return slots;
+}
 function cloudinaryImageUrl(publicId: string, width: number, quality: "auto" | "low" = "auto") {
   const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_CLOUD_NAME || "uyn1yhjd";
   const q = quality === "low" ? "q_auto:low" : "q_auto";
@@ -102,6 +116,7 @@ export default function Experience({ media, fontClass }: { media: MediaItem[]; f
   const [newId, setNewId] = useState<string | null>(null);
 
   const counter = useRef(0);
+  const grid = useRef({ cols: 3, rows: 4 });
   const built = useRef(false);
   const memRef = useRef<Memory[]>([]);
   const floatsRef = useRef<Float[]>([]);
@@ -124,7 +139,8 @@ export default function Experience({ media, fontClass }: { media: MediaItem[]; f
       x: rnd(-8, 74),
       y: rnd(1, 88),
       r: rnd(-7, 7),
-      dx: rnd(-50, 50),
+      dx: rnd(-30, 30),
+      dy: rnd(-30, 30),
       dy: rnd(-50, 50),
       d: rnd(9, 17),
       dl: -rnd(0, 12),
@@ -161,10 +177,20 @@ export default function Experience({ media, fontClass }: { media: MediaItem[]; f
   useEffect(() => {
     if (built.current || memories === null) return;
     built.current = true;
+    const cols = window.innerWidth < 760 ? 3 : 6;
+    const rows = 4;
+    grid.current = { cols, rows };
+    const total = Math.min(cols * rows, Math.max(8, (memories.length + photos.length) * 3));
     const list: Float[] = [];
-    memories.slice(0, 8).forEach((m) => list.push(mkFloat("m", m.id)));
-    photos.slice(0, 4).forEach((_, idx) => list.push(mkFloat("p", String(idx))));
-    setFloats(list);
+    let pi = 0;
+    let mi = 0;
+    for (let i = 0; i < total; i++) {
+      const wantMemory = memories.length > 0 && (photos.length === 0 || i % 2 === 1);
+      if (wantMemory) list.push(mkFloat("m", memories[mi++ % memories.length].id));
+      else if (photos.length > 0) list.push(mkFloat("p", String(pi++ % photos.length)));
+    }
+    const slots = makeSlots(cols, rows);
+    setFloats(list.map((f, i) => ({ ...f, x: slots[i].x, y: slots[i].y })));
   }, [memories, photos, mkFloat]);
 
   useEffect(() => {
@@ -185,8 +211,7 @@ export default function Experience({ media, fontClass }: { media: MediaItem[]; f
                   ? ms[Math.floor(Math.random() * ms.length)].id
                   : f.key
                 : String(Math.floor(Math.random() * Math.max(photos.length, 1)));
-            return { ...f, key, x: rnd(-8, 74), y: rnd(1, 88), r: rnd(-7, 7), out: false };
-          }),
+            return { ...f, key, r: rnd(-7, 7), out: false }; 
         );
       }, 750);
     }, 3600);
@@ -194,7 +219,15 @@ export default function Experience({ media, fontClass }: { media: MediaItem[]; f
   }, [photos.length]);
 
   const shuffle = useCallback(() => {
-    setFloats((c) => c.map((f) => (f.mine ? f : { ...f, x: rnd(-8, 74), y: rnd(1, 88), r: rnd(-7, 7) })));
+    setFloats((c) => {
+      const slots = makeSlots(grid.current.cols, grid.current.rows);
+      let k = 0;
+      return c.map((f) => {
+        if (f.mine) return f;
+        const s = slots[k++ % slots.length];
+        return { ...f, x: s.x, y: s.y, r: rnd(-7, 7) };
+      });
+    });
   }, []);
 
   const handleDone = useCallback(
