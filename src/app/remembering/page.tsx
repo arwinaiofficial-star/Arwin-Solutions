@@ -1,11 +1,11 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Noto_Serif_Telugu } from "next/font/google";
 import Experience from "./Experience";
 import { getMedia } from "../../lib/media";
 
 // Re-checks the media list every minute, so new photos and videos appear without redeploying.
 export const revalidate = 60;
-
+export const viewport: Viewport = { width: 1100, initialScale: 0.37, minimumScale: 0.3 };
 const serif = Noto_Serif_Telugu({
   subsets: ["telugu", "latin"],
   weight: ["400", "600", "700", "800"],
