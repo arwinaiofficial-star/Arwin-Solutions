@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+export const viewport: Viewport = { width: 1100 };
 import { Noto_Serif_Telugu } from "next/font/google";
 import Experience from "./Experience";
 import { getMedia } from "../../lib/media";
