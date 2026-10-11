@@ -100,4 +100,102 @@ function VideoTile({ item, onOpen }: { item: MediaItem; onOpen: () => void }) {
   return (
     <button type="button" className={styles.phBtn} onClick={onOpen} aria-label="Play video">
       <video ref={ref} className={styles.vid} src={item.thumb} poster={item.poster} muted loop playsInline preload="metadata" />
-      <span className={styles.play} aria
+      <span className={styles.play} aria-hidden="true">
+        ▶
+      </span>
+    </button>
+  );
+}
+
+export default function Experience({ media, fontClass }: { media: MediaItem[]; fontClass: string }) {
+  const [memories, setMemories] = useState<Memory[] | null>(null);
+  const [floats, setFloats] = useState<Float[]>([]);
+  const [particles, setParticles] = useState<Particle[]>([]);
+  const [active, setActive] = useState(0);
+  const [lightbox, setLightbox] = useState<MediaItem | null>(null);
+  const [newId, setNewId] = useState<string | null>(null);
+
+  const counter = useRef(0);
+  const grid = useRef({ cols: 3, rows: 4 });
+  const built = useRef(false);
+  const memRef = useRef<Memory[]>([]);
+  const floatsRef = useRef<Float[]>([]);
+  const listRef = useRef<HTMLElement>(null);
+  const music = useMusic();
+  const photos = useMemo(() => media.filter((m) => m.type === "image"), [media]);
+  const duck = music.duck;
+
+  const adminKey = useSyncExternalStore(
+    () => () => {},
+    () => new URLSearchParams(window.location.search).get("admin") ?? "",
+    () => "",
+  );
+
+  const mkFloat = useCallback(
+    (kind: "m" | "p", key: string, mine = false): Float => ({
+      id: ++counter.current,
+      kind,
+      key,
+      x: rnd(-8, 74),
+      y: rnd(1, 88),
+      r: rnd(-7, 7),
+      dx: rnd(-30, 30),
+      dy: rnd(-50, 50),
+      d: rnd(9, 17),
+      dl: -rnd(0, 12),
+      out: false,
+      mine,
+    }),
+    [],
+  );
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch("/api/memories", { cache: "no-store" });
+      const json = await res.json();
+      setMemories(Array.isArray(json.memories) ? json.memories : []);
+    } catch {
+      setMemories([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+    setParticles(
+      Array.from({ length: 10 }, () => ({ left: rnd(0, 100), size: rnd(3, 9), dur: rnd(10, 20), delay: rnd(0, 15) })),
+    );
+  }, [load]);
+
+  useEffect(() => {
+    memRef.current = memories ?? [];
+  }, [memories]);
+  useEffect(() => {
+    floatsRef.current = floats;
+  }, [floats]);
+
+  useEffect(() => {
+    if (built.current || memories === null) return;
+    built.current = true;
+    const cols = window.innerWidth < 760 ? 3 : 6;
+    const rows = 4;
+    grid.current = { cols, rows };
+    const total = Math.min(cols * rows, Math.max(8, (memories.length + photos.length) * 3));
+    const list: Float[] = [];
+    let pi = 0;
+    let mi = 0;
+    for (let i = 0; i < total; i++) {
+      const wantMemory = memories.length > 0 && (photos.length === 0 || i % 2 === 1);
+      if (wantMemory) list.push(mkFloat("m", memories[mi++ % memories.length].id));
+      else if (photos.length > 0) list.push(mkFloat("p", String(pi++ % photos.length)));
+    }
+    const slots = makeSlots(cols, rows);
+    setFloats(list.map((f, i) => ({ ...f, x: slots[i].x, y: slots[i].y })));
+  }, [memories, photos, mkFloat]);
+
+  useEffect(() => {
+    const iv = setInterval(() => {
+      const cur = floatsRef.current;
+      if (!cur.length) return;
+      const pick = cur[Math.floor(Math.random() * cur.length)];
+      if (pick.mine) return;
+      setFloats((c) => c.map((f)
