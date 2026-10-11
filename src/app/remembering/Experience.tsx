@@ -211,7 +211,7 @@ export default function Experience({ media, fontClass }: { media: MediaItem[]; f
                   ? ms[Math.floor(Math.random() * ms.length)].id
                   : f.key
                 : String(Math.floor(Math.random() * Math.max(photos.length, 1)));
-            return { ...f, key, r: rnd(-7, 7), out: false }; 
+        return { ...f, key, r: rnd(-7, 7), out: false }; 
         );
       }, 750);
     }, 3600);
