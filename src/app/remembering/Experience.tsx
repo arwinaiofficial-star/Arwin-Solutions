@@ -111,7 +111,6 @@ export default function Experience({ media, fontClass }: { media: MediaItem[]; f
   const [memories, setMemories] = useState<Memory[] | null>(null);
   const [floats, setFloats] = useState<Float[]>([]);
   const [particles, setParticles] = useState<Particle[]>([]);
-  const [active, setActive] = useState(0);
   const [lightbox, setLightbox] = useState<MediaItem | null>(null);
   const [newId, setNewId] = useState<string | null>(null);
 
@@ -198,4 +197,141 @@ export default function Experience({ media, fontClass }: { media: MediaItem[]; f
       if (!cur.length) return;
       const pick = cur[Math.floor(Math.random() * cur.length)];
       if (pick.mine) return;
-      setFloats((c) => c.map((f)
+      setFloats((c) => c.map((f) => (f.id === pick.id ? { ...f, out: true } : f)));
+      setTimeout(() => {
+        const ms = memRef.current;
+        setFloats((c) =>
+          c.map((f) => {
+            if (f.id !== pick.id) return f;
+            const key =
+              f.kind === "m"
+                ? ms.length
+                  ? ms[Math.floor(Math.random() * ms.length)].id
+                  : f.key
+                : String(Math.floor(Math.random() * Math.max(photos.length, 1)));
+            return { ...f, key, r: rnd(-7, 7), out: false };
+          })
+        );
+      }, 750);
+    }, 3600);
+    return () => clearInterval(iv);
+  }, [photos.length]);
+
+  const shuffle = useCallback(() => {
+    setFloats((c) => {
+      const slots = makeSlots(grid.current.cols, grid.current.rows);
+      let k = 0;
+      return c.map((f) => {
+        if (f.mine) return f;
+        const s = slots[k++ % slots.length];
+        return { ...f, x: s.x, y: s.y, r: rnd(-7, 7) };
+      });
+    });
+  }, []);
+
+  const handleDone = useCallback(
+    (m: Memory) => {
+      setMemories((c) => [m, ...(c ?? [])]);
+      setNewId(m.id);
+      setFloats((c) => [...c, { ...mkFloat("m", m.id, true), x: 4, y: 3, r: -3 }]);
+    },
+    [mkFloat],
+  );
+
+  const profilePhotoUrl = cloudinaryImageUrl("photo", 700);
+  const backgroundImg = cloudinaryImageUrl("photo", 1200, "low");
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightbox(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  useEffect(() => {
+    if (lightbox && lightbox.type === "video") {
+      duck(true);
+      return () => duck(false);
+    }
+  }, [lightbox, duck]);
+
+  const remove = async (id: string) => {
+    if (!window.confirm("Delete this memory?")) return;
+    try {
+      const res = await fetch(`/api/memories?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: { "x-admin-key": adminKey },
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        window.alert(`Could not delete: ${json.error ?? res.status}`);
+        return;
+      }
+    } catch {
+      window.alert("Could not delete. Please check your connection.");
+      return;
+    }
+    await load();
+  };
+
+  const readAll = () => listRef.current?.scrollIntoView({ behavior: "smooth" });
+
+  return (
+    <div className={`${styles.page} ${fontClass}`} style={backgroundImg ? { backgroundImage: `url(${backgroundImg})` } : undefined}>
+      <div className={styles.backdrop} aria-hidden="true" style={backgroundImg ? { backgroundImage: `url(${backgroundImg})` } : undefined} />
+
+      <section className={styles.stage}>
+        {particles.map((p, i) => (
+          <span
+            key={i}
+            className={styles.pt}
+            style={{ left: `${p.left}%`, width: p.size, height: p.size, animationDuration: `${p.dur}s`, animationDelay: `-${p.delay}s` }}
+          />
+        ))}
+
+        {floats.map((f) => {
+          const style = {
+            "--x": `${f.x}%`,
+            "--y": `${f.y}%`,
+            "--r": `${f.r}deg`,
+            "--dx": `${f.dx}px`,
+            "--dy": `${f.dy}px`,
+            "--d": `${f.d}s`,
+            "--dl": `${f.dl}s`,
+          } as CSSProperties;
+          const cls = `${styles.fl} ${f.out ? styles.flOut : ""} ${f.mine ? styles.mine : ""}`;
+          if (f.kind === "m") {
+            const m = memories?.find((x) => x.id === f.key);
+            if (!m) return null;
+            return (
+              <div key={f.id} className={`${cls} ${styles.fm}`} style={style}>
+                <div>
+                  <b>{m.name}</b>
+                  <small>
+                    {" · "}
+                    {m.relation}
+                    {m.hasAudio ? " · voice" : ""}
+                  </small>
+                </div>
+                <p>{m.message || "Voice message"}</p>
+              </div>
+            );
+          }
+          if (!photos.length) return null;
+          const pic = photos[Number(f.key) % photos.length];
+          return (
+            <div key={f.id} className={`${cls} ${styles.fp}`} style={style}>
+              <div className={styles.fpBox}>
+                <img src={pic.thumb} alt="" className={styles.cover} />
+              </div>
+            </div>
+          );
+        })}
+
+        <div className={styles.core}>
+          <p className={styles.eyebrow}>In loving memory</p>
+          {profilePhotoUrl && (
+            <div className={styles.frame}>
+              <div className={styles.frameIn}>
+                <img src
