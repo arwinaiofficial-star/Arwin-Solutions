@@ -35,6 +35,22 @@ type Particle = { left: number; size: number; dur: number; delay: number };
 
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 
+// Get Cloudinary image URL for a public_id
+const getCloudinaryUrl = (publicId: string, type: "src" | "thumb" | "back" = "src") => {
+  const cloud = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "dtyj2tgfz";
+  const base = `https://res.cloudinary.com/${cloud}`;
+  const id = encodeURIComponent(publicId);
+  
+  switch (type) {
+    case "thumb":
+      return `${base}/image/upload/f_auto,q_auto,w_700/${id}`;
+    case "back":
+      return `${base}/image/upload/f_auto,q_auto:low,w_1200/${id}`;
+    default:
+      return `${base}/image/upload/f_auto,q_auto,w_1600/${id}`;
+  }
+};
+
 // Fades an element in the first time it scrolls into view.
 function Reveal({ className, style, children }: { className: string; style?: CSSProperties; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -204,18 +220,8 @@ export default function Experience({ media, fontClass }: { media: MediaItem[]; f
     [mkFloat],
   );
 
-  // The fixed background photo changes while scrolling.
-  useEffect(() => {
-    if (photos.length < 2) return;
-    const onScroll = () => {
-      const max = document.documentElement.scrollHeight - window.innerHeight;
-      const p = max > 0 ? window.scrollY / max : 0;
-      setActive(Math.min(photos.length - 1, Math.floor(p * photos.length)));
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [photos.length]);
+  // The fixed background photo (image 0 from Cloudinary)
+  const backgroundImg = getCloudinaryUrl("0", "back");
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -253,15 +259,11 @@ export default function Experience({ media, fontClass }: { media: MediaItem[]; f
   
   const readAll = () => listRef.current?.scrollIntoView({ behavior: "smooth" });
 
+  const profilePhotoUrl = getCloudinaryUrl("0", "thumb");
+
   return (
-    <div className={`${styles.page} ${fontClass}`}>
-      <div className={styles.backdrop} aria-hidden="true">
-        {photos.map((p, i) => (
-          <div key={p.src} className={`${styles.bdLayer} ${i === active ? styles.bdOn : ""}`}>
-            <img src={p.back} alt="" className={styles.cover} />
-          </div>
-        ))}
-      </div>
+    <div className={`${styles.page} ${fontClass}`} style={{ backgroundImage: `url(${backgroundImg})` }}>
+      <div className={styles.backdrop} aria-hidden="true" style={{ backgroundImage: `url(${backgroundImg})` }} />
 
       <section className={styles.stage}>
         {particles.map((p, i) => (
@@ -313,13 +315,11 @@ export default function Experience({ media, fontClass }: { media: MediaItem[]; f
 
         <div className={styles.core}>
           <p className={styles.eyebrow}>In loving memory</p>
-          {photos.length > 0 && (
-            <div className={styles.frame}>
-              <div className={styles.frameIn}>
-                <img src={photos[0].thumb} alt="శ్రీమాన్ చక్రహరి మురళీధర్ రాజు గారు" className={styles.cover} />
-              </div>
+          <div className={styles.frame}>
+            <div className={styles.frameIn}>
+              <img src={profilePhotoUrl} alt="శ్రీమాన్ చక్రహరి మురళీధర్ రాజు గారు" className={styles.cover} />
             </div>
-          )}
+          </div>
           <h1 className={styles.name}>
             శ్రీమాన్ చక్రహరి
             <br />
