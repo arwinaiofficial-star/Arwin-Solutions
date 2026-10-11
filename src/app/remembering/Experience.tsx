@@ -35,7 +35,6 @@ type Particle = { left: number; size: number; dur: number; delay: number };
 
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 
-// Spreads items evenly over the first screen, then shuffles which item gets which place.
 function makeSlots(cols: number, rows: number) {
   const slots: { x: number; y: number }[] = [];
   for (let r = 0; r < rows; r++) {
@@ -49,13 +48,13 @@ function makeSlots(cols: number, rows: number) {
   }
   return slots;
 }
+
 function cloudinaryImageUrl(publicId: string, width: number, quality: "auto" | "low" = "auto") {
   const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_CLOUD_NAME || "uyn1yhjd";
   const q = quality === "low" ? "q_auto:low" : "q_auto";
   return `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,${q},w_${width}/${encodeURIComponent(publicId)}`;
 }
 
-// Fades an element in the first time it scrolls into view.
 function Reveal({ className, style, children }: { className: string; style?: CSSProperties; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const [shown, setShown] = useState(false);
@@ -81,7 +80,6 @@ function Reveal({ className, style, children }: { className: string; style?: CSS
   );
 }
 
-// A small looping, muted preview that plays while it is on screen.
 function VideoTile({ item, onOpen }: { item: MediaItem; onOpen: () => void }) {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
@@ -334,4 +332,128 @@ export default function Experience({ media, fontClass }: { media: MediaItem[]; f
           {profilePhotoUrl && (
             <div className={styles.frame}>
               <div className={styles.frameIn}>
-                <img src
+                <img src={profilePhotoUrl} alt="శ్రీమాన్ చక్రహరి మురళీధర్ రాజు గారు" className={styles.cover} />
+              </div>
+            </div>
+          )}
+          <h1 className={styles.name}>
+            శ్రీమాన్ చక్రహరి
+            <br />
+            మురళీధర్ రాజు గారు
+          </h1>
+          <ShareFlow onStep={shuffle} onDone={handleDone} onRecording={music.duck} onReadAll={readAll} />
+        </div>
+
+        <button type="button" className={styles.more} onClick={readAll}>
+          Read all memories ↓
+        </button>
+      </section>
+
+      {media.length > 0 && (
+        <section className={styles.sec}>
+          <h2 className={styles.h2}>
+            క్షణాలు<small>Moments</small>
+          </h2>
+          <div className={styles.cols}>
+            {media.map((item, i) => (
+              <Reveal
+                key={item.src}
+                className={styles.ph}
+                style={{ "--r": `${[-1.6, 1.2, -0.8, 1.7][i % 4]}deg` } as CSSProperties}
+              >
+                {item.type === "video" ? (
+                  <VideoTile item={item} onOpen={() => setLightbox(item)} />
+                ) : (
+                  <button type="button" className={styles.phBtn} onClick={() => setLightbox(item)} aria-label="Open photo">
+                    <img src={item.thumb} alt="" loading="lazy" />
+                  </button>
+                )}
+              </Reveal>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section className={`${styles.sec} ${styles.narrow}`} ref={listRef}>
+        <h2 className={styles.h2}>
+          జ్ఞాపకాల గోడ<small>Wall of Memories{memories ? ` (${memories.length})` : ""}</small>
+        </h2>
+        {memories === null && <p className={styles.empty}>Loading…</p>}
+        {memories !== null && memories.length === 0 && <p className={styles.empty}>Be the first to share a memory.</p>}
+        {memories?.map((m, i) => (
+          <div key={m.id}>
+            <Reveal className={`${styles.mem} ${m.id === newId ? styles.memNew : ""}`}>
+              <div className={styles.who}>
+                <div className={styles.av}>{Array.from(m.name)[0] ?? "•"}</div>
+                <div>
+                  <strong>{m.name}</strong>
+                  <span>
+                    {relationLabel(m.relation)}
+                    {m.city ? ` · ${m.city}` : ""}
+                    {" · "}
+                    {new Date(m.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                  </span>
+                </div>
+              </div>
+              {m.first && (
+                <>
+                  <p className={styles.lab}>మొదటి పరిచయం · First meeting</p>
+                  <p className={styles.msg}>{m.first}</p>
+                  {m.message && <p className={styles.lab}>జ్ఞాపకం · Memory</p>}
+                </>
+              )}
+              {m.message && <p className={styles.msg}>{m.message}</p>}
+              {m.hasAudio && <audio className={styles.audioEl} controls preload="none" src={`/api/audio?id=${encodeURIComponent(m.id)}`} />}
+              {adminKey && (
+                <button type="button" className={styles.del} onClick={() => remove(m.id)}>
+                  Delete
+                </button>
+              )}
+            </Reveal>
+            {i % 2 === 1 && media.length > 0 && (
+              <Reveal className={styles.big}>
+                {media[(i >> 1) % media.length].type === "video" ? (
+                  <video
+                    src={media[(i >> 1) % media.length].src}
+                    poster={media[(i >> 1) % media.length].poster}
+                    controls
+                    playsInline
+                    preload="none"
+                  />
+                ) : (
+                  <img src={media[(i >> 1) % media.length].thumb} alt="" loading="lazy" />
+                )}
+              </Reveal>
+            )}
+          </div>
+        ))}
+      </section>
+
+      {lightbox && (
+        <div className={styles.lb} onClick={() => setLightbox(null)} role="dialog" aria-modal="true">
+          {lightbox.type === "video" ? (
+            <video src={lightbox.src} poster={lightbox.poster} controls autoPlay playsInline onClick={(e) => e.stopPropagation()} />
+          ) : (
+            <img src={lightbox.src} alt="" />
+          )}
+        </div>
+      )}
+
+      <button
+        type="button"
+        data-music-btn
+        className={`${styles.mu} ${music.on ? styles.muOn : ""} ${music.off && !music.on ? styles.muOff : ""}`}
+        onClick={music.toggle}
+        aria-pressed={music.on}
+        aria-label="Toggle soothing music"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <path d="M9 18V5l12-2v13" />
+          <circle cx="6" cy="18" r="3" />
+          <circle cx="18" cy="16" r="3" />
+        </svg>
+        <span className={styles.muText}>Tap for music</span>
+      </button>
+    </div>
+  );
+}
