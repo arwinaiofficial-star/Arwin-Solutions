@@ -140,7 +140,6 @@ export default function Experience({ media, fontClass }: { media: MediaItem[]; f
       y: rnd(1, 88),
       r: rnd(-7, 7),
       dx: rnd(-30, 30),
-      dy: rnd(-30, 30),
       dy: rnd(-50, 50),
       d: rnd(9, 17),
       dl: -rnd(0, 12),
@@ -211,7 +210,8 @@ export default function Experience({ media, fontClass }: { media: MediaItem[]; f
                   ? ms[Math.floor(Math.random() * ms.length)].id
                   : f.key
                 : String(Math.floor(Math.random() * Math.max(photos.length, 1)));
-        return { ...f, key, r: rnd(-7, 7), out: false }; 
+            return { ...f, key, r: rnd(-7, 7), out: false };
+          })
         );
       }, 750);
     }, 3600);
@@ -392,72 +392,4 @@ export default function Experience({ media, fontClass }: { media: MediaItem[]; f
                 <div>
                   <strong>{m.name}</strong>
                   <span>
-                    {relationLabel(m.relation)}
-                    {m.city ? ` · ${m.city}` : ""}
-                    {" · "}
-                    {new Date(m.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                  </span>
-                </div>
-              </div>
-              {m.first && (
-                <>
-                  <p className={styles.lab}>మొదటి పరిచయం · First meeting</p>
-                  <p className={styles.msg}>{m.first}</p>
-                  {m.message && <p className={styles.lab}>జ్ఞాపకం · Memory</p>}
-                </>
-              )}
-              {m.message && <p className={styles.msg}>{m.message}</p>}
-              {m.hasAudio && <audio className={styles.audioEl} controls preload="none" src={`/api/audio?id=${encodeURIComponent(m.id)}`} />}
-              {adminKey && (
-                <button type="button" className={styles.del} onClick={() => remove(m.id)}>
-                  Delete
-                </button>
-              )}
-            </Reveal>
-            {i % 2 === 1 && media.length > 0 && (
-              <Reveal className={styles.big}>
-                {media[(i >> 1) % media.length].type === "video" ? (
-                  <video
-                    src={media[(i >> 1) % media.length].src}
-                    poster={media[(i >> 1) % media.length].poster}
-                    controls
-                    playsInline
-                    preload="none"
-                  />
-                ) : (
-                  <img src={media[(i >> 1) % media.length].thumb} alt="" loading="lazy" />
-                )}
-              </Reveal>
-            )}
-          </div>
-        ))}
-      </section>
-
-      {lightbox && (
-        <div className={styles.lb} onClick={() => setLightbox(null)} role="dialog" aria-modal="true">
-          {lightbox.type === "video" ? (
-            <video src={lightbox.src} poster={lightbox.poster} controls autoPlay playsInline onClick={(e) => e.stopPropagation()} />
-          ) : (
-            <img src={lightbox.src} alt="" />
-          )}
-        </div>
-      )}
-
-      <button
-        type="button"
-        data-music-btn
-        className={`${styles.mu} ${music.on ? styles.muOn : ""} ${music.off && !music.on ? styles.muOff : ""}`}
-        onClick={music.toggle}
-        aria-pressed={music.on}
-        aria-label="Toggle soothing music"
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-          <path d="M9 18V5l12-2v13" />
-          <circle cx="6" cy="18" r="3" />
-          <circle cx="18" cy="16" r="3" />
-        </svg>
-        <span className={styles.muText}>Tap for music</span>
-      </button>
-    </div>
-  );
-}
+                    {relationLabel(m
