@@ -35,21 +35,11 @@ type Particle = { left: number; size: number; dur: number; delay: number };
 
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 
-// Get Cloudinary image URL for a public_id
-const getCloudinaryUrl = (publicId: string, type: "src" | "thumb" | "back" = "src") => {
-  const cloud = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "dtyj2tgfz";
-  const base = `https://res.cloudinary.com/${cloud}`;
-  const id = encodeURIComponent(publicId);
-  
-  switch (type) {
-    case "thumb":
-      return `${base}/image/upload/f_auto,q_auto,w_700/${id}`;
-    case "back":
-      return `${base}/image/upload/f_auto,q_auto:low,w_1200/${id}`;
-    default:
-      return `${base}/image/upload/f_auto,q_auto,w_1600/${id}`;
-  }
-};
+function cloudinaryImageUrl(publicId: string, width: number, quality: "auto" | "low" = "auto") {
+  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_CLOUD_NAME || "uyn1yhjd";
+  const q = quality === "low" ? "q_auto:low" : "q_auto";
+  return `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,${q},w_${width}/${encodeURIComponent(publicId)}`;
+}
 
 // Fades an element in the first time it scrolls into view.
 function Reveal({ className, style, children }: { className: string; style?: CSSProperties; children: ReactNode }) {
@@ -120,7 +110,6 @@ export default function Experience({ media, fontClass }: { media: MediaItem[]; f
   const photos = useMemo(() => media.filter((m) => m.type === "image"), [media]);
   const duck = music.duck;
 
-  // Admin delete buttons appear only when the page is opened with ?admin=YOUR_KEY
   const adminKey = useSyncExternalStore(
     () => () => {},
     () => new URLSearchParams(window.location.search).get("admin") ?? "",
@@ -169,7 +158,6 @@ export default function Experience({ media, fontClass }: { media: MediaItem[]; f
     floatsRef.current = floats;
   }, [floats]);
 
-  // Build the floating wall once the memories have loaded.
   useEffect(() => {
     if (built.current || memories === null) return;
     built.current = true;
@@ -179,7 +167,6 @@ export default function Experience({ media, fontClass }: { media: MediaItem[]; f
     setFloats(list);
   }, [memories, photos, mkFloat]);
 
-  // Every few seconds one floating card or photo fades out and is replaced.
   useEffect(() => {
     const iv = setInterval(() => {
       const cur = floatsRef.current;
@@ -206,7 +193,6 @@ export default function Experience({ media, fontClass }: { media: MediaItem[]; f
     return () => clearInterval(iv);
   }, [photos.length]);
 
-  // Everything glides to new places each time the visitor moves to the next question.
   const shuffle = useCallback(() => {
     setFloats((c) => c.map((f) => (f.mine ? f : { ...f, x: rnd(-8, 74), y: rnd(1, 88), r: rnd(-7, 7) })));
   }, []);
@@ -220,8 +206,9 @@ export default function Experience({ media, fontClass }: { media: MediaItem[]; f
     [mkFloat],
   );
 
-  // The fixed background photo (image 0 from Cloudinary)
-  const backgroundImg = getCloudinaryUrl("0", "back");
+  // Public ID is "photo" in Cloudinary, not "0"
+  const profilePhotoUrl = cloudinaryImageUrl("photo", 700);
+  const backgroundImg = cloudinaryImageUrl("photo", 1200, "low");
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -256,14 +243,12 @@ export default function Experience({ media, fontClass }: { media: MediaItem[]; f
     }
     await load();
   };
-  
+
   const readAll = () => listRef.current?.scrollIntoView({ behavior: "smooth" });
 
-  const profilePhotoUrl = getCloudinaryUrl("0", "thumb");
-
   return (
-    <div className={`${styles.page} ${fontClass}`} style={{ backgroundImage: `url(${backgroundImg})` }}>
-      <div className={styles.backdrop} aria-hidden="true" style={{ backgroundImage: `url(${backgroundImg})` }} />
+    <div className={`${styles.page} ${fontClass}`} style={backgroundImg ? { backgroundImage: `url(${backgroundImg})` } : undefined}>
+      <div className={styles.backdrop} aria-hidden="true" style={backgroundImg ? { backgroundImage: `url(${backgroundImg})` } : undefined} />
 
       <section className={styles.stage}>
         {particles.map((p, i) => (
@@ -315,11 +300,13 @@ export default function Experience({ media, fontClass }: { media: MediaItem[]; f
 
         <div className={styles.core}>
           <p className={styles.eyebrow}>In loving memory</p>
-          <div className={styles.frame}>
-            <div className={styles.frameIn}>
-              <img src={profilePhotoUrl} alt="శ్రీమాన్ చక్రహరి మురళీధర్ రాజు గారు" className={styles.cover} />
+          {profilePhotoUrl && (
+            <div className={styles.frame}>
+              <div className={styles.frameIn}>
+                <img src={profilePhotoUrl} alt="శ్రీమాన్ చక్రహరి మురళీధర్ రాజు గారు" className={styles.cover} />
+              </div>
             </div>
-          </div>
+          )}
           <h1 className={styles.name}>
             శ్రీమాన్ చక్రహరి
             <br />
